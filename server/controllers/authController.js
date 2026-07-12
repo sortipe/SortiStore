@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'sortistore_super_secret_key_2026_2027';
 
 // Registrar usuario
-exports.register = (req, res) => {
+exports.register = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
@@ -14,7 +14,7 @@ exports.register = (req, res) => {
         }
 
         // Verificar si el email ya existe
-        const userExists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+        const userExists = await db.querySingle('SELECT id FROM users WHERE email = ?', [email]);
         if (userExists) {
             return res.status(400).json({ error: 'El correo electrónico ya está registrado.' });
         }
@@ -22,23 +22,24 @@ exports.register = (req, res) => {
         // Encriptar contraseña
         const hash = bcrypt.hashSync(password, 10);
 
-        // Insertar usuario
-        const result = db.prepare(`
+        // Insertar usuario (Retorna el id insertado usando RETURNING id)
+        const result = await db.execute(`
             INSERT INTO users (name, email, password_hash, role)
             VALUES (?, ?, ?, 'client')
-        `).run(name, email, hash);
+            RETURNING id
+        `, [name, email, hash]);
 
         const userId = result.lastInsertRowid;
 
         // Crear la billetera virtual del cliente con saldo 0
-        db.prepare('INSERT INTO user_wallets (user_id, sorti_balance) VALUES (?, 0)').run(userId);
+        await db.execute('INSERT INTO user_wallets (user_id, sorti_balance) VALUES (?, 0)', [userId]);
 
         // Bonificación de bienvenida (50 monedas)
-        db.prepare('UPDATE user_wallets SET sorti_balance = sorti_balance + 50 WHERE user_id = ?').run(userId);
-        db.prepare(`
+        await db.execute('UPDATE user_wallets SET sorti_balance = sorti_balance + 50 WHERE user_id = ?', [userId]);
+        await db.execute(`
             INSERT INTO sorti_transactions (user_id, amount, type, description)
             VALUES (?, 50, 'earn', 'Bono de bienvenida por registro')
-        `).run(userId);
+        `, [userId]);
 
         // Generar JWT
         const token = jwt.sign({ id: userId, role: 'client' }, JWT_SECRET, { expiresIn: '30d' });
@@ -55,7 +56,7 @@ exports.register = (req, res) => {
 };
 
 // Iniciar sesión
-exports.login = (req, res) => {
+exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
@@ -64,7 +65,7 @@ exports.login = (req, res) => {
         }
 
         // Buscar usuario
-        const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+        const user = await db.querySingle('SELECT * FROM users WHERE email = ?', [email]);
         if (!user) {
             return res.status(401).json({ error: 'Credenciales inválidas.' });
         }
@@ -78,7 +79,7 @@ exports.login = (req, res) => {
         // Obtener saldo de monedas Sorti si es cliente
         let sortiBalance = 0;
         if (user.role === 'client') {
-            const wallet = db.prepare('SELECT sorti_balance FROM user_wallets WHERE user_id = ?').get(user.id);
+            const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [user.id]);
             sortiBalance = wallet ? wallet.sorti_balance : 0;
         }
 
@@ -103,9 +104,9 @@ exports.login = (req, res) => {
 };
 
 // Obtener datos del usuario autenticado
-exports.getMe = (req, res) => {
+exports.getMe = async (req, res) => {
     try {
-        const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.id);
+        const user = await db.querySingle('SELECT id, name, email, role FROM users WHERE id = ?', [req.user.id]);
         if (!user) {
             return res.status(404).json({ error: 'Usuario no encontrado.' });
         }
@@ -113,7 +114,7 @@ exports.getMe = (req, res) => {
         // Obtener saldo de monedas si es cliente
         let sortiBalance = 0;
         if (user.role === 'client') {
-            const wallet = db.prepare('SELECT sorti_balance FROM user_wallets WHERE user_id = ?').get(user.id);
+            const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [user.id]);
             sortiBalance = wallet ? wallet.sorti_balance : 0;
         }
 

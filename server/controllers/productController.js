@@ -1,7 +1,7 @@
 const db = require('../config/database');
 
 // Listar todos los productos con filtros (Búsqueda, Categoría, Ofertas, Destacados, etc.)
-exports.getProducts = (req, res) => {
+exports.getProducts = async (req, res) => {
     try {
         const { q, category, type, featured, recommended, presale, offer } = req.query;
         let query = 'SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1';
@@ -41,15 +41,14 @@ exports.getProducts = (req, res) => {
 
         query += ' ORDER BY p.created_at DESC';
 
-        const stmt = db.prepare(query);
-        const products = stmt.all(...params);
+        const products = await db.query(query, params);
 
         // Obtener galería multimedia y variantes para cada producto
-        const enrichedProducts = products.map(product => {
+        const enrichedProducts = await Promise.all(products.map(async (product) => {
             // Galería
-            const media = db.prepare('SELECT id, media_url, is_video FROM product_media WHERE product_id = ?').all(product.id);
+            const media = await db.query('SELECT id, media_url, is_video FROM product_media WHERE product_id = ?', [product.id]);
             // Variantes
-            const variants = db.prepare('SELECT id, type, value, stock_offset, price_offset FROM product_variants WHERE product_id = ?').all(product.id);
+            const variants = await db.query('SELECT id, type, value, stock_offset, price_offset FROM product_variants WHERE product_id = ?', [product.id]);
             
             return {
                 ...product,
@@ -62,7 +61,7 @@ exports.getProducts = (req, res) => {
                 is_upcoming: !!product.is_upcoming,
                 is_presale: !!product.is_presale
             };
-        });
+        }));
 
         return res.json(enrichedProducts);
     } catch (error) {
@@ -72,25 +71,25 @@ exports.getProducts = (req, res) => {
 };
 
 // Obtener detalles de un producto por su slug
-exports.getProductBySlug = (req, res) => {
+exports.getProductBySlug = async (req, res) => {
     try {
         const { slug } = req.params;
-        const product = db.prepare(`
+        const product = await db.querySingle(`
             SELECT p.*, c.name as category_name 
             FROM products p 
             LEFT JOIN categories c ON p.category_id = c.id 
             WHERE p.slug = ?
-        `).get(slug);
+        `, [slug]);
 
         if (!product) {
             return res.status(404).json({ error: 'Producto no encontrado.' });
         }
 
         // Galería multimedia
-        const media = db.prepare('SELECT id, media_url, is_video FROM product_media WHERE product_id = ?').all(product.id);
+        const media = await db.query('SELECT id, media_url, is_video FROM product_media WHERE product_id = ?', [product.id]);
         
         // Variantes
-        const variants = db.prepare('SELECT id, type, value, stock_offset, price_offset FROM product_variants WHERE product_id = ?').all(product.id);
+        const variants = await db.query('SELECT id, type, value, stock_offset, price_offset FROM product_variants WHERE product_id = ?', [product.id]);
 
         const enrichedProduct = {
             ...product,
@@ -112,9 +111,9 @@ exports.getProductBySlug = (req, res) => {
 };
 
 // Obtener árbol de categorías y subcategorías
-exports.getCategories = (req, res) => {
+exports.getCategories = async (req, res) => {
     try {
-        const allCategories = db.prepare('SELECT * FROM categories').all();
+        const allCategories = await db.query('SELECT * FROM categories');
         
         const parentCategories = allCategories.filter(cat => cat.parent_id === null);
         const categoriesTree = parentCategories.map(parent => {

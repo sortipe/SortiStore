@@ -1,7 +1,7 @@
 const db = require('../config/database');
 
 // Crear Pedido (Checkout)
-exports.createOrder = (req, res) => {
+exports.createOrder = async (req, res) => {
     try {
         const userId = req.user ? req.user.id : null;
         const {
@@ -25,7 +25,7 @@ exports.createOrder = (req, res) => {
 
         // 1. Validar productos, calcular subtotal y verificar stock
         for (const item of items) {
-            const product = db.prepare('SELECT * FROM products WHERE id = ?').get(item.product_id);
+            const product = await db.querySingle('SELECT * FROM products WHERE id = ?', [item.product_id]);
             if (!product) {
                 return res.status(404).json({ error: `Producto con ID ${item.product_id} no encontrado.` });
             }
@@ -52,7 +52,7 @@ exports.createOrder = (req, res) => {
         let finalDeliveryCost = Number(delivery_cost) || 0;
 
         if (coupon_code) {
-            const coupon = db.prepare('SELECT * FROM coupons WHERE code = ?').get(coupon_code);
+            const coupon = await db.querySingle('SELECT * FROM coupons WHERE code = ?', [coupon_code]);
             if (coupon) {
                 const now = new Date().toISOString();
                 if (coupon.expires_at && coupon.expires_at < now) {
@@ -85,13 +85,13 @@ exports.createOrder = (req, res) => {
         let coinsToDeduct = Number(sorti_coins_used) || 0;
 
         if (userId && coinsToDeduct > 0) {
-            const wallet = db.prepare('SELECT sorti_balance FROM user_wallets WHERE user_id = ?').get(userId);
+            const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [userId]);
             if (!wallet || wallet.sorti_balance < coinsToDeduct) {
                 return res.status(400).json({ error: 'Saldo de monedas Sorti insuficiente.' });
             }
 
             // Tasa de cambio: 100 Sorti = S/. 1.00
-            const rateRow = db.prepare("SELECT value FROM system_settings WHERE key = 'sorti_rate'").get();
+            const rateRow = await db.querySingle("SELECT value FROM system_settings WHERE key = 'sorti_rate'");
             const rate = rateRow ? Number(rateRow.value) : 100;
 
             discountSorti = coinsToDeduct / rate;
@@ -103,14 +103,15 @@ exports.createOrder = (req, res) => {
         let totalAmount = subtotal + finalDeliveryCost - discountCoupon - discountSorti;
         if (totalAmount < 0) totalAmount = 0;
 
-        // 5. Crear el pedido en la BD (transacción simulada)
-        const orderResult = db.prepare(`
+        // 5. Crear el pedido en la BD (RETURNING id es compatible de forma cruzada)
+        const orderRow = await db.querySingle(`
             INSERT INTO orders (
                 user_id, guest_email, guest_name, status, delivery_type,
                 delivery_address, delivery_cost, coupon_id, sorti_coins_used,
                 total_amount, payment_method
             ) VALUES (?, ?, ?, 'pending_payment', ?, ?, ?, ?, ?, ?, ?)
-        `).run(
+            RETURNING id
+        `, [
             userId,
             userId ? null : guest_email,
             userId ? null : guest_name,
@@ -121,43 +122,37 @@ exports.createOrder = (req, res) => {
             coinsToDeduct,
             totalAmount,
             payment_method
-        );
+        ]);
 
-        const orderId = orderResult.lastInsertRowid;
+        const orderId = orderRow.id;
 
         // 6. Insertar los productos en order_items y restar stock si es físico
-        const insertItem = db.prepare(`
-            INSERT INTO order_items (order_id, product_id, quantity, price, variant_info)
-            VALUES (?, ?, ?, ?, ?)
-        `);
-
         for (const item of orderItemsToInsert) {
-            insertItem.run(orderId, item.product_id, item.quantity, item.price, item.variant_info);
+            await db.execute(`
+                INSERT INTO order_items (order_id, product_id, quantity, price, variant_info)
+                VALUES (?, ?, ?, ?, ?)
+            `, [orderId, item.product_id, item.quantity, item.price, item.variant_info]);
             
             // Restar stock
             if (item.is_physical) {
-                db.prepare('UPDATE products SET stock = stock - ? WHERE id = ?')
-                    .run(item.quantity, item.product_id);
+                await db.execute('UPDATE products SET stock = stock - ? WHERE id = ?', [item.quantity, item.product_id]);
             }
         }
 
         // 7. Actualizar billetera virtual y registrar transacción Sorti
         if (userId && coinsToDeduct > 0) {
-            db.prepare('UPDATE user_wallets SET sorti_balance = sorti_balance - ? WHERE user_id = ?')
-                .run(coinsToDeduct, userId);
-            
-            db.prepare(`
+            await db.execute('UPDATE user_wallets SET sorti_balance = sorti_balance - ? WHERE user_id = ?', [coinsToDeduct, userId]);
+            await db.execute(`
                 INSERT INTO sorti_transactions (user_id, amount, type, description)
                 VALUES (?, ?, 'redeem', ?)
-            `).run(userId, -coinsToDeduct, `Canjeado en pedido #${orderId}`);
+            `, [userId, -coinsToDeduct, `Canjeado en pedido #${orderId}`]);
         }
 
         // 8. Incrementar uso del cupón
         if (couponId) {
-            db.prepare('UPDATE coupons SET uses_count = uses_count + 1 WHERE id = ?').run(couponId);
+            await db.execute('UPDATE coupons SET uses_count = uses_count + 1 WHERE id = ?', [couponId]);
             if (userId) {
-                db.prepare('INSERT INTO user_coupons (user_id, coupon_id, order_id) VALUES (?, ?, ?)')
-                    .run(userId, couponId, orderId);
+                await db.execute('INSERT INTO user_coupons (user_id, coupon_id, order_id) VALUES (?, ?, ?)', [userId, couponId, orderId]);
             }
         }
 
@@ -176,8 +171,8 @@ exports.createOrder = (req, res) => {
     }
 };
 
-// Adjuntar Comprobante de Pago (Yape QR / Transferencia)
-exports.uploadPaymentProof = (req, res) => {
+// Adjuntar Comprobante de Pago
+exports.uploadPaymentProof = async (req, res) => {
     try {
         const { orderId, proofUrl } = req.body;
 
@@ -186,17 +181,17 @@ exports.uploadPaymentProof = (req, res) => {
         }
 
         // Verificar pedido
-        const order = db.prepare('SELECT id, status FROM orders WHERE id = ?').get(orderId);
+        const order = await db.querySingle('SELECT id, status FROM orders WHERE id = ?', [orderId]);
         if (!order) {
             return res.status(404).json({ error: 'Pedido no encontrado.' });
         }
 
-        // Actualizar comprobante de pago y cambiar estado a 'processing'
-        db.prepare(`
+        // Actualizar comprobante de pago
+        await db.execute(`
             UPDATE orders 
             SET payment_proof_url = ?, status = 'processing', updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
-        `).run(proofUrl, orderId);
+        `, [proofUrl, orderId]);
 
         return res.json({
             message: 'Comprobante subido. Pago pendiente de validación manual por administración.',
@@ -209,20 +204,20 @@ exports.uploadPaymentProof = (req, res) => {
 };
 
 // Listar Pedidos del Cliente Autenticado
-exports.getMyOrders = (req, res) => {
+exports.getMyOrders = async (req, res) => {
     try {
         const userId = req.user.id;
-        const orders = db.prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+        const orders = await db.query('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
         
         // Cargar ítems de cada pedido
-        const enrichedOrders = orders.map(order => {
-            const items = db.prepare(`
+        const enrichedOrders = await Promise.all(orders.map(async (order) => {
+            const items = await db.query(`
                 SELECT oi.*, p.name, p.slug, p.type, 
                        (SELECT media_url FROM product_media WHERE product_id = p.id LIMIT 1) as image_url
                 FROM order_items oi
                 JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = ?
-            `).all(order.id);
+            `, [order.id]);
 
             return {
                 ...order,
@@ -231,7 +226,7 @@ exports.getMyOrders = (req, res) => {
                     variant_info: item.variant_info ? JSON.parse(item.variant_info) : null
                 }))
             };
-        });
+        }));
 
         return res.json(enrichedOrders);
     } catch (error) {
@@ -241,27 +236,26 @@ exports.getMyOrders = (req, res) => {
 };
 
 // Obtener Detalle de un Pedido Específico
-exports.getOrderDetails = (req, res) => {
+exports.getOrderDetails = async (req, res) => {
     try {
         const { id } = req.params;
-        const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+        const order = await db.querySingle('SELECT * FROM orders WHERE id = ?', [id]);
 
         if (!order) {
             return res.status(404).json({ error: 'Pedido no encontrado.' });
         }
 
-        // Proteger privacidad: si no es admin ni el dueño del pedido, rechazar
         if (req.user.role === 'client' && order.user_id !== req.user.id) {
             return res.status(403).json({ error: 'No autorizado para ver este pedido.' });
         }
 
-        const items = db.prepare(`
+        const items = await db.query(`
             SELECT oi.*, p.name, p.slug, p.type,
                    (SELECT media_url FROM product_media WHERE product_id = p.id LIMIT 1) as image_url
             FROM order_items oi
             JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id = ?
-        `).all(order.id);
+        `, [order.id]);
 
         const enrichedOrder = {
             ...order,
