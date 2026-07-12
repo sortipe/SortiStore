@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sortistore Admin | Panel de Administración Modular</title>
+    
+    <!-- Hojas de estilo -->
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/admin.css">
+    
+    <!-- FontAwesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- DISEÑO DEL PANEL DE ADMINISTRACIÓN -->
+    <div class="admin-layout">
+        
+        <!-- BARRA LATERAL (SIDEBAR) -->
+        <aside class="admin-sidebar">
+            <div>
+                <div class="admin-logo">
+                    <i class="fas fa-tools"></i> Sorti<span>admin</span>
+                </div>
+                <nav class="admin-menu">
+                    <div class="admin-menu-item active" data-tab="dashboard">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </div>
+                    <div class="admin-menu-item" data-tab="products">
+                        <i class="fas fa-boxes"></i> Productos
+                    </div>
+                    <div class="admin-menu-item" data-tab="orders">
+                        <i class="fas fa-shopping-cart"></i> Pedidos
+                    </div>
+                    <div class="admin-menu-item" data-tab="courses">
+                        <i class="fas fa-graduation-cap"></i> LMS Cursos
+                    </div>
+                    <div class="admin-menu-item" data-tab="wallet">
+                        <i class="fas fa-coins"></i> Ajustar Monedas
+                    </div>
+                    <div class="admin-menu-item" data-tab="coupons">
+                        <i class="fas fa-ticket-alt"></i> Cupones
+                    </div>
+                    <div class="admin-menu-item" data-tab="settings">
+                        <i class="fas fa-sliders-h"></i> Configuración
+                    </div>
+                </nav>
+            </div>
+            
+            <div class="admin-footer-info">
+                <a href="/" style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-weight: bold; color: var(--color-primary);">
+                    <i class="fas fa-arrow-left"></i> Ir a la Tienda
+                </a>
+                <p>Sesión: <span id="admin-user-name">Administrador</span></p>
+                <button class="btn-outline" id="admin-logout-btn" style="width: 100%; margin-top: 8px; padding: 6px 12px; font-size: 11px;">
+                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="admin-main">
+            <!-- Barra de navegación superior -->
+            <header class="admin-navbar">
+                <div class="admin-title-area">
+                    <h2 id="admin-page-title">Dashboard General</h2>
+                </div>
+                <div class="admin-profile-area">
+                    <button class="action-btn" id="admin-theme-toggle-btn">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <span class="badge badge-featured">Rol: Admin/Empleado</span>
+                </div>
+            </header>
+
+            <!-- Área de inserción de vistas -->
+            <section class="admin-content-area animate-fade-in" id="admin-tab-content">
+                <!-- Cargado dinámicamente mediante admin.js -->
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL GLOBAL DE EDICIÓN / DETALLE (PRODUCTOS, PEDIDOS, CURSOS) -->
+    <div class="admin-modal" id="admin-details-modal">
+        <div class="admin-modal-content animate-fade-in" id="admin-modal-content-area">
+            <!-- Cargado dinámicamente -->
+        </div>
+    </div>
+
+    <!-- Scripts administrativos -->
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script src="/js/admin.js"></script>
+</body>
+</html>

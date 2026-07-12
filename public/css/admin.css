@@ -1,0 +1,278 @@
+/* ==========================================================================
+   ESTILOS DEL PANEL DE ADMINISTRACIÓN (SORTISTORE)
+   ========================================================================= */
+
+.admin-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+    .admin-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* SIDEBAR DE ADMINISTRACIÓN */
+.admin-sidebar {
+    background-color: var(--bg-card);
+    border-right: 1px solid var(--border-color);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.admin-logo {
+    font-family: var(--font-heading);
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 32px;
+    color: var(--text-primary);
+}
+
+.admin-logo span {
+    color: var(--color-primary);
+}
+
+.admin-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+}
+
+.admin-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.admin-menu-item:hover, .admin-menu-item.active {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.admin-menu-item.active {
+    box-shadow: var(--shadow-primary);
+}
+
+.admin-footer-info {
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ÁREA DE CONTENIDO PRINCIPAL */
+.admin-main {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.admin-navbar {
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-title-area h2 {
+    font-size: 24px;
+    color: var(--text-primary);
+}
+
+.admin-profile-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.admin-content-area {
+    padding: 32px;
+    flex: 1;
+}
+
+/* CARDS DE ESTADÍSTICAS */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.stat-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.stat-info h4 {
+    font-size: 13px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.stat-info .stat-value {
+    font-size: 28px;
+    font-weight: 800;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.stat-card:nth-child(1) .stat-icon { background-color: rgba(99, 102, 241, 0.1); color: var(--color-primary); }
+.stat-card:nth-child(2) .stat-icon { background-color: rgba(16, 185, 129, 0.1); color: var(--color-secondary); }
+.stat-card:nth-child(3) .stat-icon { background-color: rgba(14, 165, 233, 0.1); color: var(--info); }
+.stat-card:nth-child(4) .stat-icon { background-color: rgba(245, 158, 11, 0.1); color: var(--color-accent); }
+
+/* TABLAS DE CONTROL */
+.admin-table-container {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 32px;
+    box-shadow: var(--shadow-sm);
+}
+
+.admin-table-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.admin-table th, .admin-table td {
+    padding: 16px 24px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.admin-table th {
+    background-color: var(--bg-card-hover);
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.admin-table tr:last-child td {
+    border-bottom: none;
+}
+
+.admin-table tr:hover td {
+    background-color: var(--bg-card-hover);
+}
+
+/* DIALOGS / MODALES DE ADMIN */
+.admin-modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(10, 11, 16, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 2500;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.admin-modal.active {
+    display: flex;
+    animation: fadeIn 0.3s ease;
+}
+
+.admin-modal-content {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+}
+
+.admin-modal-header {
+    padding: 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-modal-body {
+    padding: 24px;
+}
+
+.admin-modal-footer {
+    padding: 24px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+/* ESTRUCTURADOR DE CURSOS (LMS ADMIN) */
+.lms-builder-module {
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin-bottom: 20px;
+    background-color: var(--bg-main);
+}
+
+.lms-builder-lesson-row {
+    border-top: 1px dashed var(--border-color);
+    padding-top: 12px;
+    margin-top: 12px;
+}
+
+/* COMPROBANTES DE PAGO EN DETALLE DE PEDIDO */
+.payment-proof-viewer {
+    background-color: var(--bg-main);
+    border: 1px solid var(--border-color);
+    padding: 16px;
+    border-radius: var(--radius-md);
+    margin-top: 16px;
+    text-align: center;
+}
+
+.payment-proof-viewer img {
+    max-height: 300px;
+    object-fit: contain;
+    margin: 12px auto 0 auto;
+}

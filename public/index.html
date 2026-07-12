@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sortistore | E-commerce Premium y Modular</title>
+    
+    <!-- Hojas de estilo -->
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/shop.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+    
+    <!-- FontAwesome para iconos modernos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- CABECERA PRINCIPAL (STICKY GLASSMORPHIC) -->
+    <header>
+        <div class="header-container">
+            <!-- Logo -->
+            <a href="#" class="logo" id="logo-btn">
+                <i class="fas fa-shopping-bag"></i> Sorti<span>store</span>
+            </a>
+
+            <!-- Buscador inteligente con autocompletado -->
+            <div class="search-box">
+                <i class="fas fa-search search-icon"></i>
+                <input type="text" id="store-search-input" placeholder="Buscar productos físicos, digitales, software, cursos..." autocomplete="off">
+                <div class="autocomplete-suggestions" id="search-suggestions-box"></div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="header-actions">
+                <!-- Selector Modo Claro/Oscuro -->
+                <button class="action-btn" id="theme-toggle-btn" title="Cambiar tema">
+                    <i class="fas fa-moon"></i>
+                </button>
+
+                <!-- Monedas Sorti (Billetera rápida) -->
+                <div class="sorti-wallet-display" id="header-wallet-display" style="display: none; cursor: pointer;">
+                    <i class="fas fa-coins"></i> <span id="header-wallet-balance">0</span>
+                </div>
+
+                <!-- Perfil / Dashboard -->
+                <button class="action-btn" id="profile-menu-btn" title="Mi Cuenta">
+                    <i class="fas fa-user"></i>
+                </button>
+
+                <!-- Carrito de Compras -->
+                <button class="action-btn" id="cart-drawer-btn" title="Ver carrito">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span class="badge-count" id="cart-count-badge">0</span>
+                </button>
+                
+                <!-- Acceso Admin Rápido (Oculto por defecto, se muestra si es admin) -->
+                <a href="/admin" class="btn-outline" id="admin-shortcut-btn" style="display: none; padding: 6px 12px; font-size: 13px;">
+                    <i class="fas fa-lock-open"></i> Admin
+                </a>
+            </div>
+        </div>
+
+        <!-- Mega Menú de Categorías -->
+        <nav class="mega-menu-nav">
+            <div class="menu-trigger" id="categories-menu-trigger">
+                <i class="fas fa-bars"></i> Categorías <i class="fas fa-chevron-down" style="font-size: 10px;"></i>
+            </div>
+            <a href="#" class="menu-trigger" id="nav-offers-btn" style="color: var(--color-secondary); font-weight: 700;">
+                <i class="fas fa-fire"></i> Zona de Ofertas
+            </a>
+            <a href="#" class="menu-trigger" id="nav-software-btn">
+                <i class="fas fa-laptop-code"></i> Software
+            </a>
+            <a href="#" class="menu-trigger" id="nav-courses-btn">
+                <i class="fas fa-graduation-cap"></i> Cursos LMS
+            </a>
+            <a href="#" class="menu-trigger" id="nav-presales-btn">
+                <i class="fas fa-calendar-alt"></i> Preventas
+            </a>
+
+            <!-- Contenedor del Mega Menú -->
+            <div class="mega-menu" id="store-mega-menu">
+                <!-- Columna Hogar y Decoración -->
+                <div class="mega-column">
+                    <h4>Hogar y Cocina</h4>
+                    <ul>
+                        <li><a href="#" class="category-link" data-cat="hogar">Hogar</a></li>
+                        <li><a href="#" class="category-link" data-cat="cocina">Cocina</a></li>
+                        <li><a href="#" class="category-link" data-cat="muebles">Muebles</a></li>
+                        <li><a href="#" class="category-link" data-cat="jardin">Jardín</a></li>
+                    </ul>
+                </div>
+                <!-- Columna Ropa y Moda -->
+                <div class="mega-column">
+                    <h4>Moda</h4>
+                    <ul>
+                        <li><a href="#" class="category-link" data-cat="ropa-hombre">Moda Hombre</a></li>
+                        <li><a href="#" class="category-link" data-cat="ropa-mujer">Moda Mujer</a></li>
+                        <li><a href="#" class="category-link" data-cat="ropa-ninos">Moda Niños</a></li>
+                        <li><a href="#" class="category-link" data-cat="ropa-bebes">Bebés</a></li>
+                    </ul>
+                </div>
+                <!-- Columna Contenido Digital -->
+                <div class="mega-column">
+                    <h4>Productos Digitales</h4>
+                    <ul>
+                        <li><a href="#" class="category-link" data-cat="libros-ebooks">Libros y E-books</a></li>
+                        <li><a href="#" class="category-link" data-cat="plugins-temas">Plugins y Temas</a></li>
+                        <li><a href="#" class="category-link" data-cat="streaming">Streaming</a></li>
+                        <li><a href="#" class="category-link" data-cat="segunda-mano">Segunda Mano</a></li>
+                    </ul>
+                </div>
+                <!-- Columna Software y Proyectos -->
+                <div class="mega-column">
+                    <h4>Software y Proyectos</h4>
+                    <ul>
+                        <li><a href="#" class="category-link" data-cat="crm">CRM y ERP</a></li>
+                        <li><a href="#" class="category-link" data-cat="sistemas-pos">Sistemas POS</a></li>
+                        <li><a href="#" class="category-link" data-cat="apps-moviles">Aplicaciones Móviles</a></li>
+                        <li><a href="#" class="category-link" data-cat="ia-proyectos">Proyectos Inteligencia Artificial</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- CARRO DE COMPRAS DESLIZABLE (GLOBAL DRAWER) -->
+    <div class="cart-overlay" id="cart-drawer-overlay"></div>
+    <div class="cart-drawer" id="cart-drawer-container">
+        <div class="cart-header">
+            <h3><i class="fas fa-shopping-cart"></i> Carrito de Compras</h3>
+            <button id="close-cart-btn" style="font-size: 20px; color: var(--text-muted);"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="cart-body" id="cart-items-list-container">
+            <!-- Elementos cargados dinámicamente -->
+        </div>
+        <div class="cart-footer">
+            <div class="cart-totals-row">
+                <span>Subtotal:</span>
+                <span id="cart-subtotal-text">S/. 0.00</span>
+            </div>
+            <div class="cart-totals-row" style="color: var(--color-accent);">
+                <span>Equivalente Sorti:</span>
+                <span><i class="fas fa-coins"></i> <span id="cart-sorti-equivalent-text">0</span></span>
+            </div>
+            <div class="cart-totals-row grand-total">
+                <span>Total estimado:</span>
+                <span id="cart-total-text">S/. 0.00</span>
+            </div>
+            <button class="btn-primary" id="go-to-checkout-btn" style="width: 100%; margin-top: 16px;">
+                <i class="fas fa-credit-card"></i> Ir al Checkout
+            </button>
+        </div>
+    </div>
+
+    <!-- REPRODUCTOR DE CURSOS LMS (OVERLAY DE APRENDIZAJE) -->
+    <div class="lms-player-container" id="lms-course-player">
+        <!-- Área de Video y Detalle de Clase -->
+        <div class="lms-video-area">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 id="lms-player-course-title">Curso Completo</h3>
+                <button class="btn-outline" id="close-lms-player-btn" style="padding: 6px 12px;">
+                    <i class="fas fa-arrow-left"></i> Salir del Curso
+                </button>
+            </div>
+            
+            <!-- Video Player wrapper 16:9 -->
+            <div class="lms-video-wrapper">
+                <video id="lms-lesson-video" src="" controls controlsList="nodownload"></video>
+            </div>
+
+            <!-- Contenido de la Lección -->
+            <div class="lms-class-description">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h2 id="lms-player-lesson-title">Cargando Lección...</h2>
+                        <p style="color: var(--text-muted); font-size: 13px;" id="lms-player-lesson-duration"><i class="fas fa-clock"></i> Duración: --:--</p>
+                    </div>
+                    <!-- Acción de Completado -->
+                    <label class="btn-secondary" style="cursor: pointer; padding: 8px 16px; border-radius: var(--radius-md); display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="lms-lesson-complete-checkbox" style="transform: scale(1.2);"> Marcada como Completada
+                    </label>
+                </div>
+                
+                <!-- Recursos y Materiales -->
+                <div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;" id="lms-lesson-resources-box">
+                    <h3>Recursos de la Clase</h3>
+                    <div style="display: flex; gap: 12px; margin-top: 12px;" id="lms-resources-links-container">
+                        <!-- Botones de descargas generados dinámicamente -->
+                    </div>
+                </div>
+
+                <!-- Examen de la Lección (si tiene) -->
+                <div id="lms-lesson-exam-box" style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px; display: none;">
+                    <h3>Examen Rápido</h3>
+                    <div id="lms-exam-question-card" class="glass-panel" style="padding: 20px; margin-top: 12px;">
+                        <!-- Preguntas -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estructura del Curso (Sidebar) -->
+        <div class="lms-sidebar-structure">
+            <div class="lms-sidebar-header">
+                <h3>Estructura del Curso</h3>
+                <!-- Progreso -->
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="lms-player-progress-bar" style="width: 0%;"></div>
+                </div>
+                <div style="font-size: 12px; color: var(--text-secondary); text-align: right;" id="lms-player-progress-text">Progreso: 0%</div>
+            </div>
+            <div class="lms-sidebar-body" id="lms-player-modules-list">
+                <!-- Módulos e Ítems de Clases -->
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA FELICITACIONES LMS FIN DE CURSO -->
+    <div class="lms-completion-overlay" id="lms-completion-popup">
+        <div class="lms-completion-box animate-fade-in">
+            <div class="lms-completion-badge"><i class="fas fa-trophy"></i></div>
+            <h2>¡Felicidades!</h2>
+            <p>Has completado satisfactoriamente el curso:</p>
+            <h3 id="completed-course-name-text" style="color: var(--color-primary); font-size: 22px; margin-bottom: 24px;">Nombre del Curso</h3>
+            <p style="font-size: 14px; margin-bottom: 32px;">Has revisado todas las clases y aprobado los exámenes del curso. Tu certificado virtual ha sido emitido con éxito.</p>
+            
+            <div style="display: flex; justify-content: center; gap: 16px;">
+                <button class="btn-accent" id="download-certificate-btn">
+                    <i class="fas fa-certificate"></i> Descargar Certificado
+                </button>
+                <button class="btn-outline" id="close-completion-popup-btn">
+                    Volver al Panel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VISTA PRINCIPAL INYECTADA DE LA SPA -->
+    <main id="app-view" class="animate-fade-in">
+        <!-- Cargado mediante app.js -->
+    </main>
+
+    <!-- FOOTER -->
+    <footer style="background-color: var(--bg-card); border-top: 1px solid var(--border-color); padding: 48px 24px; text-align: center; font-size: 14px; color: var(--text-muted); margin-top: auto;">
+        <div style="max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
+            <h3>Sortistore E-commerce Platform</h3>
+            <p>Una tienda en línea modular, moderna y elegante para productos físicos, digitales, software, proyectos y cursos.</p>
+            <div style="display: flex; justify-content: center; gap: 16px; font-size: 18px;">
+                <a href="#"><i class="fab fa-facebook"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-tiktok"></i></a>
+                <a href="#"><i class="fab fa-youtube"></i></a>
+            </div>
+            <p style="font-size: 11px; margin-top: 24px;">&copy; 2026 Sortistore. Desarrollado con tecnología de vanguardia.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts de la Aplicación -->
+    <script src="/js/api.js"></script>
+    <script src="/js/components.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
