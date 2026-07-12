@@ -1,5 +1,33 @@
 <?php
 
+class VercelApplication extends Illuminate\Foundation\Application
+{
+    public function getCachedPackagesPath()
+    {
+        return '/tmp/packages.php';
+    }
+
+    public function getCachedServicesPath()
+    {
+        return '/tmp/services.php';
+    }
+
+    public function getCachedConfigPath()
+    {
+        return '/tmp/config.php';
+    }
+
+    public function getCachedRoutesPath()
+    {
+        return '/tmp/routes-v7.php';
+    }
+
+    public function getCachedEventsPath()
+    {
+        return '/tmp/events.php';
+    }
+}
+
 /*
 |--------------------------------------------------------------------------
 | Create The Application
@@ -11,29 +39,14 @@
 |
 */
 
-$app = new Illuminate\Foundation\Application(
-    $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
-);
-
-if (!is_writable(dirname(__DIR__) . '/bootstrap/cache')) {
-    $cachePath = '/tmp';
-    putenv("APP_CONFIG_CACHE={$cachePath}/config.php");
-    putenv("APP_EVENTS_CACHE={$cachePath}/events.php");
-    putenv("APP_PACKAGES_CACHE={$cachePath}/packages.php");
-    putenv("APP_ROUTES_CACHE={$cachePath}/routes.php");
-    putenv("APP_SERVICES_CACHE={$cachePath}/services.php");
-    
-    $_ENV['APP_CONFIG_CACHE'] = "{$cachePath}/config.php";
-    $_ENV['APP_EVENTS_CACHE'] = "{$cachePath}/events.php";
-    $_ENV['APP_PACKAGES_CACHE'] = "{$cachePath}/packages.php";
-    $_ENV['APP_ROUTES_CACHE'] = "{$cachePath}/routes.php";
-    $_ENV['APP_SERVICES_CACHE'] = "{$cachePath}/services.php";
-    
-    $_SERVER['APP_CONFIG_CACHE'] = "{$cachePath}/config.php";
-    $_SERVER['APP_EVENTS_CACHE'] = "{$cachePath}/events.php";
-    $_SERVER['APP_PACKAGES_CACHE'] = "{$cachePath}/packages.php";
-    $_SERVER['APP_ROUTES_CACHE'] = "{$cachePath}/routes.php";
-    $_SERVER['APP_SERVICES_CACHE'] = "{$cachePath}/services.php";
+if (!is_writable(__DIR__ . '/cache')) {
+    $app = new VercelApplication(
+        $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
+    );
+} else {
+    $app = new Illuminate\Foundation\Application(
+        $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
+    );
 }
 
 
