@@ -29,6 +29,21 @@ class LoginController extends Controller
     protected $redirectTo = RouteServiceProvider::HOME;
 
     /**
+     * The user has been authenticated.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  mixed  $user
+     * @return mixed
+     */
+    protected function authenticated(\Illuminate\Http\Request $request, $user)
+    {
+        if ($user->isAdmin() || $user->isEmployee()) {
+            return redirect()->route('admin.dashboard');
+        }
+        return redirect()->route('store.home');
+    }
+
+    /**
      * Create a new controller instance.
      *
      * @return void

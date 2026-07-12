@@ -21,6 +21,8 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
+        'sorti_coins_balance',
     ];
 
     /**
@@ -40,5 +42,48 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'sorti_coins_balance' => 'integer',
     ];
+
+    // Helpers
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isEmployee()
+    {
+        return $this->role === 'employee';
+    }
+
+    public function isCustomer()
+    {
+        return $this->role === 'customer';
+    }
+
+    // Relations
+    public function orders()
+    {
+        return $this->hasMany(Order::class);
+    }
+
+    public function sortiTransactions()
+    {
+        return $this->hasMany(SortiTransaction::class);
+    }
+
+    public function courses()
+    {
+        return $this->hasMany(UserCourse::class);
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(UserTask::class);
+    }
+
+    public function exams()
+    {
+        return $this->hasMany(UserExam::class);
+    }
 }
