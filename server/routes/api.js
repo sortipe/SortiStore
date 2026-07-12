@@ -10,6 +10,18 @@ const admin = require('../controllers/adminController');
 
 // Middlewares
 const { authenticate, requireAuth, requireRole } = require('../middleware/auth');
+const runSeed = require('../db/seed');
+
+// Ruta temporal para inicializar Supabase desde producción
+router.get('/db-init', async (req, res) => {
+    try {
+        await runSeed();
+        res.json({ message: 'Base de datos inicializada y sembrada con éxito en Supabase.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message || 'Error al inicializar la base de datos.' });
+    }
+});
 
 // ==========================================
 // RUTAS PÚBLICAS / AUTENTICACIÓN

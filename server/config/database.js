@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { DatabaseSync } = require('node:sqlite');
 const { Pool } = require('pg');
 const path = require('path');

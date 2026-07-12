@@ -332,10 +332,14 @@ async function runSeed() {
     console.log('Siembra de la base de datos completada con éxito.');
 }
 
-(async () => {
-    try {
-        await runSeed();
-    } catch (error) {
-        console.error('Error al realizar la siembra:', error);
-    }
-})();
+module.exports = runSeed;
+
+if (require.main === module) {
+    (async () => {
+        try {
+            await runSeed();
+        } catch (error) {
+            console.error('Error al realizar la siembra:', error);
+        }
+    })();
+}
