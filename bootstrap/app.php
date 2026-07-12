@@ -15,7 +15,7 @@ $app = new Illuminate\Foundation\Application(
     $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
 );
 
-if (isset($_SERVER['VERCEL']) || isset($_ENV['VERCEL']) || getenv('VERCEL')) {
+if (!is_writable(dirname(__DIR__) . '/bootstrap/cache')) {
     $cachePath = '/tmp';
     putenv("APP_CONFIG_CACHE={$cachePath}/config.php");
     putenv("APP_EVENTS_CACHE={$cachePath}/events.php");
