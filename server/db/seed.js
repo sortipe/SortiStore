@@ -3,12 +3,27 @@ const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 
+// Traducir sintaxis SQLite a PostgreSQL para compatibilidad con Supabase
+function translateSchemaToPostgres(sql) {
+    let pgSql = sql;
+    pgSql = pgSql.replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, 'SERIAL PRIMARY KEY');
+    pgSql = pgSql.replace(/DATETIME/gi, 'TIMESTAMP');
+    pgSql = pgSql.replace(/BOOLEAN DEFAULT 0/gi, 'BOOLEAN DEFAULT FALSE');
+    pgSql = pgSql.replace(/BOOLEAN DEFAULT 1/gi, 'BOOLEAN DEFAULT TRUE');
+    return pgSql;
+}
+
 async function runSeed() {
     console.log('Iniciando la siembra de la base de datos...');
 
     // 1. Ejecutar el esquema SQL para crear las tablas
     const schemaPath = path.join(__dirname, 'schema.sql');
-    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
+    let schemaSql = fs.readFileSync(schemaPath, 'utf8');
+    
+    if (db.isPostgres) {
+        schemaSql = translateSchemaToPostgres(schemaSql);
+    }
+    
     await db.exec(schemaSql);
     console.log('Tablas creadas con éxito en base de datos.');
 
