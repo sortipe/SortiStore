@@ -105,18 +105,7 @@ CREATE TABLE IF NOT EXISTS coupons (
     FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE SET NULL
 );
 
--- Relación de Cupones Utilizados
-CREATE TABLE IF NOT EXISTS user_coupons (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    coupon_id INTEGER NOT NULL,
-    order_id INTEGER NOT NULL,
-    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY(coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
-    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
-);
-
+-- Replaced by move
 -- Pedidos (Checkout)
 CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,6 +125,18 @@ CREATE TABLE IF NOT EXISTS orders (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY(coupon_id) REFERENCES coupons(id) ON DELETE SET NULL
+);
+
+-- Relación de Cupones Utilizados
+CREATE TABLE IF NOT EXISTS user_coupons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    coupon_id INTEGER NOT NULL,
+    order_id INTEGER NOT NULL,
+    used_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(coupon_id) REFERENCES coupons(id) ON DELETE CASCADE,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
 );
 
 -- Detalle del Pedido
