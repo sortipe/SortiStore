@@ -1,18 +1,23 @@
-const https = require('node:https');
+const { Client } = require('pg');
 
-const options = {
-    hostname: 'ekqguywfuqykisjtzaxz.supabase.co',
-    path: '/rest/v1/products',
-    headers: {
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVrcWd1eXdmdXF5a2lzanR6YXh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MTU3MjYsImV4cCI6MjA5OTM5MTcyNn0.kNCLZgWfBt2Jm65yeSPQOuq0nZWxKwtupro6gRtP5oc',
-        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVrcWd1eXdmdXF5a2lzanR6YXh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MTU3MjYsImV4cCI6MjA5OTM5MTcyNn0.kNCLZgWfBt2Jm65yeSPQOuq0nZWxKwtupro6gRtP5oc'
-    }
-};
-
-https.get(options, (res) => {
-    console.log(`Status Code: ${res.statusCode}`);
-    console.log('Headers:', res.headers);
-    res.resume(); // Consume payload
-}).on('error', (err) => {
-    console.error('Error:', err.message);
+const client = new Client({
+    host: 'aws-1-us-west-2.pooler.supabase.com',
+    port: 5432,
+    user: 'postgres.ekqguywfuqykisjtzaxz',
+    password: '@Vyjys140601',
+    database: 'postgres',
+    ssl: { rejectUnauthorized: false }
 });
+
+(async () => {
+    try {
+        console.log('Intentando conectar al pooler de Oregon con la nueva contraseña...');
+        await client.connect();
+        console.log('¡CONECTADO CON ÉXITO A SUPABASE!');
+        const res = await client.query('SELECT version()');
+        console.log(res.rows[0]);
+        await client.end();
+    } catch (e) {
+        console.error('Error de conexión:', e.message);
+    }
+})();

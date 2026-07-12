@@ -11,11 +11,11 @@ let sqliteDb = null;
 if (isPostgres) {
     console.log('Detectada base de datos PostgreSQL/Supabase. Conectando...');
     pgPool = new Pool({
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT || 5432,
-        user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME || 'postgres',
+        host: process.env.DB_HOST ? process.env.DB_HOST.trim() : undefined,
+        port: process.env.DB_PORT ? parseInt(process.env.DB_PORT.trim(), 10) : 5432,
+        user: process.env.DB_USER ? process.env.DB_USER.trim() : 'postgres',
+        password: process.env.DB_PASSWORD ? process.env.DB_PASSWORD.trim() : undefined,
+        database: process.env.DB_NAME ? process.env.DB_NAME.trim() : 'postgres',
         ssl: { rejectUnauthorized: false } // Requerido para conexiones seguras en Supabase
     });
 } else {
