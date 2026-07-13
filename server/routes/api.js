@@ -59,12 +59,14 @@ router.delete('/admin/products/:id', requireAuth, adminOrEmployee, admin.deleteP
 
 // Cursos LMS Admin
 router.post('/admin/courses/structure', requireAuth, adminOrEmployee, admin.createCourseStructure);
+router.get('/admin/courses/:productId', requireAuth, adminOrEmployee, admin.getCourseStructure);
 
 // Billetera & Ajustes Sorti (Solo Admin)
 router.post('/admin/wallet/adjust', requireAuth, adminOnly, admin.adjustWallet);
 
 // Cupones (Admin/Empleado)
 router.post('/admin/coupons', requireAuth, adminOrEmployee, admin.createCoupon);
+router.delete('/admin/coupons/:id', requireAuth, adminOrEmployee, admin.deleteCoupon);
 
 // Ajustes del Sistema
 router.get('/admin/settings', requireAuth, adminOrEmployee, admin.getSettings);

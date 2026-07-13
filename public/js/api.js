@@ -219,6 +219,16 @@ const AdminService = {
         });
     },
 
+    async deleteCoupon(id) {
+        return await apiCall(`/admin/coupons/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    async getCourseStructure(productId) {
+        return await apiCall(`/admin/courses/${productId}`);
+    },
+
     async getSettings() {
         return await apiCall('/admin/settings');
     },

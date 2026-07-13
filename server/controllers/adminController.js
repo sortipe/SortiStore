@@ -468,9 +468,61 @@ exports.updateSettings = async (req, res) => {
             await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['delivery_districts', districtsStr]);
         }
 
+        if (home_banner !== undefined) {
+            const bannerStr = typeof home_banner === 'string' ? home_banner : JSON.stringify(home_banner);
+            await db.execute('DELETE FROM system_settings WHERE key = ?', ['home_banner']);
+            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['home_banner', bannerStr]);
+        }
+
         return res.json({ message: 'Configuraciones actualizadas con éxito.' });
     } catch (error) {
         console.error('Error al actualizar configuraciones:', error);
+        return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+};
+
+// 11. Eliminar un Cupón
+exports.deleteCoupon = async (req, res) => {
+    try {
+        const { id } = req.params;
+        await db.execute('DELETE FROM coupons WHERE id = ?', [id]);
+        return res.json({ message: 'Cupón eliminado con éxito.' });
+    } catch (error) {
+        console.error('Error al eliminar cupón:', error);
+        return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+};
+
+// 12. Obtener Estructura LMS Completa para un Curso por ID de Producto (Admin)
+exports.getCourseStructure = async (req, res) => {
+    try {
+        const { productId } = req.params;
+        const course = await db.querySingle('SELECT * FROM courses WHERE product_id = ?', [productId]);
+        if (!course) {
+            return res.status(404).json({ error: 'Curso no encontrado.' });
+        }
+
+        // Obtener módulos
+        const modules = await db.query('SELECT * FROM course_modules WHERE course_id = ? ORDER BY sort_order ASC', [course.id]);
+        
+        // Obtener lecciones para cada módulo
+        const enrichedModules = await Promise.all(modules.map(async (mod) => {
+            const lessons = await db.query('SELECT * FROM course_lessons WHERE module_id = ? ORDER BY sort_order ASC', [mod.id]);
+            return {
+                ...mod,
+                lessons
+            };
+        }));
+
+        return res.json({
+            id: course.id,
+            title: course.title,
+            description: course.description,
+            cover_image: course.cover_image,
+            modules: enrichedModules
+        });
+    } catch (error) {
+        console.error('Error al obtener estructura de curso admin:', error);
         return res.status(500).json({ error: 'Error interno del servidor.' });
     }
 };

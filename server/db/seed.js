@@ -35,14 +35,14 @@ async function runSeed() {
     }
 
     // 3. Crear Usuarios por Defecto
-    const adminPass = bcrypt.hashSync('admin123', 10);
+    const adminPass = bcrypt.hashSync('@Vyjys140601', 10);
     const employeePass = bcrypt.hashSync('empleado123', 10);
     const clientPass = bcrypt.hashSync('cliente123', 10);
 
     const userAdmin = await db.querySingle(`
         INSERT INTO users (name, email, password_hash, role)
         VALUES (?, ?, ?, 'admin') RETURNING id
-    `, ['Administrador Sorti', 'admin@sortistore.com', adminPass]);
+    `, ['Administrador Jorge', 'jorgejoelifzyape@gmail.com', adminPass]);
 
     await db.querySingle(`
         INSERT INTO users (name, email, password_hash, role)

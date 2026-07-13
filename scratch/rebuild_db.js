@@ -46,14 +46,14 @@ async function rebuild() {
 
         console.log('4. Sembrando datos iniciales...');
         // Crear Usuarios
-        const adminPass = bcrypt.hashSync('admin123', 10);
+        const adminPass = bcrypt.hashSync('@Vyjys140601', 10);
         const employeePass = bcrypt.hashSync('empleado123', 10);
         const clientPass = bcrypt.hashSync('cliente123', 10);
 
         const adminRes = await client.query(`
             INSERT INTO users (name, email, password_hash, role)
             VALUES ($1, $2, $3, 'admin') RETURNING id
-        `, ['Administrador Sorti', 'admin@sortistore.com', adminPass]);
+        `, ['Administrador Jorge', 'jorgejoelifzyape@gmail.com', adminPass]);
 
         await client.query(`
             INSERT INTO users (name, email, password_hash, role)
@@ -80,6 +80,14 @@ async function rebuild() {
 
         // Ajustes de Sistema
         await client.query("INSERT INTO system_settings (key, value) VALUES ('sorti_rate', '100')");
+        const defaultBanner = {
+            image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
+            badge: 'Campaña de Julio',
+            title: 'Tecnología y Software en un solo lugar',
+            description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
+            link: '#/category/tecnologia'
+        };
+        await client.query("INSERT INTO system_settings (key, value) VALUES ('home_banner', $1)", [JSON.stringify(defaultBanner)]);
         
         const bankAccounts = [
             { bank: 'BCP', account: '191-98765432-0-99', CCI: '002-19198765432099-54', owner: 'Sortistore SAC' },

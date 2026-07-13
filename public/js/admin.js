@@ -664,32 +664,28 @@ window.openCourseBuilderModal = async (productId) => {
     const modal = document.getElementById('admin-details-modal');
     const modalContent = document.getElementById('admin-modal-content-area');
     
-    // Obtener estructura existente si la hay
     let courseId = null;
     let modulesList = [];
     
     try {
-        // En base al producto, debemos buscar el ID de curso
-        const courses = await CustomerService.getCourses(); // Simulamos traer todos para mapear
-        // O consultar directamente el detalle
-        const details = await CustomerService.getCourseDetails(1); // fallback
-        // En nuestro seed, el curso de NextJS está enlazado a ID de curso 1
-        courseId = 1;
+        const details = await AdminService.getCourseStructure(productId);
+        courseId = details.id;
         modulesList = details.modules;
     } catch (e) {
-        courseId = 1;
+        showToast('Error al cargar la estructura del curso. Asegúrate de que el producto esté registrado como curso en la base de datos.', 'error');
+        return;
     }
 
     builderModules = modulesList.map(m => ({
         title: m.title,
-        lessons: m.lessons.map(l => ({
+        lessons: (m.lessons || []).map(l => ({
             title: l.title,
             video_url: l.video_url,
             duration: l.duration,
             pdf_url: l.pdf_url,
             resources_url: l.resources_url,
-            has_exam: l.has_exam,
-            exam_questions: l.exam_questions
+            has_exam: !!l.has_exam,
+            exam_questions: l.exam_questions ? (typeof l.exam_questions === 'string' ? JSON.parse(l.exam_questions) : l.exam_questions) : []
         }))
     }));
 
@@ -846,8 +842,6 @@ function renderWalletTab(container) {
 // 6. PESTAÑA: SISTEMA DE CUPONES
 // ==========================================
 async function renderCouponsTab(container) {
-    // Obtener cupones disponibles de forma simulada/real
-    // Usamos el endpoint del cliente para simplificar la lectura, pero para creación usamos el admin
     const response = await CustomerService.getCoupons();
     
     container.innerHTML = `
@@ -866,6 +860,7 @@ async function renderCouponsTab(container) {
                         <th>Gasto Mínimo</th>
                         <th>Límite Usos (Máx)</th>
                         <th>Expiración</th>
+                        <th style="width: 100px; text-align: center;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -877,6 +872,11 @@ async function renderCouponsTab(container) {
                             <td>S/. ${c.min_spend.toFixed(2)}</td>
                             <td>${c.uses_count} / ${c.max_uses}</td>
                             <td>${c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Nunca'}</td>
+                            <td style="text-align: center;">
+                                <button class="btn-outline" style="color: var(--danger); border-color: var(--danger); padding: 4px 8px; font-size: 11px; margin: 0;" onclick="deleteCouponCall(${c.id})">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -884,6 +884,17 @@ async function renderCouponsTab(container) {
         </div>
     `;
 }
+
+window.deleteCouponCall = async (couponId) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este cupón?')) return;
+    try {
+        await AdminService.deleteCoupon(couponId);
+        showToast('Cupón eliminado con éxito.', 'success');
+        switchTab('coupons');
+    } catch (e) {
+        showToast('Error al eliminar cupón: ' + e.message, 'error');
+    }
+};
 
 window.openCouponFormModal = () => {
     const modal = document.getElementById('admin-details-modal');
@@ -965,9 +976,42 @@ let currentSettings = {};
 async function renderSettingsTab(container) {
     currentSettings = await AdminService.getSettings();
 
+    const banner = currentSettings.home_banner ? (typeof currentSettings.home_banner === 'string' ? JSON.parse(currentSettings.home_banner) : currentSettings.home_banner) : {
+        image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
+        badge: 'Campaña de Julio',
+        title: 'Tecnología y Software en un solo lugar',
+        description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
+        link: '#/category/tecnologia'
+    };
+
     container.innerHTML = `
         <form id="settings-admin-form" class="animate-fade-in" style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
             
+            <!-- Banner Principal de la Tienda (Home Banner) -->
+            <div class="checkout-section" style="width: 100%;">
+                <h3><i class="fas fa-image" style="color: var(--color-primary);"></i> Banner Principal de la Tienda (Hero Home)</h3>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Título del Banner</label>
+                    <input type="text" id="set-banner-title" class="form-control" value="${banner.title || ''}" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Descripción del Banner</label>
+                    <textarea id="set-banner-description" class="form-control" rows="2" required>${banner.description || ''}</textarea>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>Etiqueta / Badge (ej: Campaña de Julio)</label>
+                    <input type="text" id="set-banner-badge" class="form-control" value="${banner.badge || ''}">
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label>URL de Imagen de Fondo (Recomendado 1600x600)</label>
+                    <input type="text" id="set-banner-image" class="form-control" value="${banner.image_url || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>Enlace del Botón (ej: #/category/tecnologia)</label>
+                    <input type="text" id="set-banner-link" class="form-control" value="${banner.link || '#/'}">
+                </div>
+            </div>
+
             <!-- Moneda Sorti -->
             <div class="checkout-section" style="width: 100%;">
                 <h3><i class="fas fa-coins" style="color: var(--color-accent);"></i> Configuración de Moneda Sorti</h3>
@@ -1030,7 +1074,14 @@ async function renderSettingsTab(container) {
             sorti_rate: Number(document.getElementById('set-sorti-rate').value),
             yape_qr: document.getElementById('set-yape-qr').value.trim(),
             bank_accounts: currentSettings.bank_accounts,
-            delivery_districts: currentSettings.delivery_districts
+            delivery_districts: currentSettings.delivery_districts,
+            home_banner: {
+                title: document.getElementById('set-banner-title').value.trim(),
+                description: document.getElementById('set-banner-description').value.trim(),
+                badge: document.getElementById('set-banner-badge').value.trim(),
+                image_url: document.getElementById('set-banner-image').value.trim(),
+                link: document.getElementById('set-banner-link').value.trim()
+            }
         };
 
         try {

@@ -131,24 +131,35 @@ async function renderHome() {
     `;
 
     try {
-        // Cargar productos destacados y ofertas
-        const products = await ShopService.getProducts();
+        // Cargar productos destacados, ofertas y configuraciones en paralelo
+        const [products, settings] = await Promise.all([
+            ShopService.getProducts(),
+            ShopService.getSettings().catch(() => ({}))
+        ]);
         
         // Filtrar destacados y ofertas
         const featuredProducts = products.filter(p => p.is_featured);
         const offerProducts = products.filter(p => p.price_offer !== null);
         const presaleProducts = products.filter(p => p.is_presale);
 
+        const banner = settings.home_banner ? (typeof settings.home_banner === 'string' ? JSON.parse(settings.home_banner) : settings.home_banner) : {
+            image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
+            badge: 'Campaña de Julio',
+            title: 'Tecnología y Software en un solo lugar',
+            description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
+            link: '#/category/tecnologia'
+        };
+
         // Estructura HTML de la página principal
         container.innerHTML = `
             <!-- Banner / Hero Premium Slider -->
             <div class="hero-slider">
-                <div class="slide" style="background-image: url('https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600')">
+                <div class="slide" style="background-image: url('${banner.image_url}')">
                     <div class="slide-content animate-fade-in">
-                        <span class="badge badge-featured" style="margin-bottom: 12px; background: rgba(99,102,241,0.2); color: white;">Campaña de Julio</span>
-                        <h2>Tecnología y Software en un solo lugar</h2>
-                        <p>Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.</p>
-                        <a href="#/category/tecnologia" class="btn-primary"><i class="fas fa-shopping-bag"></i> Explorar Tienda</a>
+                        ${banner.badge ? `<span class="badge badge-featured" style="margin-bottom: 12px; background: rgba(99,102,241,0.2); color: white;">${banner.badge}</span>` : ''}
+                        <h2>${banner.title}</h2>
+                        <p>${banner.description}</p>
+                        <a href="${banner.link || '#/'}" class="btn-primary"><i class="fas fa-shopping-bag"></i> Explorar Tienda</a>
                     </div>
                 </div>
             </div>
