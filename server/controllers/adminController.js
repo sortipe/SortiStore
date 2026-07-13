@@ -540,3 +540,53 @@ exports.getCourseStructure = async (req, res) => {
         return res.status(500).json({ error: 'Error interno del servidor.' });
     }
 };
+
+// 13. Crear Categoría o Subcategoría
+exports.createCategory = async (req, res) => {
+    try {
+        const { name, parent_id } = req.body;
+        if (!name) {
+            return res.status(400).json({ error: 'El nombre es obligatorio.' });
+        }
+        
+        // Crear slug url friendly
+        const slug = name.toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Quitar tildes
+            .replace(/[^a-z0-9\s-]/g, '') // Quitar caracteres raros
+            .trim()
+            .replace(/\s+/g, '-');
+            
+        // Validar duplicado
+        const existing = await db.querySingle('SELECT id FROM categories WHERE slug = ?', [slug]);
+        let finalSlug = slug;
+        if (existing) {
+            finalSlug = `${slug}-${Date.now().toString().slice(-4)}`;
+        }
+        
+        const parentVal = parent_id ? Number(parent_id) : null;
+        
+        await db.execute('INSERT INTO categories (name, slug, parent_id) VALUES (?, ?, ?)', [name.trim(), finalSlug, parentVal]);
+        return res.json({ message: 'Categoría/Subcategoría creada con éxito.' });
+    } catch (error) {
+        console.error('Error al crear categoría:', error);
+        return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+};
+
+// 14. Eliminar Categoría o Subcategoría
+exports.deleteCategory = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Eliminar subcategorías primero para limpiar
+        await db.execute('DELETE FROM categories WHERE parent_id = ?', [id]);
+        
+        // Eliminar categoría
+        await db.execute('DELETE FROM categories WHERE id = ?', [id]);
+        
+        return res.json({ message: 'Categoría eliminada con éxito.' });
+    } catch (error) {
+        console.error('Error al eliminar categoría:', error);
+        return res.status(500).json({ error: 'Error interno del servidor.' });
+    }
+};

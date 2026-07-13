@@ -77,6 +77,7 @@ async function switchTab(tabName) {
     const titles = {
         dashboard: 'Dashboard General',
         products: 'Catálogo de Productos',
+        categories: 'Gestión de Categorías y Subcategorías',
         orders: 'Gestión de Pedidos',
         courses: 'Estructura LMS Cursos',
         wallet: 'Ajuste de Monedas Virtuales',
@@ -95,6 +96,9 @@ async function switchTab(tabName) {
                 break;
             case 'products':
                 await renderProductsTab(contentArea);
+                break;
+            case 'categories':
+                await renderCategoriesTab(contentArea);
                 break;
             case 'orders':
                 await renderOrdersTab(contentArea);
@@ -316,13 +320,14 @@ async function renderProductsTab(container) {
 }
 
 // Crear/Editar Producto - Abrir modal
-window.openProductFormModal = (productId = null) => {
+// Crear/Editar Producto - Abrir modal
+window.openProductFormModal = async (productId = null) => {
     const modal = document.getElementById('admin-details-modal');
     const modalContent = document.getElementById('admin-modal-content-area');
     
     let product = {
         name: '', slug: '', description: '', type: 'physical', sku: '', stock: 0,
-        category_id: 1, price_normal: 0, price_offer: null, price_sorti: null,
+        category_id: null, price_normal: 0, price_offer: null, price_sorti: null,
         is_featured: false, is_recommended: false, is_new: false, is_presale: false,
         presale_launch_date: '', download_url: '', download_file_size: '', download_version: '',
         media: [], variants: []
@@ -332,10 +337,26 @@ window.openProductFormModal = (productId = null) => {
         product = globalProductList.find(p => p.id === productId);
     }
 
+    // Cargar categorías del sistema para el selector
+    let catOptions = '<option value="">-- Sin categoría --</option>';
+    try {
+        const categories = await ShopService.getCategories();
+        categories.forEach(cat => {
+            catOptions += `<option value="${cat.id}" ${product.category_id === cat.id ? 'selected' : ''}>${cat.name} (Principal)</option>`;
+            if (cat.subcategories && cat.subcategories.length > 0) {
+                cat.subcategories.forEach(sub => {
+                    catOptions += `<option value="${sub.id}" ${product.category_id === sub.id ? 'selected' : ''}>&nbsp;&nbsp;&nbsp;↳ ${sub.name}</option>`;
+                });
+            }
+        });
+    } catch (e) {
+        console.error('Error al cargar categorías para el formulario:', e);
+    }
+
     modalContent.innerHTML = `
         <div class="admin-modal-header">
             <h3>${productId ? 'Editar Producto' : 'Crear Nuevo Producto'}</h3>
-            <button onclick="closeAdminModal()" style="font-size: 20px;"><i class="fas fa-times"></i></button>
+            <button onclick="closeAdminModal()" style="font-size: 20px; border:none; background:none; cursor:pointer;"><i class="fas fa-times"></i></button>
         </div>
         <form id="product-crud-form">
             <div class="admin-modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
@@ -366,8 +387,10 @@ window.openProductFormModal = (productId = null) => {
                     <input type="number" id="prod-stock" class="form-control" value="${product.stock}">
                 </div>
                 <div class="form-group">
-                    <label>Categoría ID</label>
-                    <input type="number" id="prod-category" class="form-control" value="${product.category_id || 1}">
+                    <label>Categoría / Subcategoría</label>
+                    <select id="prod-category" class="form-control">
+                        ${catOptions}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Precio Normal (S/.)</label>
@@ -1393,3 +1416,113 @@ function closeAdminModal() {
 }
 
 window.closeAdminModal = closeAdminModal;
+
+// ==========================================
+// 8. PESTAÑA: GESTIÓN DE CATEGORÍAS Y SUBCATEGORÍAS
+// ==========================================
+async function renderCategoriesTab(container) {
+    const categoriesTree = await ShopService.getCategories();
+
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;" class="animate-fade-in">
+            
+            <!-- Crear Categoría / Subcategoría -->
+            <div class="checkout-section" style="width: 100%;">
+                <h3>Crear Nueva Categoría o Subcategoría</h3>
+                <form id="create-category-form" style="display: flex; flex-direction: column; gap: 16px; margin-top: 16px;">
+                    <div class="form-group">
+                        <label>Nombre de la Categoría</label>
+                        <input type="text" id="cat-name-input" class="form-control" placeholder="ej: Hardware y Laptops" required>
+                    </div>
+                    <div class="form-group">
+                        <label>¿Es una Subcategoría de...?</label>
+                        <select id="cat-parent-select" class="form-control">
+                            <option value="">-- Ninguno (Es categoría principal) --</option>
+                            ${categoriesTree.map(cat => `
+                                <option value="${cat.id}">${cat.name}</option>
+                            `).join('')}
+                        </select>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Si seleccionas una categoría padre, se convertirá en una subcategoría de ésta.</p>
+                    </div>
+                    <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-weight:700;">
+                        <i class="fas fa-plus"></i> Crear Categoría / Subcategoría
+                    </button>
+                </form>
+            </div>
+
+            <!-- Listado y Eliminación -->
+            <div class="admin-table-container">
+                <div class="admin-table-header">
+                    <h3>Categorías Existentes</h3>
+                </div>
+                <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px; max-height: 500px; overflow-y: auto;">
+                    ${categoriesTree.length === 0 ? `
+                        <p style="color: var(--text-muted); text-align: center; padding: 24px 0;">No hay categorías creadas.</p>
+                    ` : categoriesTree.map(cat => `
+                        <div class="glass-panel" style="padding: 16px; border-left: 4px solid var(--color-primary); background: rgba(255,255,255,0.02);">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="font-size: 15px; color: var(--text-primary);"><i class="fas fa-folder"></i> ${cat.name}</strong>
+                                    <span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">(Slug: ${cat.slug})</span>
+                                </div>
+                                <button class="action-btn" style="color: var(--danger); border: none; background: none; cursor: pointer; padding: 6px 10px;" onclick="deleteCategoryCall(${cat.id})" title="Eliminar Categoría y todas sus subcategorías">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Subcategorías -->
+                            ${cat.subcategories && cat.subcategories.length > 0 ? `
+                                <div style="margin-top: 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; border-left: 1px dashed var(--border-color);">
+                                    ${cat.subcategories.map(sub => `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
+                                            <span><i class="fas fa-tag" style="font-size: 10px; color: var(--text-muted);"></i> ${sub.name} <span style="font-size: 10px; color: var(--text-muted);">(Slug: ${sub.slug})</span></span>
+                                            <button style="color: var(--danger); border: none; background: none; cursor: pointer; font-size: 11px;" onclick="deleteCategoryCall(${sub.id})" title="Eliminar Subcategoría">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; margin-left: 16px;">Sin subcategorías.</p>
+                            `}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+        </div>
+    `;
+
+    // Formulario submit
+    document.getElementById('create-category-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('cat-name-input').value.trim();
+        const parentId = document.getElementById('cat-parent-select').value;
+
+        try {
+            await AdminService.createCategory(name, parentId ? Number(parentId) : null);
+            showToast('Categoría/Subcategoría creada con éxito.', 'success');
+            // Recargar pestaña
+            await renderCategoriesTab(container);
+        } catch (error) {
+            showToast(error.message, 'error');
+        }
+    });
+}
+
+// Window handler para borrar categorías
+window.deleteCategoryCall = async (id) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta categoría? Si eliminas una categoría principal, también se borrarán todas sus subcategorías.')) {
+        return;
+    }
+
+    try {
+        await AdminService.deleteCategory(id);
+        showToast('Categoría eliminada con éxito.', 'success');
+        // Recargar pestaña activa
+        const contentArea = document.getElementById('admin-tab-content');
+        await renderCategoriesTab(contentArea);
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+};

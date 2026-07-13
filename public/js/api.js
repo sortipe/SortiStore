@@ -225,6 +225,19 @@ const AdminService = {
         });
     },
 
+    async createCategory(name, parent_id) {
+        return await apiCall('/admin/categories', {
+            method: 'POST',
+            body: JSON.stringify({ name, parent_id })
+        });
+    },
+
+    async deleteCategory(id) {
+        return await apiCall(`/admin/categories/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
     async getCourseStructure(productId) {
         return await apiCall(`/admin/courses/${productId}`);
     },

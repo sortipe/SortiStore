@@ -68,6 +68,10 @@ router.post('/admin/wallet/adjust', requireAuth, adminOnly, admin.adjustWallet);
 router.post('/admin/coupons', requireAuth, adminOrEmployee, admin.createCoupon);
 router.delete('/admin/coupons/:id', requireAuth, adminOrEmployee, admin.deleteCoupon);
 
+// Categorías y Subcategorías (Admin/Empleado)
+router.post('/admin/categories', requireAuth, adminOrEmployee, admin.createCategory);
+router.delete('/admin/categories/:id', requireAuth, adminOrEmployee, admin.deleteCategory);
+
 // Ajustes del Sistema
 router.get('/admin/settings', requireAuth, adminOrEmployee, admin.getSettings);
 router.put('/admin/settings', requireAuth, adminOnly, admin.updateSettings);

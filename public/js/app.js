@@ -66,6 +66,10 @@ async function router() {
             AppState.currentView = 'home';
             renderHome();
             break;
+        case '#/shop':
+            AppState.currentView = 'shop';
+            renderShopPage();
+            break;
         case '#/checkout':
             AppState.currentView = 'checkout';
             renderCheckout();
@@ -520,6 +524,50 @@ async function renderCategoryPage(catSlug) {
         `;
     } catch (error) {
         showToast('Error al cargar la categoría', 'error');
+    }
+}
+
+// ==========================================
+// VISTA: TIENDA DE PRODUCTOS FÍSICOS
+// ==========================================
+async function renderShopPage() {
+    const container = document.getElementById('app-view');
+    container.innerHTML = `
+        <div class="main-storefront animate-fade-in" style="margin-top: 40px;">
+            <div class="section-header">
+                <h2><i class="fas fa-store" style="color: var(--color-primary);"></i> Tienda de Productos Físicos</h2>
+                <span style="color: var(--text-muted); font-weight: 600;">Cargando productos...</span>
+            </div>
+            <div class="skeleton" style="height: 350px; border-radius: var(--radius-lg);"></div>
+        </div>
+    `;
+
+    try {
+        const allProducts = await ShopService.getProducts();
+        const products = allProducts.filter(p => p.type === 'physical');
+
+        container.innerHTML = `
+            <div class="main-storefront animate-fade-in" style="margin-top: 40px;">
+                <div class="section-header">
+                    <h2><i class="fas fa-store" style="color: var(--color-primary);"></i> Tienda de Productos Físicos</h2>
+                    <span style="color: var(--text-muted); font-weight: 600;">${products.length} productos físicos encontrados</span>
+                </div>
+                
+                ${products.length === 0 ? `
+                    <div style="text-align: center; padding: 80px 24px; background-color: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                        <i class="fas fa-box-open" style="font-size: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                        <h3>Aún no hay productos físicos disponibles en la tienda.</h3>
+                        <a href="#/" class="btn-primary" style="margin-top: 20px;">Explorar Inicio</a>
+                    </div>
+                ` : `
+                    <div class="product-grid">
+                        ${products.map(p => getProductCardHtml(p)).join('')}
+                    </div>
+                `}
+            </div>
+        `;
+    } catch (error) {
+        showToast('Error al cargar la tienda física', 'error');
     }
 }
 
@@ -2026,6 +2074,14 @@ function initGlobalEvents() {
     });
 
     // Botones rápidos del Mega Menu
+    const navShopBtn = document.getElementById('nav-shop-btn');
+    if (navShopBtn) {
+        navShopBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.location.hash = '#/shop';
+        });
+    }
+
     document.getElementById('nav-offers-btn').addEventListener('click', () => {
         window.location.hash = '#/'; // Filtros en Home
         setTimeout(() => {
