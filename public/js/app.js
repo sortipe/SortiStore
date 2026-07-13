@@ -19,6 +19,11 @@ async function router() {
         clearInterval(AppState.activeTimer);
         AppState.activeTimer = null;
     }
+    
+    if (sliderAutoplayInterval) {
+        clearInterval(sliderAutoplayInterval);
+        sliderAutoplayInterval = null;
+    }
 
     const hash = window.location.hash || '#/';
     const viewContainer = document.getElementById('app-view');
@@ -86,7 +91,30 @@ async function router() {
 
 // Escuchar cambios de ruta y carga inicial
 window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const settings = await ShopService.getSettings();
+        if (settings.site_branding) {
+            const branding = typeof settings.site_branding === 'string' ? JSON.parse(settings.site_branding) : settings.site_branding;
+            
+            if (branding.site_name) {
+                document.title = branding.site_name;
+                const logoBtn = document.getElementById('logo-btn');
+                if (logoBtn) {
+                    logoBtn.innerHTML = `<i class="fas fa-shopping-bag"></i> ${branding.site_name.replace(/(store|tienda)/i, '<span>$1</span>')}`;
+                }
+            }
+            if (branding.primary_color) {
+                document.documentElement.style.setProperty('--color-primary', branding.primary_color);
+            }
+            if (branding.accent_color) {
+                document.documentElement.style.setProperty('--color-accent', branding.accent_color);
+            }
+        }
+    } catch (e) {
+        console.error('Error al aplicar marca personalizada:', e);
+    }
+
     router();
     initGlobalEvents();
 });
@@ -142,26 +170,53 @@ async function renderHome() {
         const offerProducts = products.filter(p => p.price_offer !== null);
         const presaleProducts = products.filter(p => p.is_presale);
 
-        const banner = settings.home_banner ? (typeof settings.home_banner === 'string' ? JSON.parse(settings.home_banner) : settings.home_banner) : {
-            image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
-            badge: 'Campaña de Julio',
-            title: 'Tecnología y Software en un solo lugar',
-            description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
-            link: '#/category/tecnologia'
-        };
+        let banners = [];
+        if (settings.home_banners) {
+            banners = typeof settings.home_banners === 'string' ? JSON.parse(settings.home_banners) : settings.home_banners;
+        } else if (settings.home_banner) {
+            const single = typeof settings.home_banner === 'string' ? JSON.parse(settings.home_banner) : settings.home_banner;
+            banners = [single];
+        }
+
+        if (!banners || banners.length === 0) {
+            banners = [
+                {
+                    image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
+                    badge: 'Campaña de Julio',
+                    title: 'Tecnología y Software en un solo lugar',
+                    description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
+                    link: '#/category/tecnologia',
+                    bg_y: 50
+                }
+            ];
+        }
+
+        currentSlideIndex = 0;
 
         // Estructura HTML de la página principal
         container.innerHTML = `
             <!-- Banner / Hero Premium Slider -->
-            <div class="hero-slider">
-                <div class="slide" style="background-image: url('${banner.image_url}')">
-                    <div class="slide-content animate-fade-in">
-                        ${banner.badge ? `<span class="badge badge-featured" style="margin-bottom: 12px; background: rgba(99,102,241,0.2); color: white;">${banner.badge}</span>` : ''}
-                        <h2>${banner.title}</h2>
-                        <p>${banner.description}</p>
-                        <a href="${banner.link || '#/'}" class="btn-primary"><i class="fas fa-shopping-bag"></i> Explorar Tienda</a>
+            <div class="hero-slider" id="hero-carousel-container">
+                ${banners.map((slide, index) => `
+                    <div class="slide ${index === 0 ? 'active' : ''}" style="background-image: url('${slide.image_url}'); background-position: center ${slide.bg_y !== undefined ? slide.bg_y : 50}%;">
+                        <div class="slide-content animate-fade-in">
+                            ${slide.badge ? `<span class="badge badge-featured" style="margin-bottom: 12px; background: rgba(99,102,241,0.2); color: white;">${slide.badge}</span>` : ''}
+                            <h2>${slide.title}</h2>
+                            <p>${slide.description}</p>
+                            <a href="${slide.link || '#/'}" class="btn-primary"><i class="fas fa-shopping-bag"></i> Explorar Tienda</a>
+                        </div>
                     </div>
-                </div>
+                `).join('')}
+                
+                ${banners.length > 1 ? `
+                    <button class="slider-arrow prev" onclick="moveSliderCall(-1)"><i class="fas fa-chevron-left"></i></button>
+                    <button class="slider-arrow next" onclick="moveSliderCall(1)"><i class="fas fa-chevron-right"></i></button>
+                    <div class="slider-dots">
+                        ${banners.map((_, index) => `
+                            <span class="dot ${index === 0 ? 'active' : ''}" onclick="setSliderCall(${index})"></span>
+                        `).join('')}
+                    </div>
+                ` : ''}
             </div>
 
             <div class="main-storefront">
@@ -213,9 +268,58 @@ async function renderHome() {
             }
         });
 
+        if (banners.length > 1) {
+            resetSliderAutoplay(banners.length);
+        }
+
     } catch (error) {
         showToast('Error al cargar la página principal', 'error');
     }
+}
+
+// ==========================================
+// CONTROLADOR DEL CAROUSEL DEL HOME BANNER
+// ==========================================
+let currentSlideIndex = 0;
+let sliderAutoplayInterval = null;
+
+window.moveSliderCall = (direction) => {
+    const slides = document.querySelectorAll('#hero-carousel-container .slide');
+    const dots = document.querySelectorAll('#hero-carousel-container .dot');
+    if (slides.length <= 1) return;
+    
+    slides[currentSlideIndex].classList.remove('active');
+    if (dots.length > 0) dots[currentSlideIndex].classList.remove('active');
+    
+    currentSlideIndex = (currentSlideIndex + direction + slides.length) % slides.length;
+    
+    slides[currentSlideIndex].classList.add('active');
+    if (dots.length > 0) dots[currentSlideIndex].classList.add('active');
+    
+    resetSliderAutoplay(slides.length);
+};
+
+window.setSliderCall = (index) => {
+    const slides = document.querySelectorAll('#hero-carousel-container .slide');
+    const dots = document.querySelectorAll('#hero-carousel-container .dot');
+    if (slides.length <= 1) return;
+    
+    slides[currentSlideIndex].classList.remove('active');
+    if (dots.length > 0) dots[currentSlideIndex].classList.remove('active');
+    
+    currentSlideIndex = index;
+    
+    slides[currentSlideIndex].classList.add('active');
+    if (dots.length > 0) dots[currentSlideIndex].classList.add('active');
+    
+    resetSliderAutoplay(slides.length);
+};
+
+function resetSliderAutoplay(slidesLength) {
+    if (sliderAutoplayInterval) clearInterval(sliderAutoplayInterval);
+    sliderAutoplayInterval = setInterval(() => {
+        window.moveSliderCall(1);
+    }, 6000);
 }
 
 // ==========================================

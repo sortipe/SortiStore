@@ -427,8 +427,12 @@ exports.getSettings = async (req, res) => {
         const settings = await db.query('SELECT * FROM system_settings');
         const settingsMap = {};
         settings.forEach(s => {
-            if (s.key === 'bank_accounts' || s.key === 'delivery_districts') {
-                settingsMap[s.key] = JSON.parse(s.value);
+            if (s.key === 'bank_accounts' || s.key === 'delivery_districts' || s.key === 'home_banners' || s.key === 'site_branding') {
+                try {
+                    settingsMap[s.key] = JSON.parse(s.value);
+                } catch (e) {
+                    settingsMap[s.key] = s.value;
+                }
             } else {
                 settingsMap[s.key] = s.value;
             }
@@ -442,11 +446,9 @@ exports.getSettings = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
     try {
-        const { sorti_rate, bank_accounts, yape_qr, delivery_districts } = req.body;
+        const { sorti_rate, bank_accounts, yape_qr, delivery_districts, home_banner, home_banners, site_branding } = req.body;
 
         if (sorti_rate !== undefined) {
-            // Soporta Upsert multiplataforma mediante eliminación previa o SQL condicional.
-            // Para simplicidad en SQLite/Postgres:
             await db.execute('DELETE FROM system_settings WHERE key = ?', ['sorti_rate']);
             await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['sorti_rate', String(sorti_rate)]);
         }
@@ -472,6 +474,18 @@ exports.updateSettings = async (req, res) => {
             const bannerStr = typeof home_banner === 'string' ? home_banner : JSON.stringify(home_banner);
             await db.execute('DELETE FROM system_settings WHERE key = ?', ['home_banner']);
             await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['home_banner', bannerStr]);
+        }
+
+        if (home_banners !== undefined) {
+            const bannersStr = typeof home_banners === 'string' ? home_banners : JSON.stringify(home_banners);
+            await db.execute('DELETE FROM system_settings WHERE key = ?', ['home_banners']);
+            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['home_banners', bannersStr]);
+        }
+
+        if (site_branding !== undefined) {
+            const brandingStr = typeof site_branding === 'string' ? site_branding : JSON.stringify(site_branding);
+            await db.execute('DELETE FROM system_settings WHERE key = ?', ['site_branding']);
+            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['site_branding', brandingStr]);
         }
 
         return res.json({ message: 'Configuraciones actualizadas con éxito.' });

@@ -124,9 +124,12 @@ async function renderDashboardTab(container) {
     const data = await AdminService.getDashboardStats();
     const { stats, recentOrders, topProducts, salesByType } = data;
 
+    const avgTicket = stats.totalOrders > 0 ? (stats.totalSales / stats.totalOrders) : 0;
+    const convRate = stats.totalClients > 0 ? ((stats.totalOrders / (stats.totalClients * 4.5)) * 100).toFixed(1) : "0.0";
+
     container.innerHTML = `
         <!-- Tarjetas de métricas rápidas -->
-        <div class="stats-grid animate-fade-in">
+        <div class="stats-grid animate-fade-in" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px;">
             <div class="stat-card">
                 <div class="stat-info">
                     <h4>Ventas Totales</h4>
@@ -143,6 +146,13 @@ async function renderDashboardTab(container) {
             </div>
             <div class="stat-card">
                 <div class="stat-info">
+                    <h4>Ticket Promedio (AOV)</h4>
+                    <div class="stat-value">S/. ${avgTicket.toFixed(2)}</div>
+                </div>
+                <div class="stat-icon"><i class="fas fa-calculator"></i></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
                     <h4>Clientes Registrados</h4>
                     <div class="stat-value">${stats.totalClients}</div>
                 </div>
@@ -150,14 +160,21 @@ async function renderDashboardTab(container) {
             </div>
             <div class="stat-card">
                 <div class="stat-info">
-                    <h4>Monedas Sorti Emitidas</h4>
+                    <h4>Tasa Conversión (Est.)</h4>
+                    <div class="stat-value">${convRate}%</div>
+                </div>
+                <div class="stat-icon"><i class="fas fa-funnel-dollar"></i></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h4>Monedas Emitidas</h4>
                     <div class="stat-value"><i class="fas fa-coins" style="color: gold;"></i> ${stats.totalCoins}</div>
                 </div>
                 <div class="stat-icon"><i class="fas fa-piggy-bank"></i></div>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;" class="animate-fade-in">
+        <div style="display: grid; grid-template-columns: 2fr 1.2fr 1.2fr; gap: 24px;" class="animate-fade-in">
             
             <!-- Últimos Pedidos Recibidos -->
             <div class="admin-table-container">
@@ -189,25 +206,52 @@ async function renderDashboardTab(container) {
                 </table>
             </div>
 
+            <!-- Gráfico de Distribución de Ingresos -->
+            <div class="admin-table-container">
+                <div class="admin-table-header">
+                    <h3>Ingresos por Categoría</h3>
+                </div>
+                <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                    ${salesByType.length === 0 ? `
+                        <p style="text-align: center; color: var(--text-muted); padding: 32px 0;">Aún no hay ventas registradas.</p>
+                    ` : salesByType.map(s => {
+                        const maxRevenue = Math.max(...salesByType.map(item => Number(item.revenue))) || 1;
+                        const percent = Math.round((Number(s.revenue) / maxRevenue) * 100);
+                        const icons = { course: 'fa-graduation-cap', software: 'fa-laptop-code', digital: 'fa-download', physical: 'fa-box' };
+                        return `
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+                                    <span style="text-transform: capitalize; font-weight: 600;"><i class="fas ${icons[s.type] || 'fa-box'}"></i> ${s.type}</span>
+                                    <strong>S/. ${Number(s.revenue).toFixed(2)}</strong>
+                                </div>
+                                <div style="background: var(--border-color); height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div style="background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-secondary) 100%); width: ${percent}%; height: 100%; border-radius: 4px;"></div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
             <!-- Productos Más Vendidos -->
             <div class="admin-table-container">
                 <div class="admin-table-header">
-                    <h3>Productos Más Vendidos</h3>
+                    <h3>Productos Estrella</h3>
                 </div>
                 <table class="admin-table">
                     <thead>
                         <tr>
                             <th>Producto</th>
-                            <th>Tipo</th>
                             <th>Vendidos</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${topProducts.map(p => `
+                        ${topProducts.length === 0 ? `
+                            <tr><td colspan="2" style="text-align: center; color: var(--text-muted); padding: 32px 0;">No hay ventas registradas.</td></tr>
+                        ` : topProducts.map(p => `
                             <tr>
-                                <td><strong>${p.name}</strong></td>
-                                <td><span class="badge badge-featured">${p.type}</span></td>
-                                <td>${p.sold_qty} unidades</td>
+                                <td><strong>${p.name}</strong><br><span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">${p.type}</span></td>
+                                <td style="font-weight: 700; color: var(--color-secondary);">${p.sold_qty} uds</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -976,39 +1020,151 @@ let currentSettings = {};
 async function renderSettingsTab(container) {
     currentSettings = await AdminService.getSettings();
 
-    const banner = currentSettings.home_banner ? (typeof currentSettings.home_banner === 'string' ? JSON.parse(currentSettings.home_banner) : currentSettings.home_banner) : {
-        image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
-        badge: 'Campaña de Julio',
-        title: 'Tecnología y Software en un solo lugar',
-        description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
-        link: '#/category/tecnologia'
+    // Cargar site_branding por defecto
+    const branding = currentSettings.site_branding ? (typeof currentSettings.site_branding === 'string' ? JSON.parse(currentSettings.site_branding) : currentSettings.site_branding) : {
+        site_name: 'SortiStore',
+        primary_color: '#6366f1',
+        accent_color: '#f59e0b'
     };
 
+    // Cargar home_banners
+    let banners = [];
+    if (currentSettings.home_banners) {
+        banners = typeof currentSettings.home_banners === 'string' ? JSON.parse(currentSettings.home_banners) : currentSettings.home_banners;
+    } else if (currentSettings.home_banner) {
+        const single = typeof currentSettings.home_banner === 'string' ? JSON.parse(currentSettings.home_banner) : currentSettings.home_banner;
+        banners = [single];
+    }
+    if (banners.length === 0) {
+        banners = [{
+            image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
+            badge: 'Campaña de Julio',
+            title: 'Tecnología y Software en un solo lugar',
+            description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
+            link: '#/category/tecnologia',
+            bg_y: 50
+        }];
+    }
+    currentSettings.home_banners = banners;
+
     container.innerHTML = `
-        <form id="settings-admin-form" class="animate-fade-in" style="max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+        <form id="settings-admin-form" class="animate-fade-in" style="max-width: 850px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; padding-bottom: 60px;">
             
-            <!-- Banner Principal de la Tienda (Home Banner) -->
+            <!-- Personalización de Marca (Branding) -->
             <div class="checkout-section" style="width: 100%;">
-                <h3><i class="fas fa-image" style="color: var(--color-primary);"></i> Banner Principal de la Tienda (Hero Home)</h3>
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label>Título del Banner</label>
-                    <input type="text" id="set-banner-title" class="form-control" value="${banner.title || ''}" required>
+                <h3><i class="fas fa-palette" style="color: var(--color-primary);"></i> Personalización y Marca del Sitio</h3>
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; align-items: end;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Nombre de la Tienda (Document Title & Logo)</label>
+                        <input type="text" id="set-site-name" class="form-control" value="${branding.site_name || ''}" placeholder="SortiStore" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Color Principal</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="color" id="set-primary-color" value="${branding.primary_color || '#6366f1'}" style="width: 44px; height: 44px; border: none; border-radius: 8px; cursor: pointer; background: none;">
+                            <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">${branding.primary_color || '#6366f1'}</span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Color de Acento</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="color" id="set-accent-color" value="${branding.accent_color || '#f59e0b'}" style="width: 44px; height: 44px; border: none; border-radius: 8px; cursor: pointer; background: none;">
+                            <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">${branding.accent_color || '#f59e0b'}</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label>Descripción del Banner</label>
-                    <textarea id="set-banner-description" class="form-control" rows="2" required>${banner.description || ''}</textarea>
+            </div>
+
+            <!-- Carrusel de Banners del Home (Hero Slider) -->
+            <div class="checkout-section" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3><i class="fas fa-images" style="color: var(--color-primary);"></i> Carrusel de Banners Principal (Hero Home Slides)</h3>
+                    <button type="button" class="btn-outline" onclick="addBannerSlideRow()"><i class="fas fa-plus"></i> Añadir Diapositiva</button>
                 </div>
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label>Etiqueta / Badge (ej: Campaña de Julio)</label>
-                    <input type="text" id="set-banner-badge" class="form-control" value="${banner.badge || ''}">
-                </div>
-                <div class="form-group" style="margin-bottom: 12px;">
-                    <label>URL de Imagen de Fondo (Recomendado 1600x600)</label>
-                    <input type="text" id="set-banner-image" class="form-control" value="${banner.image_url || ''}" required>
-                </div>
-                <div class="form-group">
-                    <label>Enlace del Botón (ej: #/category/tecnologia)</label>
-                    <input type="text" id="set-banner-link" class="form-control" value="${banner.link || '#/'}">
+                
+                <div id="settings-banners-list" style="display: flex; flex-direction: column; gap: 20px;">
+                    ${banners.map((slide, idx) => {
+                        const bgY = slide.bg_y !== undefined ? slide.bg_y : 50;
+                        const hasImage = !!slide.image_url;
+                        const isBase64 = hasImage && slide.image_url.startsWith('data:image/');
+                        return `
+                            <div class="glass-panel animate-fade-in" style="padding: 20px; border-left: 4px solid var(--color-primary);" data-banner-idx="${idx}">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                                    <h4 style="color: var(--color-primary); margin: 0;">Diapositiva #${idx + 1}</h4>
+                                    <div style="display: flex; gap: 8px;">
+                                        ${idx > 0 ? `<button type="button" class="action-btn" style="padding: 6px 10px;" onclick="moveBannerSlide(${idx}, -1)"><i class="fas fa-arrow-up"></i></button>` : ''}
+                                        ${idx < banners.length - 1 ? `<button type="button" class="action-btn" style="padding: 6px 10px;" onclick="moveBannerSlide(${idx}, 1)"><i class="fas fa-arrow-down"></i></button>` : ''}
+                                        <button type="button" style="color: var(--danger); font-size: 14px; padding: 6px 10px; border: none; background: none; cursor: pointer;" onclick="removeBannerSlideRow(${idx})"><i class="fas fa-trash-alt"></i> Eliminar</button>
+                                    </div>
+                                </div>
+                                
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>Título del Banner</label>
+                                        <input type="text" class="form-control" value="${slide.title || ''}" placeholder="ej: Descuentos de Invierno" oninput="updateBannerSlideField(${idx}, 'title', this.value)" required>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>Etiqueta / Badge</label>
+                                        <input type="text" class="form-control" value="${slide.badge || ''}" placeholder="ej: Campaña Flash" oninput="updateBannerSlideField(${idx}, 'badge', this.value)">
+                                    </div>
+                                </div>
+
+                                <div class="form-group" style="margin-bottom: 16px;">
+                                    <label>Descripción / Subtexto del Banner</label>
+                                    <input type="text" class="form-control" value="${slide.description || ''}" placeholder="ej: Obtén hasta 50% de descuento..." oninput="updateBannerSlideField(${idx}, 'description', this.value)" required>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; margin-bottom: 16px;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>Enlace del Botón (ej: #/category/tecnologia)</label>
+                                        <input type="text" class="form-control" value="${slide.link || '#/'}" oninput="updateBannerSlideField(${idx}, 'link', this.value)">
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label>Origen de la Imagen</label>
+                                        <div style="display: flex; gap: 16px; align-items: center; height: 44px;">
+                                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-transform:none; margin: 0; font-size:13px; font-weight:normal; color:var(--text-primary);">
+                                                <input type="radio" name="img-src-type-${idx}" value="url" ${!isBase64 ? 'checked' : ''} onchange="toggleBannerSrcType(${idx}, 'url')"> URL Externa
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-transform:none; margin: 0; font-size:13px; font-weight:normal; color:var(--text-primary);">
+                                                <input type="radio" name="img-src-type-${idx}" value="file" ${isBase64 ? 'checked' : ''} onchange="toggleBannerSrcType(${idx}, 'file')"> Subir Archivo
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; align-items: center;">
+                                    <div>
+                                        <!-- Selector de URL -->
+                                        <div id="banner-url-input-grp-${idx}" style="display: ${!isBase64 ? 'block' : 'none'};" class="form-group">
+                                            <label>URL de la Imagen de Fondo</label>
+                                            <input type="text" class="form-control" value="${!isBase64 ? (slide.image_url || '') : ''}" placeholder="https://images.unsplash.com/..." oninput="updateBannerSlideField(${idx}, 'image_url', this.value)">
+                                        </div>
+                                        <!-- Selector de Archivo -->
+                                        <div id="banner-file-input-grp-${idx}" style="display: ${isBase64 ? 'block' : 'none'};" class="form-group">
+                                            <label>Selecciona Archivo de Imagen (Optimización local)</label>
+                                            <input type="file" accept="image/*" class="form-control" style="padding: 8px 16px;" onchange="handleBannerFileUpload(event, ${idx})">
+                                        </div>
+                                        
+                                        <!-- Ajuste Vertical -->
+                                        <div class="form-group" style="margin-bottom: 0;">
+                                            <label style="display: flex; justify-content: space-between;">
+                                                <span>Ajuste de Posición Vertical</span>
+                                                <strong id="banner-bg-y-val-${idx}">${bgY}%</strong>
+                                            </label>
+                                            <input type="range" min="0" max="100" class="form-control" style="padding:0; height: 10px; cursor: pointer;" value="${bgY}" oninput="updateBannerBgPosition(${idx}, this.value)">
+                                            <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Desliza para encuadrar la imagen (0% arriba, 50% centro, 100% abajo).</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Miniatura Previsualización de Encuadre -->
+                                    <div style="text-align: center;">
+                                        <label style="margin-bottom: 6px; display: block; font-size:11px; font-weight:700;">Previsualización de Encuadre</label>
+                                        <div id="banner-preview-box-${idx}" style="background-image: url('${slide.image_url || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'}'); background-size: cover; background-position: center ${bgY}%; height: 95px; border-radius: var(--radius-md); border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
 
@@ -1038,7 +1194,7 @@ async function renderSettingsTab(container) {
                             <input type="text" class="form-control" value="${b.account}" placeholder="Nro Cuenta" oninput="updateSettingBankValue(${idx}, 'account', this.value)">
                             <input type="text" class="form-control" value="${b.CCI}" placeholder="Nro CCI" oninput="updateSettingBankValue(${idx}, 'CCI', this.value)">
                             <input type="text" class="form-control" value="${b.owner}" placeholder="Titular" oninput="updateSettingBankValue(${idx}, 'owner', this.value)">
-                            <button type="button" style="color: var(--danger);" onclick="removeSettingBankRow(${idx})"><i class="fas fa-trash"></i></button>
+                            <button type="button" style="color: var(--danger); border:none; background:none;" onclick="removeSettingBankRow(${idx})"><i class="fas fa-trash"></i></button>
                         </div>
                     `).join('')}
                 </div>
@@ -1054,7 +1210,7 @@ async function renderSettingsTab(container) {
                             <input type="text" class="form-control" value="${d.name}" placeholder="Distrito (ej: Miraflores)" oninput="updateSettingDistrictValue(${idx}, 'name', this.value)">
                             <input type="number" step="0.01" class="form-control" value="${d.cost}" placeholder="Costo Envío (S/.)" oninput="updateSettingDistrictValue(${idx}, 'cost', this.value)">
                             <input type="text" class="form-control" value="${d.time}" placeholder="Tiempo Estimado (ej: 24-48 horas)" oninput="updateSettingDistrictValue(${idx}, 'time', this.value)">
-                            <button type="button" style="color: var(--danger);" onclick="removeSettingDistrictRow(${idx})"><i class="fas fa-trash"></i></button>
+                            <button type="button" style="color: var(--danger); border:none; background:none;" onclick="removeSettingDistrictRow(${idx})"><i class="fas fa-trash"></i></button>
                         </div>
                     `).join('')}
                 </div>
@@ -1075,24 +1231,123 @@ async function renderSettingsTab(container) {
             yape_qr: document.getElementById('set-yape-qr').value.trim(),
             bank_accounts: currentSettings.bank_accounts,
             delivery_districts: currentSettings.delivery_districts,
-            home_banner: {
-                title: document.getElementById('set-banner-title').value.trim(),
-                description: document.getElementById('set-banner-description').value.trim(),
-                badge: document.getElementById('set-banner-badge').value.trim(),
-                image_url: document.getElementById('set-banner-image').value.trim(),
-                link: document.getElementById('set-banner-link').value.trim()
+            home_banners: currentSettings.home_banners,
+            site_branding: {
+                site_name: document.getElementById('set-site-name').value.trim(),
+                primary_color: document.getElementById('set-primary-color').value,
+                accent_color: document.getElementById('set-accent-color').value
             }
         };
 
         try {
             await AdminService.updateSettings(payload);
-            showToast('Configuraciones generales del sistema actualizadas.', 'success');
+            showToast('Configuraciones generales actualizadas con éxito.', 'success');
+            // Aplicar cambios en tiempo real en la UI del administrador
+            document.title = payload.site_branding.site_name;
+            document.documentElement.style.setProperty('--color-primary', payload.site_branding.primary_color);
+            document.documentElement.style.setProperty('--color-accent', payload.site_branding.accent_color);
             switchTab('settings');
         } catch (error) {
             showToast(error.message, 'error');
         }
     });
 }
+
+// Helpers para la edición reactiva de banners
+window.updateBannerSlideField = (idx, field, value) => {
+    currentSettings.home_banners[idx][field] = value;
+    if (field === 'image_url') {
+        const preview = document.getElementById(`banner-preview-box-${idx}`);
+        if (preview) preview.style.backgroundImage = `url('${value || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800'}')`;
+    }
+};
+
+window.updateBannerBgPosition = (idx, value) => {
+    const val = Number(value);
+    currentSettings.home_banners[idx].bg_y = val;
+    document.getElementById(`banner-bg-y-val-${idx}`).textContent = `${val}%`;
+    const preview = document.getElementById(`banner-preview-box-${idx}`);
+    if (preview) preview.style.backgroundPositionY = `${val}%`;
+};
+
+window.toggleBannerSrcType = (idx, type) => {
+    const urlGrp = document.getElementById(`banner-url-input-grp-${idx}`);
+    const fileGrp = document.getElementById(`banner-file-input-grp-${idx}`);
+    if (type === 'url') {
+        urlGrp.style.display = 'block';
+        fileGrp.style.display = 'none';
+    } else {
+        urlGrp.style.display = 'none';
+        fileGrp.style.display = 'block';
+    }
+};
+
+window.addBannerSlideRow = () => {
+    if (!currentSettings.home_banners) currentSettings.home_banners = [];
+    currentSettings.home_banners.push({
+        image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800',
+        badge: 'Nuevo Slide',
+        title: 'Título del Slide',
+        description: 'Descripción breve de la diapositiva...',
+        link: '#/',
+        bg_y: 50
+    });
+    renderSettingsTab(document.getElementById('admin-tab-content'));
+};
+
+window.removeBannerSlideRow = (idx) => {
+    currentSettings.home_banners.splice(idx, 1);
+    renderSettingsTab(document.getElementById('admin-tab-content'));
+};
+
+window.moveBannerSlide = (idx, direction) => {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= currentSettings.home_banners.length) return;
+    
+    // Intercambiar
+    const temp = currentSettings.home_banners[idx];
+    currentSettings.home_banners[idx] = currentSettings.home_banners[targetIdx];
+    currentSettings.home_banners[targetIdx] = temp;
+    
+    renderSettingsTab(document.getElementById('admin-tab-content'));
+};
+
+window.handleBannerFileUpload = (event, idx) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            
+            const MAX_WIDTH = 1200;
+            if (width > MAX_WIDTH) {
+                height = Math.round((height * MAX_WIDTH) / width);
+                width = MAX_WIDTH;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const base64 = canvas.toDataURL('image/jpeg', 0.75);
+            
+            currentSettings.home_banners[idx].image_url = base64;
+            const preview = document.getElementById(`banner-preview-box-${idx}`);
+            if (preview) preview.style.backgroundImage = `url('${base64}')`;
+            
+            showToast('Imagen cargada y optimizada con éxito.', 'success');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+};
 
 // Helpers para edición reactiva de filas en settings
 window.updateSettingBankValue = (idx, field, value) => {

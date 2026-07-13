@@ -80,14 +80,32 @@ async function rebuild() {
 
         // Ajustes de Sistema
         await client.query("INSERT INTO system_settings (key, value) VALUES ('sorti_rate', '100')");
-        const defaultBanner = {
-            image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
-            badge: 'Campaña de Julio',
-            title: 'Tecnología y Software en un solo lugar',
-            description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
-            link: '#/category/tecnologia'
+        const defaultBanners = [
+            {
+                image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
+                badge: 'Campaña de Julio',
+                title: 'Tecnología y Software en un solo lugar',
+                description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
+                link: '#/category/tecnologia',
+                bg_y: 50
+            },
+            {
+                image_url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1600',
+                badge: 'Nuevos Lanzamientos',
+                title: 'Cursos LMS de Nivel Avanzado',
+                description: 'Domina Next.js, Node.js y bases de datos con nuestros módulos autodidactas.',
+                link: '#/category/cursos',
+                bg_y: 50
+            }
+        ];
+        await client.query("INSERT INTO system_settings (key, value) VALUES ('home_banners', $1)", [JSON.stringify(defaultBanners)]);
+        
+        const defaultBranding = {
+            site_name: 'SortiStore',
+            primary_color: '#6366f1',
+            accent_color: '#f59e0b'
         };
-        await client.query("INSERT INTO system_settings (key, value) VALUES ('home_banner', $1)", [JSON.stringify(defaultBanner)]);
+        await client.query("INSERT INTO system_settings (key, value) VALUES ('site_branding', $1)", [JSON.stringify(defaultBranding)]);
         
         const bankAccounts = [
             { bank: 'BCP', account: '191-98765432-0-99', CCI: '002-19198765432099-54', owner: 'Sortistore SAC' },
