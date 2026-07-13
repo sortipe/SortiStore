@@ -477,11 +477,22 @@ window.openProductFormModal = async (productId = null) => {
     }
     window.renderProductMediaRows();
 
+    window.currentProductFeatures = [];
+    if (product.features) {
+        try {
+            window.currentProductFeatures = typeof product.features === 'string' ? JSON.parse(product.features) : product.features;
+        } catch (e) {
+            console.error('Error al cargar especificaciones de producto:', e);
+        }
+    }
+    window.renderProductFeaturesRows();
+
     // Handler al enviar Formulario
     document.getElementById('product-crud-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const mediaArray = window.currentProductMedia.filter(item => item.media_url.trim() !== '');
+        const featuresArray = window.currentProductFeatures.filter(f => f.name.trim() !== '' && f.value.trim() !== '');
 
         const payload = {
             name: document.getElementById('prod-name').value.trim(),
@@ -503,6 +514,7 @@ window.openProductFormModal = async (productId = null) => {
             download_file_size: document.getElementById('prod-download-size').value.trim() || null,
             download_version: document.getElementById('prod-download-version').value.trim() || null,
             media: mediaArray,
+            features: featuresArray,
             variants: [] // Variantes se agregan por backend o simplificado
         };
 
@@ -1645,4 +1657,60 @@ window.handleProductMediaFileUpload = (event, idx) => {
         img.src = e.target.result;
     };
     reader.readAsDataURL(file);
+};
+
+window.insertDescriptionTag = (tag) => {
+    const textarea = document.getElementById('prod-desc');
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const before = text.substring(0, start);
+    const after  = text.substring(end, text.length);
+    
+    if (tag === '**bold**') {
+        const selection = text.substring(start, end) || 'texto';
+        textarea.value = before + '**' + selection + '**' + after;
+        textarea.selectionStart = start + 2;
+        textarea.selectionEnd = start + 2 + selection.length;
+    } else if (tag === '• ') {
+        const newline = before.endsWith('\n') || before === '' ? '' : '\n';
+        textarea.value = before + newline + '• ' + after;
+        textarea.selectionStart = start + newline.length + 2;
+        textarea.selectionEnd = start + newline.length + 2;
+    }
+    textarea.focus();
+};
+
+window.renderProductFeaturesRows = () => {
+    const container = document.getElementById('product-features-rows-container');
+    if (!container) return;
+
+    if (window.currentProductFeatures.length === 0) {
+        container.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0; border: 1px dashed var(--border-color); border-radius: var(--radius-md);">No se han agregado especificaciones a este producto.</p>`;
+        return;
+    }
+
+    container.innerHTML = window.currentProductFeatures.map((feat, idx) => `
+        <div style="display: grid; grid-template-columns: 1fr 1.5fr auto; gap: 10px; align-items: center;">
+            <input type="text" class="form-control" placeholder="ej: Color, Dimensiones" value="${feat.name || ''}" oninput="updateProductFeatureField(${idx}, 'name', this.value)" style="padding: 8px 12px;">
+            <input type="text" class="form-control" placeholder="ej: Azul Metálico, 15x10 cm" value="${feat.value || ''}" oninput="updateProductFeatureField(${idx}, 'value', this.value)" style="padding: 8px 12px;">
+            <button type="button" class="action-btn" style="color: var(--danger); padding: 8px;" onclick="removeProductFeatureRow(${idx})"><i class="fas fa-trash-alt"></i></button>
+        </div>
+    `).join('');
+};
+
+window.updateProductFeatureField = (idx, field, value) => {
+    if (!window.currentProductFeatures[idx]) window.currentProductFeatures[idx] = { name: '', value: '' };
+    window.currentProductFeatures[idx][field] = value;
+};
+
+window.addProductFeatureRow = () => {
+    window.currentProductFeatures.push({ name: '', value: '' });
+    window.renderProductFeaturesRows();
+};
+
+window.removeProductFeatureRow = (idx) => {
+    window.currentProductFeatures.splice(idx, 1);
+    window.renderProductFeaturesRows();
 };

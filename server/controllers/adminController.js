@@ -77,7 +77,7 @@ exports.createProduct = async (req, res) => {
             name, slug, description, type, sku, stock, category_id,
             price_normal, price_offer, price_sorti, is_featured, is_recommended,
             is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
-            download_url, download_file_size, download_version,
+            download_url, download_file_size, download_version, features,
             media, variants
         } = req.body;
 
@@ -90,20 +90,23 @@ exports.createProduct = async (req, res) => {
             return res.status(400).json({ error: 'El slug ya está registrado.' });
         }
 
+        const featuresStr = features ? (typeof features === 'string' ? features : JSON.stringify(features)) : null;
+
         const resultRow = await db.querySingle(`
             INSERT INTO products (
                 name, slug, description, type, sku, stock, category_id,
                 price_normal, price_offer, price_sorti, is_featured, is_recommended,
                 is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
-                download_url, download_file_size, download_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                download_url, download_file_size, download_version, features
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
         `, [
             name, slug, description, type, sku, Number(stock) || 0, Number(category_id) || null,
             Number(price_normal), price_offer ? Number(price_offer) : null, price_sorti ? Number(price_sorti) : null,
             is_featured ? 1 : 0, is_recommended ? 1 : 0, is_new ? 1 : 0, is_sold_out ? 1 : 0,
             is_upcoming ? 1 : 0, is_presale ? 1 : 0, presale_launch_date || null,
-            download_url || null, download_file_size || null, download_version || null
+            download_url || null, download_file_size || null, download_version || null,
+            featuresStr
         ]);
 
         const productId = resultRow.id;
@@ -144,7 +147,7 @@ exports.updateProduct = async (req, res) => {
             name, slug, description, type, sku, stock, category_id,
             price_normal, price_offer, price_sorti, is_featured, is_recommended,
             is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
-            download_url, download_file_size, download_version,
+            download_url, download_file_size, download_version, features,
             media, variants
         } = req.body;
 
@@ -153,12 +156,14 @@ exports.updateProduct = async (req, res) => {
             return res.status(404).json({ error: 'Producto no encontrado.' });
         }
 
+        const featuresStr = features ? (typeof features === 'string' ? features : JSON.stringify(features)) : null;
+
         await db.execute(`
             UPDATE products SET
                 name = ?, slug = ?, description = ?, type = ?, sku = ?, stock = ?, category_id = ?,
                 price_normal = ?, price_offer = ?, price_sorti = ?, is_featured = ?, is_recommended = ?,
                 is_new = ?, is_sold_out = ?, is_upcoming = ?, is_presale = ?, presale_launch_date = ?,
-                download_url = ?, download_file_size = ?, download_version = ?
+                download_url = ?, download_file_size = ?, download_version = ?, features = ?
             WHERE id = ?
         `, [
             name, slug, description, type, sku, Number(stock) || 0, Number(category_id) || null,
@@ -166,6 +171,7 @@ exports.updateProduct = async (req, res) => {
             is_featured ? 1 : 0, is_recommended ? 1 : 0, is_new ? 1 : 0, is_sold_out ? 1 : 0,
             is_upcoming ? 1 : 0, is_presale ? 1 : 0, presale_launch_date || null,
             download_url || null, download_file_size || null, download_version || null,
+            featuresStr,
             id
         ]);
 

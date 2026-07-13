@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS products (
     download_url TEXT, -- URL de descarga para software/productos digitales
     download_file_size TEXT,
     download_version TEXT,
+    features TEXT, -- Especificaciones técnicas y características (JSON)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FOREIGN KEY(subcategory_id) REFERENCES categories(id) ON DELETE SET NULL

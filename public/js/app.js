@@ -359,6 +359,35 @@ async function renderProductDetail(slug) {
         const isPresaleActive = product.is_presale && product.presale_launch_date;
         const mainImage = product.media && product.media.length > 0 ? product.media[0].media_url : 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=600';
 
+        // Generar HTML de Especificaciones Técnicas (Características)
+        let featuresHtml = '';
+        if (product.features) {
+            try {
+                const features = typeof product.features === 'string' ? JSON.parse(product.features) : product.features;
+                if (Array.isArray(features) && features.length > 0) {
+                    featuresHtml = `
+                        <div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+                            <h3 style="font-size: 18px; margin-bottom: 16px; color: var(--text-primary);"><i class="fas fa-list-ul" style="color: var(--color-primary); margin-right: 8px;"></i> Especificaciones Técnicas</h3>
+                            <div class="glass-panel" style="overflow: hidden; border-radius: var(--radius-md); padding: 0; background: rgba(255,255,255,0.01);">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                    <tbody>
+                                        ${features.map((f, idx) => `
+                                            <tr style="background: ${idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'none'}; border-bottom: 1px solid var(--border-color);">
+                                                <td style="padding: 12px 16px; font-weight: 700; width: 35%; color: var(--text-secondary); border-right: 1px solid var(--border-color);">${f.name}</td>
+                                                <td style="padding: 12px 16px; color: var(--text-primary); font-weight: 500;">${f.value}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Error al parsear especificaciones de producto:', e);
+            }
+        }
+
         container.innerHTML = `
             <div class="product-detail-layout animate-fade-in">
                 <!-- Galería multimedia -->
@@ -409,7 +438,9 @@ async function renderProductDetail(slug) {
                         </div>
                     ` : ''}
 
-                    <p style="color: var(--text-secondary); margin-bottom: 32px; font-size: 15px;">${product.description}</p>
+                    <p style="color: var(--text-secondary); margin-bottom: 32px; font-size: 15px; white-space: pre-wrap; line-height: 1.6;">${formatDescriptionText(product.description)}</p>
+
+                    ${featuresHtml}
 
                     <!-- Selectores de Variantes -->
                     ${Object.keys(variantsByType).map(type => `
@@ -2242,4 +2273,14 @@ function updateCartCountUI() {
     // Cada S/. 1.00 de compra acumula unas 10 monedas en equivalente para canje o bonificaciones
     const sortiEquivalent = Math.round(subtotal * 10);
     sortiText.textContent = sortiEquivalent;
+}
+
+// Formateador de texto de descripción (Escapa HTML básico y parsea markdown básico como negritas)
+function formatDescriptionText(text) {
+    if (!text) return '';
+    const clean = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    return clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 }
