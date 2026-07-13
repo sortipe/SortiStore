@@ -452,10 +452,13 @@ window.openProductFormModal = async (productId = null) => {
                     </div>
                 </div>
 
-                <!-- Multimedia Mockup (URL de imagen) -->
+                <!-- Galería Multimedia (URLs o archivos locales optimizados) -->
                 <div class="form-group" style="grid-column: span 2;">
-                    <label>URL de la Imagen Principal del Producto (Unsplash / URL Directa)</label>
-                    <input type="text" id="prod-media-url" class="form-control" value="${product.media && product.media.length > 0 ? product.media[0].media_url : ''}" placeholder="https://images.unsplash.com/photo-...">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label style="font-weight: 700; color: var(--text-secondary);">Galería de Imágenes del Producto</label>
+                        <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 11px;" onclick="addProductMediaRow()"><i class="fas fa-plus"></i> Agregar Imagen</button>
+                    </div>
+                    <div id="product-media-rows-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
                 </div>
             </div>
             
@@ -468,12 +471,17 @@ window.openProductFormModal = async (productId = null) => {
 
     modal.classList.add('active');
 
+    window.currentProductMedia = [...(product.media || [])];
+    if (window.currentProductMedia.length === 0) {
+        window.currentProductMedia.push({ media_url: '', is_video: 0 });
+    }
+    window.renderProductMediaRows();
+
     // Handler al enviar Formulario
     document.getElementById('product-crud-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const mediaUrl = document.getElementById('prod-media-url').value.trim();
-        const mediaArray = mediaUrl ? [{ media_url: mediaUrl, is_video: 0 }] : [];
+        const mediaArray = window.currentProductMedia.filter(item => item.media_url.trim() !== '');
 
         const payload = {
             name: document.getElementById('prod-name').value.trim(),
@@ -1525,4 +1533,116 @@ window.deleteCategoryCall = async (id) => {
     } catch (error) {
         showToast(error.message, 'error');
     }
+};
+
+// Helpers para la edición reactiva de la galería multimedia de productos
+window.renderProductMediaRows = () => {
+    const container = document.getElementById('product-media-rows-container');
+    if (!container) return;
+
+    if (window.currentProductMedia.length === 0) {
+        container.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0;">No hay imágenes cargadas en la galería.</p>`;
+        return;
+    }
+
+    container.innerHTML = window.currentProductMedia.map((item, idx) => {
+        const isBase64 = item.media_url && item.media_url.startsWith('data:image/');
+        return `
+            <div class="glass-panel" style="padding: 12px; display: grid; grid-template-columns: 1fr 1.2fr auto; gap: 12px; align-items: center; background: rgba(255,255,255,0.01);" data-media-row-idx="${idx}">
+                <div>
+                    <label style="font-size: 11px; margin-bottom: 4px; display: block; text-transform: uppercase; color:var(--text-muted);">Origen Imagen #${idx + 1}</label>
+                    <div style="display: flex; gap: 12px; align-items: center; height: 38px;">
+                        <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; text-transform:none; margin:0; font-size:12px; font-weight:normal; color:var(--text-primary);">
+                            <input type="radio" name="prod-media-src-${idx}" value="url" ${!isBase64 ? 'checked' : ''} onchange="toggleProductMediaSrcType(${idx}, 'url')"> URL
+                        </label>
+                        <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; text-transform:none; margin:0; font-size:12px; font-weight:normal; color:var(--text-primary);">
+                            <input type="radio" name="prod-media-src-${idx}" value="file" ${isBase64 ? 'checked' : ''} onchange="toggleProductMediaSrcType(${idx}, 'file')"> Archivo
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <!-- Input URL -->
+                    <div id="prod-media-url-grp-${idx}" style="display: ${!isBase64 ? 'block' : 'none'};">
+                        <label style="font-size: 11px; margin-bottom: 4px; display: block; text-transform: uppercase; color:var(--text-muted);">Dirección URL</label>
+                        <input type="text" class="form-control" style="padding: 8px 12px;" value="${!isBase64 ? (item.media_url || '') : ''}" placeholder="https://images.unsplash.com/..." oninput="updateProductMediaUrl(${idx}, this.value)">
+                    </div>
+                    <!-- Input File -->
+                    <div id="prod-media-file-grp-${idx}" style="display: ${isBase64 ? 'block' : 'none'};">
+                        <label style="font-size: 11px; margin-bottom: 4px; display: block; text-transform: uppercase; color:var(--text-muted);">Seleccionar Archivo</label>
+                        <input type="file" accept="image/*" class="form-control" style="padding: 6px 12px; font-size: 12px;" onchange="handleProductMediaFileUpload(event, ${idx})">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; align-self: end; margin-bottom: 2px;">
+                    <div id="prod-media-preview-${idx}" style="background-image: url('${item.media_url || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}'); background-size: cover; background-position: center; width: 40px; height: 40px; border-radius: 6px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);"></div>
+                    <button type="button" class="action-btn" style="color: var(--danger); padding: 8px;" onclick="removeProductMediaRow(${idx})" title="Quitar imagen"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+window.toggleProductMediaSrcType = (idx, type) => {
+    const urlGrp = document.getElementById(`prod-media-url-grp-${idx}`);
+    const fileGrp = document.getElementById(`prod-media-file-grp-${idx}`);
+    if (type === 'url') {
+        urlGrp.style.display = 'block';
+        fileGrp.style.display = 'none';
+    } else {
+        urlGrp.style.display = 'none';
+        fileGrp.style.display = 'block';
+    }
+};
+
+window.updateProductMediaUrl = (idx, val) => {
+    window.currentProductMedia[idx].media_url = val;
+    const preview = document.getElementById(`prod-media-preview-${idx}`);
+    if (preview) preview.style.backgroundImage = `url('${val || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}')`;
+};
+
+window.addProductMediaRow = () => {
+    window.currentProductMedia.push({ media_url: '', is_video: 0 });
+    window.renderProductMediaRows();
+};
+
+window.removeProductMediaRow = (idx) => {
+    window.currentProductMedia.splice(idx, 1);
+    window.renderProductMediaRows();
+};
+
+window.handleProductMediaFileUpload = (event, idx) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            
+            // Comprimir para productos (max 800px para mantener la BD liviana)
+            const MAX_WIDTH = 800;
+            if (width > MAX_WIDTH) {
+                height = Math.round((height * MAX_WIDTH) / width);
+                width = MAX_WIDTH;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            const base64 = canvas.toDataURL('image/jpeg', 0.8);
+            
+            window.currentProductMedia[idx].media_url = base64;
+            const preview = document.getElementById(`prod-media-preview-${idx}`);
+            if (preview) preview.style.backgroundImage = `url('${base64}')`;
+            
+            showToast('Imagen del producto cargada y optimizada con éxito.', 'success');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
 };
