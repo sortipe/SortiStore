@@ -26,6 +26,25 @@ if (isPostgres) {
         fs.mkdirSync(dbDir, { recursive: true });
     }
     sqliteDb = new DatabaseSync(dbPath);
+
+    // Migración SQLite automática para asegurar que la columna features exista
+    try {
+        const tableInfo = sqliteDb.prepare("PRAGMA table_info(products)").all();
+        const hasFeatures = tableInfo.some(col => col.name === 'features');
+        if (!hasFeatures && tableInfo.length > 0) {
+            console.log('Migración SQLite: agregando columna features a la tabla products...');
+            sqliteDb.exec("ALTER TABLE products ADD COLUMN features TEXT;");
+        }
+
+        const catTableInfo = sqliteDb.prepare("PRAGMA table_info(categories)").all();
+        const hasParentId = catTableInfo.some(col => col.name === 'parent_id');
+        if (!hasParentId && catTableInfo.length > 0) {
+            console.log('Migración SQLite: agregando columna parent_id a la tabla categories...');
+            sqliteDb.exec("ALTER TABLE categories ADD COLUMN parent_id INTEGER;");
+        }
+    } catch (err) {
+        console.error("Error al aplicar migración SQLite local:", err);
+    }
 }
 
 // Traducir los placeholders "?" de SQLite/MySQL a "$1, $2..." de Postgres
