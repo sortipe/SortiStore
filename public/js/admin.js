@@ -117,7 +117,8 @@ async function switchTab(tabName) {
                 break;
         }
     } catch (e) {
-        contentArea.innerHTML = `<div class="glass-panel" style="padding: 24px; color: var(--danger);">Error al cargar los datos del panel.</div>`;
+        console.error("Error al cambiar de pestaña [", tabName, "]:", e);
+        contentArea.innerHTML = `<div class="glass-panel" style="padding: 24px; color: var(--danger);">Error al cargar los datos del panel: ${e.message}</div>`;
     }
 }
 
