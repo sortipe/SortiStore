@@ -82,6 +82,8 @@ async function switchTab(tabName) {
         courses: 'Estructura LMS Cursos',
         wallet: 'Ajuste de Monedas Virtuales',
         coupons: 'Gestión de Cupones',
+        vip_users: 'Gestión de Usuarios VIP',
+        vip_resources: 'Gestión de Recursos de Zona VIP',
         settings: 'Configuraciones del Sistema'
     };
     
@@ -111,6 +113,12 @@ async function switchTab(tabName) {
                 break;
             case 'coupons':
                 await renderCouponsTab(contentArea);
+                break;
+            case 'vip_users':
+                await renderVipUsersTab(contentArea);
+                break;
+            case 'vip_resources':
+                await renderVipResourcesTab(contentArea);
                 break;
             case 'settings':
                 await renderSettingsTab(contentArea);
@@ -1714,4 +1722,740 @@ window.addProductFeatureRow = () => {
 window.removeProductFeatureRow = (idx) => {
     window.currentProductFeatures.splice(idx, 1);
     window.renderProductFeaturesRows();
+};
+
+// ==========================================
+// MÓDULO DE ADMINISTRACIÓN VIP
+// ==========================================
+
+AdminState.vipResourceSubTab = 'raffles';
+
+// 1. Pestaña: Gestión de Usuarios VIP
+async function renderVipUsersTab(container) {
+    container.innerHTML = `
+        <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
+            <h3>Listado de Clientes y Estado VIP</h3>
+            <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Activa o desactiva la suscripción VIP para los clientes. Al activarlo, el sistema les asigna 5 monedas VIP iniciales para el mes.</p>
+        </div>
+        <div class="glass-panel" style="padding: 0; overflow-x: auto;">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>¿Es VIP?</th>
+                        <th>Monedas VIP</th>
+                        <th>Última Renovación</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-vip-users-table-body">
+                    <tr><td colspan="7" style="text-align: center; padding: 20px;">Cargando usuarios...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    try {
+        const users = await AdminService.getVipUsers();
+        const tbody = document.getElementById('admin-vip-users-table-body');
+        if (users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-muted);">No se encontraron clientes registrados.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = users.map(user => {
+            const isVip = !!user.is_vip;
+            const lastRenovation = user.vip_last_renovation ? new Date(user.vip_last_renovation).toLocaleString() : 'N/A';
+            return `
+                <tr>
+                    <td>${user.id}</td>
+                    <td style="font-weight: 600;">${user.name}</td>
+                    <td>${user.email}</td>
+                    <td>
+                        <span class="badge ${isVip ? 'badge-featured' : 'badge-sold-out'}" style="${isVip ? 'background: rgba(245, 158, 11, 0.15); color: var(--color-accent); border: 1px solid rgba(245, 158, 11, 0.3);' : ''}">
+                            ${isVip ? 'VIP' : 'Estándar'}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="vip-coins-input-${user.id}" value="${user.vip_coins || 0}" min="0" class="form-control" style="width: 70px; padding: 4px 8px; font-size: 13px;" ${!isVip ? 'disabled' : ''}>
+                            ${isVip ? `<button class="action-btn" onclick="saveVipCoins(${user.id})" title="Guardar Monedas" style="color: var(--success);"><i class="fas fa-save"></i></button>` : ''}
+                        </div>
+                    </td>
+                    <td style="font-size: 12px; color: var(--text-muted);">${lastRenovation}</td>
+                    <td>
+                        <button class="btn-${isVip ? 'outline' : 'primary'}" onclick="toggleVipStatus(${user.id}, ${isVip ? 0 : 1})" style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fas ${isVip ? 'fa-user-slash' : 'fa-crown'}"></i> ${isVip ? 'Desactivar VIP' : 'Activar VIP'}
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        showToast('Error al cargar clientes VIP: ' + e.message, 'error');
+    }
+}
+
+window.toggleVipStatus = async (userId, newStatus) => {
+    try {
+        const res = await AdminService.toggleVipStatus(userId, newStatus);
+        showToast(res.message, 'success');
+        switchTab('vip_users');
+    } catch (e) {
+        showToast(e.message || 'Error al cambiar estado VIP.', 'error');
+    }
+};
+
+window.saveVipCoins = async (userId) => {
+    const input = document.getElementById(`vip-coins-input-${userId}`);
+    if (!input) return;
+    const coins = Number(input.value);
+    try {
+        const res = await AdminService.adjustVipCoins(userId, coins);
+        showToast(res.message, 'success');
+        switchTab('vip_users');
+    } catch (e) {
+        showToast(e.message || 'Error al ajustar monedas.', 'error');
+    }
+};
+
+
+// 2. Pestaña: Gestión de Recursos VIP (Sorteos, Proveedores, Regalos)
+async function renderVipResourcesTab(container) {
+    container.innerHTML = `
+        <div class="glass-panel" style="padding: 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <h3>Administración de Recursos VIP</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Crea y edita sorteos, proveedores locales de Lima y regalos/cuentas streaming para los clientes VIP.</p>
+            </div>
+            <div>
+                <button class="btn-primary" onclick="openVipResourceCreateModal()" style="display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-plus"></i> Crear Nuevo Registro
+                </button>
+            </div>
+        </div>
+
+        <!-- Pestañas internas de Recursos -->
+        <div class="vip-tabs" style="margin-bottom: 24px;">
+            <button class="vip-tab-btn ${AdminState.vipResourceSubTab === 'raffles' ? 'active' : ''}" onclick="switchVipResourceSubTab('raffles')">
+                <i class="fas fa-ticket-alt"></i> Sorteos de Premios
+            </button>
+            <button class="vip-tab-btn ${AdminState.vipResourceSubTab === 'suppliers' ? 'active' : ''}" onclick="switchVipResourceSubTab('suppliers')">
+                <i class="fas fa-truck-loading"></i> Proveedores de Lima
+            </button>
+            <button class="vip-tab-btn ${AdminState.vipResourceSubTab === 'gifts' ? 'active' : ''}" onclick="switchVipResourceSubTab('gifts')">
+                <i class="fas fa-gift"></i> Cuentas y Códigos Regalo
+            </button>
+        </div>
+
+        <div id="admin-vip-resources-list-area" class="glass-panel" style="padding: 0; overflow-x: auto;">
+            <!-- Renderizado dinámico de la lista -->
+        </div>
+    `;
+
+    renderVipResourcesSubTabContent();
+}
+
+window.switchVipResourceSubTab = (subTab) => {
+    AdminState.vipResourceSubTab = subTab;
+    const btns = document.querySelectorAll('.vip-tab-btn');
+    btns.forEach(btn => btn.classList.remove('active'));
+
+    const targetIdx = subTab === 'raffles' ? 0 : subTab === 'suppliers' ? 1 : 2;
+    if (btns[targetIdx]) btns[targetIdx].classList.add('active');
+
+    renderVipResourcesSubTabContent();
+};
+
+async function renderVipResourcesSubTabContent() {
+    const listArea = document.getElementById('admin-vip-resources-list-area');
+    if (!listArea) return;
+
+    listArea.innerHTML = `<div style="text-align: center; padding: 24px;">Cargando recursos...</div>`;
+
+    try {
+        if (AdminState.vipResourceSubTab === 'raffles') {
+            const raffles = await VipService.getRaffles();
+            if (raffles.length === 0) {
+                listArea.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--text-muted);">No hay sorteos registrados.</div>`;
+                return;
+            }
+
+            listArea.innerHTML = `
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Imagen</th>
+                            <th>Título</th>
+                            <th>Costo (Monedas)</th>
+                            <th>Fecha Sorteo</th>
+                            <th>Estado</th>
+                            <th>Ganador</th>
+                            <th>Participantes</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${raffles.map(raffle => {
+                            const date = new Date(raffle.draw_date).toLocaleDateString();
+                            const isActive = raffle.status === 'active';
+                            return `
+                                <tr>
+                                    <td><img src="${raffle.image_url || ''}" style="width: 50px; height: 35px; object-fit: cover; border-radius: 4px;"></td>
+                                    <td style="font-weight: 600;">${raffle.title}</td>
+                                    <td><i class="fas fa-coins" style="color: var(--color-accent);"></i> ${raffle.coin_cost} VIP</td>
+                                    <td>${date}</td>
+                                    <td>
+                                        <span class="badge ${isActive ? 'badge-featured' : 'badge-sold-out'}">
+                                            ${isActive ? 'Activo' : 'Finalizado'}
+                                        </span>
+                                    </td>
+                                    <td style="font-weight: bold; color: var(--color-secondary);">${raffle.winner_name || (isActive ? '-' : 'Ninguno')}</td>
+                                    <td>${raffle.total_tickets} boletos</td>
+                                    <td>
+                                        <div style="display: flex; gap: 8px;">
+                                            ${isActive ? `<button class="btn-primary" onclick="drawVipRaffle(${raffle.id})" style="padding: 4px 8px; font-size: 11px;"><i class="fas fa-trophy"></i> Sortear</button>` : ''}
+                                            <button class="action-btn" onclick="editVipRaffleModal(${JSON.stringify(raffle).replace(/"/g, '&quot;')})" title="Editar"><i class="fas fa-edit"></i></button>
+                                            <button class="action-btn" onclick="deleteVipRaffle(${raffle.id})" title="Eliminar" style="color: var(--danger);"><i class="fas fa-trash-alt"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+
+        } else if (AdminState.vipResourceSubTab === 'suppliers') {
+            const suppliers = await VipService.getSuppliers();
+            if (suppliers.length === 0) {
+                listArea.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--text-muted);">No hay proveedores registrados.</div>`;
+                return;
+            }
+
+            listArea.innerHTML = `
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Dirección</th>
+                            <th>Productos que ofrece</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${suppliers.map(sup => `
+                            <tr>
+                                <td style="font-weight: 600;">${sup.name}</td>
+                                <td><a href="tel:${sup.phone}">${sup.phone || '-'}</a></td>
+                                <td style="font-size: 13px;">${sup.address || '-'}</td>
+                                <td>
+                                    ${sup.courses ? sup.courses.split(',').map(tag => `
+                                        <span class="badge" style="background: rgba(245, 158, 11, 0.08); color: var(--color-accent); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; display: inline-block; margin: 2px;">
+                                            ${tag.trim()}
+                                        </span>
+                                    `).join('') : '-'}
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="action-btn" onclick="editVipSupplierModal(${JSON.stringify(sup).replace(/"/g, '&quot;')})" title="Editar"><i class="fas fa-edit"></i></button>
+                                        <button class="action-btn" onclick="deleteVipSupplier(${sup.id})" title="Eliminar" style="color: var(--danger);"><i class="fas fa-trash-alt"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+        } else if (AdminState.vipResourceSubTab === 'gifts') {
+            const gifts = await VipService.getGifts();
+            if (gifts.length === 0) {
+                listArea.innerHTML = `<div style="text-align: center; padding: 24px; color: var(--text-muted);">No hay regalos registrados.</div>`;
+                return;
+            }
+
+            listArea.innerHTML = `
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Código / Credenciales</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${gifts.map(gift => {
+                            const isClaimed = gift.status === 'claimed';
+                            return `
+                                <tr>
+                                    <td style="font-weight: 600;">${gift.title}</td>
+                                    <td>
+                                        <span class="badge" style="font-size: 11px;">
+                                            ${gift.type === 'streaming' ? 'Streaming' : gift.type === 'coupon' ? 'Cupón' : 'Gift Card'}
+                                        </span>
+                                    </td>
+                                    <td style="font-family: monospace; font-size: 12px;">${gift.code}</td>
+                                    <td>
+                                        <span class="badge ${isClaimed ? 'badge-sold-out' : 'badge-featured'}">
+                                            ${isClaimed ? 'Reclamado' : 'Disponible'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div style="display: flex; gap: 8px;">
+                                            <button class="action-btn" onclick="editVipGiftModal(${JSON.stringify(gift).replace(/"/g, '&quot;')})" title="Editar"><i class="fas fa-edit"></i></button>
+                                            <button class="action-btn" onclick="deleteVipGift(${gift.id})" title="Eliminar" style="color: var(--danger);"><i class="fas fa-trash-alt"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+    } catch (e) {
+        showToast('Error al cargar recursos VIP: ' + e.message, 'error');
+    }
+}
+
+// Acciones CRUD Admin VIP
+window.deleteVipRaffle = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar este sorteo?')) return;
+    try {
+        const res = await AdminService.deleteVipRaffle(id);
+        showToast(res.message, 'success');
+        renderVipResourcesSubTabContent();
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+};
+
+window.deleteVipSupplier = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar este proveedor?')) return;
+    try {
+        const res = await AdminService.deleteVipSupplier(id);
+        showToast(res.message, 'success');
+        renderVipResourcesSubTabContent();
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+};
+
+window.deleteVipGift = async (id) => {
+    if (!confirm('¿Estás seguro de eliminar este regalo/cuenta?')) return;
+    try {
+        const res = await AdminService.deleteVipGift(id);
+        showToast(res.message, 'success');
+        renderVipResourcesSubTabContent();
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+};
+
+window.drawVipRaffle = async (id) => {
+    if (!confirm('¿Estás seguro de realizar el sorteo ahora de forma aleatoria?')) return;
+    try {
+        const res = await AdminService.drawVipRaffle(id);
+        showToast(res.message, 'success');
+        
+        // Mostrar modal especial de ganador
+        const winner = res.winner;
+        const html = `
+            <div style="text-align: center; padding: 24px;">
+                <div style="font-size: 50px; color: var(--color-accent); margin-bottom: 16px;"><i class="fas fa-trophy animate-pulse"></i></div>
+                <h2 style="font-size: 24px; margin-bottom: 8px;">¡Ganador Seleccionado!</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 24px;">El sistema ha elegido aleatoriamente al siguiente participante:</p>
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1.5px solid var(--color-accent); padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+                    <div style="font-size: 20px; font-weight: 800; color: var(--text-primary);">${winner.name || 'Ninguno'}</div>
+                    <div style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">${winner.email || ''}</div>
+                </div>
+                <button class="btn-primary" onclick="closeAdminModalModal()" style="width: 120px; margin: 0 auto; display: block;">Cerrar</button>
+            </div>
+        `;
+        openAdminModalModal(html);
+        renderVipResourcesSubTabContent();
+    } catch (e) {
+        showToast(e.message || 'Error al sortear.', 'error');
+    }
+};
+
+// Modal de Creación VIP General
+window.openVipResourceCreateModal = () => {
+    const subTab = AdminState.vipResourceSubTab;
+    let html = '';
+
+    if (subTab === 'raffles') {
+        html = `
+            <div style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0;"><i class="fas fa-ticket-alt"></i> Crear Sorteo VIP</h3>
+                    <button class="vip-map-modal-close" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="create-raffle-form" onsubmit="handleCreateVipRaffle(event)">
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">Título del Sorteo</label>
+                        <input type="text" id="raffle-title" class="form-control" placeholder="ej: iPhone 15 Pro Max 256GB" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">Descripción</label>
+                        <textarea id="raffle-desc" class="form-control" placeholder="Detalles del sorteo..." rows="3"></textarea>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">URL de Imagen</label>
+                        <input type="url" id="raffle-img" class="form-control" placeholder="https://unsplash.com/...">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                        <div class="form-group">
+                            <label class="form-label">Costo (Monedas VIP)</label>
+                            <input type="number" id="raffle-cost" class="form-control" value="1" min="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Fecha de Sorteo</label>
+                            <input type="datetime-local" id="raffle-date" class="form-control" required>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Crear Sorteo</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    } else if (subTab === 'suppliers') {
+        html = `
+            <div style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0;"><i class="fas fa-building"></i> Crear Proveedor local</h3>
+                    <button class="vip-map-modal-close" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="create-supplier-form" onsubmit="handleCreateVipSupplier(event)">
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">Nombre del Proveedor</label>
+                        <input type="text" id="sup-name" class="form-control" placeholder="ej: Distribuidora Wilson SAC" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">Teléfono de Contacto</label>
+                        <input type="text" id="sup-phone" class="form-control" placeholder="ej: +51 987654321">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">Dirección Escrita</label>
+                        <input type="text" id="sup-address" class="form-control" placeholder="ej: Gamarra, La Victoria">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">Iframe / URL de Mapa</label>
+                        <input type="url" id="sup-map" class="form-control" placeholder="https://maps.google.com/... (URL del embed)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 24px;">
+                        <label class="form-label">Productos que ofrece (Separados por comas)</label>
+                        <input type="text" id="sup-courses" class="form-control" placeholder="ej: Audífonos, Laptops, Celulares" required>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Crear Proveedor</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    } else if (subTab === 'gifts') {
+        html = `
+            <div style="padding: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0;"><i class="fas fa-gift"></i> Crear Cuenta o Código Regalo</h3>
+                    <button class="vip-map-modal-close" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+                </div>
+                <form id="create-gift-form" onsubmit="handleCreateVipGift(event)">
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">Título del Regalo</label>
+                        <input type="text" id="gift-title" class="form-control" placeholder="ej: Cuenta Netflix Premium VIP (1 Mes)" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <label class="form-label">Código / Credenciales de Acceso</label>
+                        <input type="text" id="gift-code" class="form-control" placeholder="ej: netflix@vip.com | pass: 123" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 24px;">
+                        <label class="form-label">Tipo de Recurso</label>
+                        <select id="gift-type" class="form-control" style="padding: 10px 14px;">
+                            <option value="streaming">Streaming (Netflix, HBO, Prime)</option>
+                            <option value="coupon">Cupón / Licencia Software</option>
+                            <option value="gift_card">Tarjeta Regalo (Amazon, Spotify)</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Crear Regalo</button>
+                    </div>
+                </form>
+            </div>
+        `;
+    }
+
+    openAdminModalModal(html);
+};
+
+// Handlers de creación
+window.handleCreateVipRaffle = async (e) => {
+    e.preventDefault();
+    const data = {
+        title: document.getElementById('raffle-title').value,
+        description: document.getElementById('raffle-desc').value,
+        image_url: document.getElementById('raffle-img').value,
+        coin_cost: Number(document.getElementById('raffle-cost').value),
+        draw_date: document.getElementById('raffle-date').value
+    };
+    try {
+        const res = await AdminService.createVipRaffle(data);
+        showToast(res.message, 'success');
+        closeAdminModalModal();
+        renderVipResourcesSubTabContent();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+window.handleCreateVipSupplier = async (e) => {
+    e.preventDefault();
+    const data = {
+        name: document.getElementById('sup-name').value,
+        phone: document.getElementById('sup-phone').value,
+        address: document.getElementById('sup-address').value,
+        map_url: document.getElementById('sup-map').value,
+        courses: document.getElementById('sup-courses').value
+    };
+    try {
+        const res = await AdminService.createVipSupplier(data);
+        showToast(res.message, 'success');
+        closeAdminModalModal();
+        renderVipResourcesSubTabContent();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+window.handleCreateVipGift = async (e) => {
+    e.preventDefault();
+    const data = {
+        title: document.getElementById('gift-title').value,
+        code: document.getElementById('gift-code').value,
+        type: document.getElementById('gift-type').value
+    };
+    try {
+        const res = await AdminService.createVipGift(data);
+        showToast(res.message, 'success');
+        closeAdminModalModal();
+        renderVipResourcesSubTabContent();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+// Modal de Edición de Sorteo
+window.editVipRaffleModal = (raffle) => {
+    const formattedDate = raffle.draw_date ? raffle.draw_date.slice(0, 16) : '';
+    const html = `
+        <div style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3><i class="fas fa-edit"></i> Editar Sorteo VIP</h3>
+                <button class="vip-map-modal-close" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="edit-raffle-form" onsubmit="handleUpdateVipRaffle(event, ${raffle.id})">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Título del Sorteo</label>
+                    <input type="text" id="raffle-title-edit" class="form-control" value="${raffle.title}" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Descripción</label>
+                    <textarea id="raffle-desc-edit" class="form-control" rows="3">${raffle.description || ''}</textarea>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">URL de Imagen</label>
+                    <input type="url" id="raffle-img-edit" class="form-control" value="${raffle.image_url || ''}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                    <div class="form-group">
+                        <label class="form-label">Costo (Monedas VIP)</label>
+                        <input type="number" id="raffle-cost-edit" class="form-control" value="${raffle.coin_cost}" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Fecha de Sorteo</label>
+                        <input type="datetime-local" id="raffle-date-edit" class="form-control" value="${formattedDate}" required>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label">Estado</label>
+                    <select id="raffle-status-edit" class="form-control" style="padding: 10px 14px;">
+                        <option value="active" ${raffle.status === 'active' ? 'selected' : ''}>Activo</option>
+                        <option value="drawn" ${raffle.status === 'drawn' ? 'selected' : ''}>Finalizado / Sorteado</option>
+                    </select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    `;
+    openAdminModalModal(html);
+};
+
+window.handleUpdateVipRaffle = async (e, id) => {
+    e.preventDefault();
+    const data = {
+        title: document.getElementById('raffle-title-edit').value,
+        description: document.getElementById('raffle-desc-edit').value,
+        image_url: document.getElementById('raffle-img-edit').value,
+        coin_cost: Number(document.getElementById('raffle-cost-edit').value),
+        draw_date: document.getElementById('raffle-date-edit').value,
+        status: document.getElementById('raffle-status-edit').value
+    };
+    try {
+        const res = await AdminService.updateVipRaffle(id, data);
+        showToast(res.message, 'success');
+        closeAdminModalModal();
+        renderVipResourcesSubTabContent();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+// Modal de Edición de Proveedor
+window.editVipSupplierModal = (sup) => {
+    const html = `
+        <div style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3><i class="fas fa-edit"></i> Editar Proveedor VIP</h3>
+                <button class="vip-map-modal-close" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="edit-supplier-form" onsubmit="handleUpdateVipSupplier(event, ${sup.id})">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Nombre del Proveedor</label>
+                    <input type="text" id="sup-name-edit" class="form-control" value="${sup.name}" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Teléfono</label>
+                    <input type="text" id="sup-phone-edit" class="form-control" value="${sup.phone || ''}">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Dirección Escrita</label>
+                    <input type="text" id="sup-address-edit" class="form-control" value="${sup.address || ''}">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">URL de Mapa (Embed)</label>
+                    <input type="url" id="sup-map-edit" class="form-control" value="${sup.map_url || ''}">
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label">Productos que ofrece (Separados por comas)</label>
+                    <input type="text" id="sup-courses-edit" class="form-control" value="${sup.courses || ''}" placeholder="ej: Audífonos, Laptops, Celulares" required>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    `;
+    openAdminModalModal(html);
+};
+
+window.handleUpdateVipSupplier = async (e, id) => {
+    e.preventDefault();
+    const data = {
+        name: document.getElementById('sup-name-edit').value,
+        phone: document.getElementById('sup-phone-edit').value,
+        address: document.getElementById('sup-address-edit').value,
+        map_url: document.getElementById('sup-map-edit').value,
+        courses: document.getElementById('sup-courses-edit').value
+    };
+    try {
+        const res = await AdminService.updateVipSupplier(id, data);
+        showToast(res.message, 'success');
+        closeAdminModalModal();
+        renderVipResourcesSubTabContent();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+// Modal de Edición de Regalo
+window.editVipGiftModal = (gift) => {
+    const html = `
+        <div style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3><i class="fas fa-edit"></i> Editar Regalo/Cuenta VIP</h3>
+                <button class="vip-map-modal-close" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="edit-gift-form" onsubmit="handleUpdateVipGift(event, ${gift.id})">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Título</label>
+                    <input type="text" id="gift-title-edit" class="form-control" value="${gift.title}" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Código / Credenciales</label>
+                    <input type="text" id="gift-code-edit" class="form-control" value="${gift.code}" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label class="form-label">Tipo</label>
+                    <select id="gift-type-edit" class="form-control" style="padding: 10px 14px;">
+                        <option value="streaming" ${gift.type === 'streaming' ? 'selected' : ''}>Streaming</option>
+                        <option value="coupon" ${gift.type === 'coupon' ? 'selected' : ''}>Cupón</option>
+                        <option value="gift_card" ${gift.type === 'gift_card' ? 'selected' : ''}>Gift Card</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 24px;">
+                    <label class="form-label">Estado</label>
+                    <select id="gift-status-edit" class="form-control" style="padding: 10px 14px;">
+                        <option value="available" ${gift.status === 'available' ? 'selected' : ''}>Disponible</option>
+                        <option value="claimed" ${gift.status === 'claimed' ? 'selected' : ''}>Reclamado</option>
+                    </select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    `;
+    openAdminModalModal(html);
+};
+
+window.handleUpdateVipGift = async (e, id) => {
+    e.preventDefault();
+    const data = {
+        title: document.getElementById('gift-title-edit').value,
+        code: document.getElementById('gift-code-edit').value,
+        type: document.getElementById('gift-type-edit').value,
+        status: document.getElementById('gift-status-edit').value
+    };
+    try {
+        const res = await AdminService.updateVipGift(id, data);
+        showToast(res.message, 'success');
+        closeAdminModalModal();
+        renderVipResourcesSubTabContent();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+// Helpers de control del modal
+window.openAdminModalModal = (html) => {
+    const modal = document.getElementById('admin-details-modal');
+    const content = document.getElementById('admin-modal-content-area');
+    if (modal && content) {
+        content.innerHTML = html;
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+    }
+};
+
+window.closeAdminModalModal = () => {
+    const modal = document.getElementById('admin-details-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('open');
+    }
 };

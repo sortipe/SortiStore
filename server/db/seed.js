@@ -344,6 +344,110 @@ async function runSeed() {
     `, ['ENVIOGRATIS', expiryDate.toISOString()]);
     console.log('Cupones creados (BIENVENIDA10, SORTSUMMER25, ENVIOGRATIS).');
 
+    // 6. Sembrar Datos de Prueba para la Zona VIP
+    console.log('Sembrando datos de prueba para la Zona VIP...');
+
+    // Asegurar que el usuario cliente sea VIP en la base de datos de prueba para facilitar tests
+    await db.execute('UPDATE users SET is_vip = 1, vip_coins = 5, vip_last_renovation = ? WHERE id = ?', [new Date().toISOString(), clientUserId]);
+    console.log('Usuario cliente@sortistore.com configurado como VIP con 5 monedas.');
+
+    // Proveedores VIP
+    await db.execute(`
+        INSERT INTO vip_suppliers (name, phone, address, map_url, courses)
+        VALUES (?, ?, ?, ?, ?)
+    `, [
+        'Importaciones Wilson Perú',
+        '+51 987 654 321',
+        'Av. Garcilaso de la Vega 1250, Tienda 204, Lima Centro',
+        'https://maps.google.com/maps?q=Av.%20Garcilaso%20de%20la%20Vega%201250,%20Lima&t=&z=15&ie=UTF8&iwloc=&output=embed',
+        'Curso de Importación de Hardware y Componentes de PC de China'
+    ]);
+
+    await db.execute(`
+        INSERT INTO vip_suppliers (name, phone, address, map_url, courses)
+        VALUES (?, ?, ?, ?, ?)
+    `, [
+        'Distribuidora Textil Gamarra Mayoristas',
+        '+51 912 345 678',
+        'Jr. Huánuco 1580, Interior B, La Victoria, Lima',
+        'https://maps.google.com/maps?q=Gamarra,%20La%20Victoria,%20Lima&t=&z=15&ie=UTF8&iwloc=&output=embed',
+        'Curso de Creación de Marcas de Ropa y Logística Nacional'
+    ]);
+
+    await db.execute(`
+        INSERT INTO vip_suppliers (name, phone, address, map_url, courses)
+        VALUES (?, ?, ?, ?, ?)
+    `, [
+        'Celulares y Gadgets Asia-Lima',
+        '+51 999 888 777',
+        'C.C. Polvos Azules, Sótano Pasaje 10, Tienda 5, La Victoria',
+        'https://maps.google.com/maps?q=Polvos%20Azules,%20Lima&t=&z=15&ie=UTF8&iwloc=&output=embed',
+        'Curso de E-commerce Móvil y Distribución de Accesorios de Telefonía'
+    ]);
+
+    // Regalos VIP / Cuentas Streaming
+    await db.execute(`
+        INSERT INTO vip_gifts (title, code, type, status)
+        VALUES (?, ?, 'streaming', 'available')
+    `, ['Cuenta Netflix Premium VIP (1 Mes)', 'Usuario: netflixvip@sortistore.com | Contraseña: NetflixVIP2026!']);
+
+    await db.execute(`
+        INSERT INTO vip_gifts (title, code, type, status)
+        VALUES (?, ?, 'streaming', 'available')
+    `, ['Acceso HBO Max Compartido', 'Usuario: hbomaxvip@sortistore.com | Contraseña: HBOMaxSorti2026']);
+
+    await db.execute(`
+        INSERT INTO vip_gifts (title, code, type, status)
+        VALUES (?, ?, 'coupon', 'available')
+    `, ['Código Canva Pro 1 Año', 'CANVA-PRO-VIP-2026-X8392-LMS']);
+
+    await db.execute(`
+        INSERT INTO vip_gifts (title, code, type, status, claimed_by_user_id, claimed_at)
+        VALUES (?, ?, 'gift_card', 'claimed', ?, ?)
+    `, ['Tarjeta de Regalo Spotify Premium (Reclamada)', 'SPOTIFY-GIFT-REDEEMED-9921', clientUserId, new Date().toISOString()]);
+
+    // Sorteos VIP
+    const raffle1 = await db.querySingle(`
+        INSERT INTO vip_raffles (title, description, image_url, coin_cost, draw_date, status)
+        VALUES (?, ?, ?, 1, ?, 'active') RETURNING id
+    `, [
+        'Sorteo Mensual: iPhone 15 Pro Max 256GB',
+        'Participa en nuestro espectacular sorteo exclusivo para miembros VIP. Cada ticket cuesta solo 1 moneda VIP. ¡Puedes comprar todos los que quieras para aumentar tus posibilidades!',
+        'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800',
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // En 30 días
+    ]);
+
+    const raffle2 = await db.querySingle(`
+        INSERT INTO vip_raffles (title, description, image_url, coin_cost, draw_date, status)
+        VALUES (?, ?, ?, 2, ?, 'active') RETURNING id
+    `, [
+        'Sorteo Especial: Consola PlayStation 5 Slim',
+        'Llévate la mejor consola de videojuegos a casa. Cada entrada cuesta 2 monedas VIP. ¡Sorteo exclusivo con pocos cupos!',
+        'https://images.unsplash.com/photo-1606813907291-d86edd9b94db?w=800',
+        new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString() // En 15 días
+    ]);
+
+    // Sorteo Finalizado
+    const raffle3 = await db.querySingle(`
+        INSERT INTO vip_raffles (title, description, image_url, coin_cost, draw_date, status, winner_id)
+        VALUES (?, ?, ?, 1, ?, 'drawn', ?) RETURNING id
+    `, [
+        'Sorteo Anterior: Silla Gamer Ergonómica Premium',
+        'Silla premium de alta densidad con soporte lumbar y reposabrazos 4D. El sorteo ha concluido y el ganador ha sido seleccionado.',
+        'https://images.unsplash.com/photo-1598550476439-6847785fce6e?w=800',
+        new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // Hace 5 días
+        clientUserId
+    ]);
+
+    // Insertar participaciones de prueba
+    if (raffle1 && raffle1.id) {
+        await db.execute('INSERT INTO vip_raffle_entries (raffle_id, user_id) VALUES (?, ?)', [raffle1.id, clientUserId]);
+    }
+    if (raffle3 && raffle3.id) {
+        await db.execute('INSERT INTO vip_raffle_entries (raffle_id, user_id) VALUES (?, ?)', [raffle3.id, clientUserId]);
+    }
+
+    console.log('Datos de prueba VIP creados con éxito.');
     console.log('Siembra de la base de datos completada con éxito.');
 }
 

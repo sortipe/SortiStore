@@ -90,6 +90,10 @@ async function router() {
                 renderAuth();
             }
             break;
+        case '#/vip':
+            AppState.currentView = 'vip';
+            renderVipPage();
+            break;
     }
 }
 
@@ -2284,3 +2288,471 @@ function formatDescriptionText(text) {
         .replace(/>/g, '&gt;');
     return clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 }
+
+// ==========================================================================
+// MÓDULO VISUAL DE LA ZONA VIP (CLIENTE)
+// ==========================================================================
+
+AppState.vipActiveTab = 'raffles';
+
+async function renderVipPage() {
+    const viewContainer = document.getElementById('app-view');
+    viewContainer.innerHTML = '';
+
+    const container = document.createElement('div');
+    container.className = 'container';
+    container.style.cssText = 'padding: 40px 24px; min-height: 80vh; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column;';
+    viewContainer.appendChild(container);
+
+    // 1. Validar si el usuario está autenticado
+    if (!AppState.user) {
+        container.innerHTML = `
+            <div class="vip-paywall-container animate-fade-in">
+                <div class="vip-paywall-card">
+                    <div class="vip-paywall-icon"><i class="fas fa-lock"></i></div>
+                    <h2>Área de Acceso Restringido</h2>
+                    <p>La Zona VIP es exclusiva para miembros. Inicia sesión con tu cuenta para verificar si tienes una suscripción VIP activa.</p>
+                    <a href="#/auth" class="btn-primary" style="display: inline-flex; align-items: center; gap: 8px; justify-content: center; margin: 0 auto;">
+                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión / Registrarse
+                    </a>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // 2. Obtener estado VIP actualizado desde el backend (renueva monedas si corresponde)
+    container.innerHTML = `<div class="skeleton" style="height: 100px; width: 100%; border-radius: 16px; margin-bottom: 24px;"></div><div class="skeleton" style="height: 300px; width: 100%;"></div>`;
+    
+    let vipStatus = null;
+    try {
+        vipStatus = await VipService.getStatus();
+        // Sincronizar con el AppState
+        AppState.user.is_vip = vipStatus.is_vip;
+        AppState.user.vip_coins = vipStatus.vip_coins;
+        AppState.user.vip_last_renovation = vipStatus.vip_last_renovation;
+    } catch (err) {
+        console.error('Error al verificar estado VIP:', err);
+        showToast('Error al conectar con la zona VIP.', 'error');
+        container.innerHTML = `<div style="text-align: center; padding: 48px;"><p style="color: var(--danger);">Ocurrió un error al cargar el contenido VIP. Intente de nuevo más tarde.</p></div>`;
+        return;
+    }
+
+    // 3. Si NO es VIP, mostrar banner de pago e instrucciones
+    if (!vipStatus.is_vip) {
+        container.innerHTML = `
+            <div class="vip-paywall-container animate-fade-in">
+                <div class="vip-paywall-card">
+                    <div class="vip-paywall-icon"><i class="fas fa-crown"></i></div>
+                    <h2>Conviértete en Miembro VIP</h2>
+                    <p>Accede a sorteos mensuales de premios de alto valor (como iPhones, consolas, sillas gamer), cupones de regalo y cuentas streaming de regalo (Netflix, HBO Max, etc.), y el catálogo exclusivo de proveedores e importadores directos en Lima para iniciar tu negocio.</p>
+                    
+                    <div class="vip-yape-box">
+                        <div style="background-color: #00d2c6; padding: 4px 10px; border-radius: 20px; color: black; font-weight: 800; font-size: 11px; margin-bottom: 4px;">PAGO 100% SEGURO</div>
+                        <img src="https://images.unsplash.com/photo-1595079676339-1534801ad6cf?w=200" alt="Yape QR" style="width: 100px; height: 100px; object-fit: cover; border-radius: var(--radius-sm); margin-bottom: 8px; border: 1px solid var(--border-color);">
+                        <div class="yape-instruction" style="font-weight: 600; color: var(--text-primary);">Yapea y envía tu captura de pantalla junto con tu código de transacción al siguiente número:</div>
+                        <div class="yape-number">959373021</div>
+                        <a href="https://wa.me/51959373021?text=Hola!%20Quiero%20activar%20mi%20suscripci%C3%B3n%20VIP.%20Adjunto%20comprobante." target="_blank" class="yape-contact-btn">
+                            <i class="fab fa-whatsapp"></i> Enviar Captura a WhatsApp
+                        </a>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    // 4. Si es VIP, pintar la estructura principal
+    const renovationDate = vipStatus.vip_last_renovation ? new Date(new Date(vipStatus.vip_last_renovation).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString() : 'Próximo mes';
+
+    container.innerHTML = `
+        <!-- Cabecera VIP -->
+        <div class="vip-header animate-fade-in">
+            <div class="vip-header-title">
+                <i class="fas fa-crown"></i>
+                <div>
+                    <h1 style="margin: 0; font-size: 28px;">Zona VIP SortiStore</h1>
+                    <p style="color: var(--text-secondary); font-size: 12px; margin: 4px 0 0 0;">
+                        <span class="badge badge-featured" style="background: rgba(245, 158, 11, 0.15); color: var(--color-accent); border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 8px; border-radius: 12px;">Suscripción Activa</span> 
+                        • Próxima renovación de monedas: <strong>${renovationDate}</strong>
+                    </p>
+                </div>
+            </div>
+            <div class="vip-coins-badge">
+                <i class="fas fa-coins"></i>
+                <div style="text-align: left;">
+                    <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Tus Monedas VIP</div>
+                    <div class="vip-coins-val" style="margin: 0;"><span id="vip-coins-count">${vipStatus.vip_coins}</span> Monedas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestañas de Navegación -->
+        <div class="vip-tabs animate-fade-in">
+            <button class="vip-tab-btn ${AppState.vipActiveTab === 'raffles' ? 'active' : ''}" onclick="switchVipTab('raffles')">
+                <i class="fas fa-ticket-alt"></i> Sorteos de Premios
+            </button>
+            <button class="vip-tab-btn ${AppState.vipActiveTab === 'suppliers' ? 'active' : ''}" onclick="switchVipTab('suppliers')">
+                <i class="fas fa-truck-loading"></i> Importadores de Lima
+            </button>
+            <button class="vip-tab-btn ${AppState.vipActiveTab === 'gifts' ? 'active' : ''}" onclick="switchVipTab('gifts')">
+                <i class="fas fa-gift"></i> Cuentas y Códigos Regalo
+            </button>
+        </div>
+
+        <!-- Contenedor dinámico de pestaña -->
+        <div id="vip-tab-content-area" class="animate-fade-in"></div>
+    `;
+
+    renderVipContent();
+}
+
+async function renderVipContent() {
+    const tabArea = document.getElementById('vip-tab-content-area');
+    if (!tabArea) return;
+
+    tabArea.innerHTML = `<div class="skeleton" style="height: 32px; width: 250px; margin-bottom: 24px;"></div><div class="skeleton" style="height: 200px;"></div>`;
+
+    try {
+        if (AppState.vipActiveTab === 'raffles') {
+            const raffles = await VipService.getRaffles();
+            if (raffles.length === 0) {
+                tabArea.innerHTML = `<div style="text-align: center; padding: 48px; border: 1px dashed var(--border-color); border-radius: 12px;"><p style="color: var(--text-muted);">No hay sorteos de premios programados actualmente.</p></div>`;
+                return;
+            }
+
+            let cardsHtml = '';
+            raffles.forEach(raffle => {
+                const isActive = raffle.status === 'active';
+                const drawDateStr = new Date(raffle.draw_date).toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+                
+                let buttonHtml = '';
+                if (isActive) {
+                    buttonHtml = `
+                        <button class="btn-primary" onclick="enterVipRaffle(${raffle.id})" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i class="fas fa-ticket-alt"></i> Comprar Boleto (${raffle.coin_cost} Moneda${raffle.coin_cost > 1 ? 's' : ''})
+                        </button>
+                    `;
+                } else {
+                    buttonHtml = `
+                        <button class="btn-secondary" style="width: 100%; cursor: not-allowed; display: flex; align-items: center; justify-content: center; gap: 8px;" disabled>
+                            <i class="fas fa-lock"></i> Sorteo Finalizado
+                        </button>
+                    `;
+                }
+
+                cardsHtml += `
+                    <div class="raffle-card animate-fade-in">
+                        <div class="raffle-img-wrapper">
+                            <img src="${raffle.image_url || 'https://images.unsplash.com/photo-1595079676339-1534801ad6cf?w=400'}" alt="${raffle.title}" class="raffle-img">
+                            <div class="raffle-badge ${raffle.status}">
+                                ${isActive ? '<i class="fas fa-circle-dot animate-pulse"></i> ACTIVO' : 'CONCLUIDO'}
+                            </div>
+                        </div>
+                        <div class="raffle-info">
+                            <h3 class="raffle-title">${raffle.title}</h3>
+                            <p class="raffle-desc">${raffle.description || ''}</p>
+                            
+                            ${raffle.status === 'drawn' ? `
+                                <div class="winner-announce-box animate-pulse">
+                                    <i class="fas fa-trophy"></i> Ganador: <strong>${raffle.winner_name || 'Sin participantes'}</strong>
+                                </div>
+                            ` : ''}
+
+                            <div class="raffle-meta">
+                                <div class="raffle-meta-item">
+                                    <span>Costo por entrada:</span>
+                                    <span class="raffle-meta-val"><i class="fas fa-coins" style="color: var(--color-accent)"></i> ${raffle.coin_cost} VIP</span>
+                                </div>
+                                <div class="raffle-meta-item">
+                                    <span>Fecha de sorteo:</span>
+                                    <span class="raffle-meta-val">${drawDateStr}</span>
+                                </div>
+                                <div class="raffle-meta-item">
+                                    <span>Tus participaciones:</span>
+                                    <span class="raffle-meta-val" style="color: var(--color-secondary);">${raffle.user_tickets} boleto${raffle.user_tickets !== 1 ? 's' : ''}</span>
+                                </div>
+                                <div class="raffle-meta-item">
+                                    <span>Total boletos comprados:</span>
+                                    <span class="raffle-meta-val">${raffle.total_tickets}</span>
+                                </div>
+                            </div>
+                            
+                            ${buttonHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            tabArea.innerHTML = `
+                <div style="margin-bottom: 24px;">
+                    <h2 style="font-size: 22px; margin-bottom: 8px;">Sorteos VIP de Premios</h2>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">Usa tus monedas VIP de renovación mensual para participar. Puedes adquirir múltiples boletos para aumentar tus probabilidades.</p>
+                </div>
+                <div class="vip-grid">${cardsHtml}</div>
+            `;
+
+        } else if (AppState.vipActiveTab === 'suppliers') {
+            const suppliers = await VipService.getSuppliers();
+            if (suppliers.length === 0) {
+                tabArea.innerHTML = `<div style="text-align: center; padding: 48px; border: 1px dashed var(--border-color); border-radius: 12px;"><p style="color: var(--text-muted);">No hay proveedores registrados en la base de datos.</p></div>`;
+                return;
+            }
+
+            let cardsHtml = '';
+            suppliers.forEach(supplier => {
+                // Crear iframe o modal
+                const escapedMapUrl = supplier.map_url ? supplier.map_url.replace(/"/g, '&quot;') : '';
+                const mapBtn = supplier.map_url ? `
+                    <button class="btn-outline" onclick="openVipMap('${escapedMapUrl}', '${supplier.name.replace(/'/g, "\\'")}')" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <i class="fas fa-map-marked-alt"></i> Ver en Mapa
+                    </button>
+                ` : '';
+
+                cardsHtml += `
+                    <div class="supplier-card animate-fade-in">
+                        <div class="supplier-header">
+                            <div class="supplier-avatar"><i class="fas fa-building"></i></div>
+                            <h3 class="supplier-name">${supplier.name}</h3>
+                        </div>
+                        <div class="supplier-body">
+                            <div class="supplier-detail-item">
+                                <i class="fas fa-phone-alt"></i>
+                                <div>
+                                    <div style="font-size: 10px; color: var(--text-muted);">TELÉFONO DE CONTACTO</div>
+                                    <a href="tel:${supplier.phone}" style="color: var(--color-primary); font-weight: 600; font-size: 14px;">${supplier.phone || 'Sin número'}</a>
+                                </div>
+                            </div>
+                            <div class="supplier-detail-item">
+                                <i class="fas fa-map-pin"></i>
+                                <div>
+                                    <div style="font-size: 10px; color: var(--text-muted);">DIRECCIÓN ESCRITA</div>
+                                    <div>${supplier.address || 'Sin dirección'}</div>
+                                </div>
+                            </div>
+                            
+                            ${supplier.courses ? `
+                                <div class="supplier-course-box" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px; margin-top: 12px;">
+                                    <div style="font-size: 10px; color: var(--text-muted); font-weight: 800; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">PRODUCTOS QUE OFRECE</div>
+                                    <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                                        ${supplier.courses.split(',').map(tag => `
+                                            <span class="badge" style="background: rgba(245, 158, 11, 0.08); color: var(--color-accent); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                                <i class="fas fa-tag" style="font-size: 9px; opacity: 0.7;"></i> ${tag.trim()}
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="supplier-action">
+                            <a href="https://wa.me/${supplier.phone ? supplier.phone.replace(/[^0-9]/g, '') : ''}" target="_blank" class="btn-primary" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <i class="fab fa-whatsapp"></i> Chat WhatsApp
+                            </a>
+                            ${mapBtn}
+                        </div>
+                    </div>
+                `;
+            });
+ 
+            tabArea.innerHTML = `
+                <div style="margin-bottom: 24px;">
+                    <h2 style="font-size: 22px; margin-bottom: 8px;">Proveedores e Importadores Mayoristas de Lima</h2>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">Contacta directamente con importadores autorizados en Lima Centro, Gamarra y Polvos Azules. Revisa las categorías de productos que ofrece cada distribuidor.</p>
+                </div>
+                <div class="vip-grid">${cardsHtml}</div>
+            `;
+
+        } else if (AppState.vipActiveTab === 'gifts') {
+            const gifts = await VipService.getGifts();
+            if (gifts.length === 0) {
+                tabArea.innerHTML = `<div style="text-align: center; padding: 48px; border: 1px dashed var(--border-color); border-radius: 12px;"><p style="color: var(--text-muted);">No hay códigos de regalo o cuentas de streaming disponibles en este momento.</p></div>`;
+                return;
+            }
+
+            let cardsHtml = '';
+            gifts.forEach(gift => {
+                const isClaimed = gift.status === 'claimed';
+                const isMyClaim = gift.claimed_by_user_id === AppState.user.id;
+                
+                let actionHtml = '';
+                let codeDisplay = '';
+                let stockHtml = '';
+
+                if (isClaimed) {
+                    if (isMyClaim) {
+                        stockHtml = `
+                            <div style="font-size: 12px; color: var(--color-secondary); font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                <i class="fas fa-check-circle"></i> Disponible: 0 unidades (Reclamado)
+                            </div>
+                        `;
+                        codeDisplay = `
+                            <div class="gift-code-box">
+                                <span class="gift-code-text" id="gift-code-val-${gift.id}">${gift.code}</span>
+                                <button class="gift-btn-copy" onclick="copyToClipboard('${gift.code.replace(/'/g, "\\'")}', 'gift-copy-btn-${gift.id}')" id="gift-copy-btn-${gift.id}">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            </div>
+                        `;
+                        actionHtml = `
+                            <div style="color: var(--color-secondary); font-size: 12px; font-weight: 700; text-align: center; padding-top: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                <i class="fas fa-check-double"></i> Reclamado por ti
+                            </div>
+                        `;
+                    } else {
+                        stockHtml = `
+                            <div style="font-size: 12px; color: var(--danger); font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                                <i class="fas fa-times-circle"></i> Agotado: 0 unidades restantes
+                            </div>
+                        `;
+                        codeDisplay = `
+                            <div class="gift-code-box" style="filter: blur(4px); user-select: none; opacity: 0.5;">
+                                <span class="gift-code-text">RESERVADO / AGOTADO</span>
+                            </div>
+                        `;
+                        actionHtml = `
+                            <button class="btn-secondary" style="width: 100%; cursor: not-allowed; opacity: 0.6; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;" disabled>
+                                <i class="fas fa-ban"></i> Código Agotado
+                            </button>
+                            <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 6px;">
+                                Canjeado por: <strong style="color: var(--color-accent); font-weight: 600;">${gift.claimed_by_name || 'Otro usuario VIP'}</strong>
+                            </div>
+                        `;
+                    }
+                } else {
+                    stockHtml = `
+                        <div style="font-size: 12px; color: var(--success); font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+                            <i class="fas fa-box-open"></i> Disponible: 1 unidad restante
+                        </div>
+                    `;
+                    codeDisplay = `
+                        <div class="gift-code-box" style="background: rgba(255, 255, 255, 0.02);">
+                            <span class="gift-code-text" style="color: var(--text-muted); font-style: italic; font-size: 11px;">Códigos ocultos hasta reclamar...</span>
+                        </div>
+                    `;
+                    actionHtml = `
+                        <button class="btn-primary" onclick="claimVipGift(${gift.id})" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i class="fas fa-lock-open"></i> Revelar / Reclamar Regalo
+                        </button>
+                    `;
+                }
+
+                cardsHtml += `
+                    <div class="gift-card animate-fade-in">
+                        <div class="gift-icon-wrapper">
+                            <i class="${gift.type === 'streaming' ? 'fas fa-tv' : gift.type === 'coupon' ? 'fas fa-ticket-alt' : 'fas fa-gift'}"></i>
+                        </div>
+                        <span class="gift-type-badge ${gift.type}">${gift.type === 'streaming' ? 'Streaming' : gift.type === 'coupon' ? 'Cupón' : 'Tarjeta Regalo'}</span>
+                        <h3 class="gift-title" style="margin-bottom: 4px;">${gift.title}</h3>
+                        ${stockHtml}
+                        ${codeDisplay}
+                        ${actionHtml}
+                    </div>
+                `;
+            });
+
+            tabArea.innerHTML = `
+                <div style="margin-bottom: 24px;">
+                    <h2 style="font-size: 22px; margin-bottom: 8px;">Cuentas Streaming y Códigos de Regalo</h2>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin: 0;">Reclama cuentas de streaming gratuitas de Netflix, Prime Video o HBO Max y códigos de activación o licencias exclusivos de software y cupones de descuento.</p>
+                </div>
+                <div class="vip-grid">${cardsHtml}</div>
+            `;
+        }
+    } catch (e) {
+        console.error('Error al renderizar contenido VIP:', e);
+        tabArea.innerHTML = `<div style="text-align: center; padding: 48px;"><p style="color: var(--danger);">Error al cargar los datos. Vuelve a intentarlo en unos instantes.</p></div>`;
+    }
+}
+
+// Acción de cambiar pestaña interna VIP
+window.switchVipTab = (tabName) => {
+    AppState.vipActiveTab = tabName;
+    const tabBtns = document.querySelectorAll('.vip-tab-btn');
+    tabBtns.forEach(btn => btn.classList.remove('active'));
+    
+    // Encontrar botón correspondiente
+    const targetIdx = tabName === 'raffles' ? 0 : tabName === 'suppliers' ? 1 : 2;
+    if (tabBtns[targetIdx]) {
+        tabBtns[targetIdx].classList.add('active');
+    }
+
+    renderVipContent();
+};
+
+// Participar en sorteo VIP
+window.enterVipRaffle = async (raffleId) => {
+    try {
+        const res = await VipService.enterRaffle(raffleId);
+        showToast(res.message, 'success');
+        
+        // Actualizar balance en el header y UI
+        AppState.user.vip_coins = res.vip_coins;
+        const countSpan = document.getElementById('vip-coins-count');
+        if (countSpan) countSpan.textContent = res.vip_coins;
+        
+        // Recargar contenido de la pestaña
+        renderVipContent();
+    } catch (e) {
+        showToast(e.message || 'Error al inscribirse en el sorteo.', 'error');
+    }
+};
+
+// Reclamar regalo VIP
+window.claimVipGift = async (giftId) => {
+    try {
+        const res = await VipService.claimGift(giftId);
+        showToast('¡Regalo reclamado con éxito!', 'success');
+        renderVipContent();
+    } catch (e) {
+        showToast(e.message || 'Error al reclamar el regalo.', 'error');
+    }
+};
+
+// Abrir modal con iframe del mapa de proveedores
+window.openVipMap = (mapUrl, supplierName) => {
+    let modal = document.getElementById('vip-map-modal-container');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'vip-map-modal-container';
+        modal.className = 'vip-map-modal';
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div class="vip-map-modal-content animate-fade-in">
+            <div class="vip-map-modal-header">
+                <h3 style="margin: 0; font-size: 18px;"><i class="fas fa-map-marked-alt" style="color: var(--color-primary); margin-right: 8px;"></i> Ubicación de: ${supplierName}</h3>
+                <button class="vip-map-modal-close" onclick="closeVipMap()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="vip-map-iframe-container">
+                <iframe src="${mapUrl}" allowfullscreen="" loading="lazy"></iframe>
+            </div>
+        </div>
+    `;
+    modal.classList.add('open');
+};
+
+window.closeVipMap = () => {
+    const modal = document.getElementById('vip-map-modal-container');
+    if (modal) {
+        modal.classList.remove('open');
+    }
+};
+
+// Función auxiliar para copiar al portapapeles
+window.copyToClipboard = (text, elementId) => {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('Copiado al portapapeles', 'success');
+        const btn = document.getElementById(elementId);
+        if (btn) {
+            btn.innerHTML = `<i class="fas fa-check" style="color: var(--success);"></i>`;
+            setTimeout(() => {
+                btn.innerHTML = `<i class="far fa-copy"></i>`;
+            }, 2000);
+        }
+    }).catch(err => {
+        showToast('Error al copiar el texto', 'error');
+    });
+};
+

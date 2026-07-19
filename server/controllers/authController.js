@@ -94,7 +94,10 @@ exports.login = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                sortiBalance
+                sortiBalance,
+                is_vip: !!user.is_vip,
+                vip_coins: user.vip_coins || 0,
+                vip_last_renovation: user.vip_last_renovation
             }
         });
     } catch (error) {
@@ -106,22 +109,47 @@ exports.login = async (req, res) => {
 // Obtener datos del usuario autenticado
 exports.getMe = async (req, res) => {
     try {
-        const user = await db.querySingle('SELECT id, name, email, role FROM users WHERE id = ?', [req.user.id]);
+        let user = await db.querySingle('SELECT id, name, email, role, is_vip, vip_coins, vip_last_renovation FROM users WHERE id = ?', [req.user.id]);
         if (!user) {
             return res.status(404).json({ error: 'Usuario no encontrado.' });
+        }
+
+        // Ejecutar renovación VIP mensual si aplica
+        if (user.is_vip) {
+            const now = new Date();
+            if (user.vip_last_renovation) {
+                const lastRenovation = new Date(user.vip_last_renovation);
+                const diffTime = now - lastRenovation;
+                const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                if (diffDays >= 30) {
+                    await db.execute('UPDATE users SET vip_coins = 5, vip_last_renovation = ? WHERE id = ?', [now.toISOString(), user.id]);
+                    user.vip_coins = 5;
+                    user.vip_last_renovation = now.toISOString();
+                }
+            } else {
+                await db.execute('UPDATE users SET vip_coins = 5, vip_last_renovation = ? WHERE id = ?', [now.toISOString(), user.id]);
+                user.vip_coins = 5;
+                user.vip_last_renovation = now.toISOString();
+            }
         }
 
         // Obtener saldo de monedas si es cliente
         let sortiBalance = 0;
         if (user.role === 'client') {
-            const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [user.id]);
+            const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [req.user.id]);
             sortiBalance = wallet ? wallet.sorti_balance : 0;
         }
 
         return res.json({
             user: {
-                ...user,
-                sortiBalance
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                sortiBalance,
+                is_vip: !!user.is_vip,
+                vip_coins: user.vip_coins || 0,
+                vip_last_renovation: user.vip_last_renovation
             }
         });
     } catch (error) {

@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role TEXT CHECK(role IN ('admin', 'employee', 'client')) DEFAULT 'client',
+    is_vip BOOLEAN DEFAULT 0,
+    vip_coins INTEGER DEFAULT 0,
+    vip_last_renovation DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -201,4 +204,52 @@ CREATE TABLE IF NOT EXISTS user_lesson_progress (
 CREATE TABLE IF NOT EXISTS system_settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
+);
+
+-- Proveedores Importadores de Lima (Solo VIP)
+CREATE TABLE IF NOT EXISTS vip_suppliers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    phone TEXT,
+    address TEXT,
+    map_url TEXT,
+    courses TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Regalos VIP (Cuentas de streaming, códigos de regalo, cupones)
+CREATE TABLE IF NOT EXISTS vip_gifts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    code TEXT NOT NULL,
+    type TEXT CHECK(type IN ('streaming', 'coupon', 'gift_card')) NOT NULL,
+    status TEXT CHECK(status IN ('available', 'claimed')) DEFAULT 'available',
+    claimed_by_user_id INTEGER,
+    claimed_at DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(claimed_by_user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Sorteos VIP
+CREATE TABLE IF NOT EXISTS vip_raffles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT,
+    coin_cost INTEGER DEFAULT 1,
+    draw_date DATETIME,
+    winner_id INTEGER,
+    status TEXT CHECK(status IN ('active', 'drawn')) DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(winner_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Entradas para Sorteos VIP
+CREATE TABLE IF NOT EXISTS vip_raffle_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    raffle_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(raffle_id) REFERENCES vip_raffles(id) ON DELETE CASCADE,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );

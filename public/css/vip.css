@@ -1,0 +1,581 @@
+/* ==========================================================================
+   ESTILOS PREMIUM PARA LA ZONA VIP (SORTISTORE)
+   ========================================================================== */
+
+/* Cabecera de la Zona VIP */
+.vip-header {
+    background: linear-gradient(135deg, rgba(20, 21, 33, 0.95) 0%, rgba(30, 24, 15, 0.95) 100%);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    box-shadow: var(--shadow-gold);
+    position: relative;
+    overflow: hidden;
+}
+
+.vip-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0) 70%);
+    pointer-events: none;
+}
+
+.vip-header-title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.vip-header-title i {
+    font-size: 38px;
+    color: var(--color-accent);
+    filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));
+    animation: pulse-gold 2s infinite ease-in-out;
+}
+
+.vip-header-title h1 {
+    font-size: 32px;
+    margin-bottom: 4px;
+    background: linear-gradient(to right, #ffffff 30%, #f59e0b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.vip-coins-badge {
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    border-radius: var(--radius-md);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+}
+
+.vip-coins-badge i {
+    font-size: 24px;
+    color: var(--color-accent);
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
+}
+
+.vip-coins-val {
+    font-size: 22px;
+    font-family: var(--font-heading);
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+/* Paywall / Tarjeta No VIP */
+.vip-paywall-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 24px;
+}
+
+.vip-paywall-card {
+    background: linear-gradient(145deg, var(--bg-card) 0%, rgba(20, 22, 36, 0.95) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 48px 32px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    overflow: hidden;
+}
+
+.vip-paywall-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to right, var(--color-primary), var(--color-accent));
+}
+
+.vip-paywall-icon {
+    font-size: 64px;
+    color: var(--color-accent);
+    margin-bottom: 24px;
+    filter: drop-shadow(0 4px 15px rgba(245, 158, 11, 0.3));
+}
+
+.vip-paywall-card h2 {
+    font-size: 28px;
+    margin-bottom: 16px;
+}
+
+.vip-paywall-card p {
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    font-size: 16px;
+    line-height: 1.7;
+}
+
+.vip-yape-box {
+    background: rgba(147, 51, 234, 0.08);
+    border: 1.5px dashed rgba(147, 51, 234, 0.4);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    max-width: 500px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+.yape-logo {
+    height: 38px;
+    filter: drop-shadow(0 2px 4px rgba(147, 51, 234, 0.2));
+}
+
+.yape-number {
+    font-size: 26px;
+    font-family: var(--font-heading);
+    font-weight: 800;
+    color: #a855f7;
+    letter-spacing: 1px;
+}
+
+.yape-instruction {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.yape-contact-btn {
+    background: #a855f7;
+    color: white !important;
+    border: none;
+    padding: 12px 28px;
+    font-weight: bold;
+    border-radius: var(--radius-md);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+    transition: all 0.3s ease;
+    margin-top: 10px;
+}
+
+.yape-contact-btn:hover {
+    background: #9333ea;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(168, 85, 247, 0.4);
+}
+
+/* Navegación por Pestañas VIP */
+.vip-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 16px;
+}
+
+.vip-tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    padding: 12px 24px;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.vip-tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.vip-tab-btn.active {
+    color: var(--color-accent);
+    background: rgba(245, 158, 11, 0.08);
+    border-color: rgba(245, 158, 11, 0.25);
+}
+
+/* Sorteos VIP */
+.vip-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 24px;
+}
+
+.raffle-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+}
+
+.raffle-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(245, 158, 11, 0.2);
+    box-shadow: var(--shadow-md);
+}
+
+.raffle-img-wrapper {
+    height: 180px;
+    position: relative;
+    background-color: #1e293b;
+    overflow: hidden;
+}
+
+.raffle-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.raffle-card:hover .raffle-img {
+    transform: scale(1.05);
+}
+
+.raffle-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(10, 11, 16, 0.85);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 6px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+}
+
+.raffle-badge.active {
+    color: var(--success);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.raffle-badge.drawn {
+    color: var(--text-muted);
+}
+
+.raffle-info {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.raffle-title {
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.raffle-desc {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    flex: 1;
+}
+
+.raffle-meta {
+    border-top: 1px solid var(--border-color);
+    padding-top: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.raffle-meta-item {
+    display: flex;
+    justify-content: space-between;
+}
+
+.raffle-meta-val {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.winner-announce-box {
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+    color: var(--success);
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+/* Proveedores VIP */
+.supplier-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.supplier-card:hover {
+    border-color: var(--color-primary);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-sm);
+}
+
+.supplier-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.supplier-avatar {
+    width: 48px;
+    height: 48px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    font-size: 20px;
+}
+
+.supplier-name {
+    font-size: 18px;
+    color: var(--text-primary);
+}
+
+.supplier-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.supplier-detail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.supplier-detail-item i {
+    width: 16px;
+    margin-top: 3px;
+    color: var(--color-primary);
+}
+
+.supplier-course-box {
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 3px solid var(--color-secondary);
+    padding: 10px 14px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 12px;
+}
+
+.supplier-action {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.supplier-action a, .supplier-action button {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    border-radius: var(--radius-sm);
+}
+
+/* Cuentas & Regalos VIP */
+.gift-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.gift-card:hover {
+    border-color: var(--color-accent);
+}
+
+.gift-icon-wrapper {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 28px;
+    color: rgba(245, 158, 11, 0.2);
+}
+
+.gift-title {
+    font-size: 17px;
+    padding-right: 32px;
+}
+
+.gift-type-badge {
+    align-self: flex-start;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.gift-type-badge.streaming {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.gift-type-badge.coupon {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.gift-type-badge.gift_card {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.gift-code-box {
+    background: rgba(10, 11, 16, 0.6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-family: monospace;
+    font-size: 12px;
+    word-break: break-all;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.gift-code-text {
+    flex: 1;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+}
+
+.gift-btn-copy {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    transition: color 0.2s ease;
+}
+
+.gift-btn-copy:hover {
+    color: var(--color-accent);
+}
+
+/* Modales VIP */
+.vip-map-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 11, 16, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.vip-map-modal.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.vip-map-modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 650px;
+    padding: 24px;
+    position: relative;
+    box-shadow: var(--shadow-lg);
+}
+
+.vip-map-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.vip-map-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.vip-map-modal-close:hover {
+    color: var(--danger);
+}
+
+.vip-map-iframe-container {
+    width: 100%;
+    height: 350px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.vip-map-iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Animaciones */
+@keyframes pulse-gold {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));
+    }
+    50% {
+        transform: scale(1.08);
+        filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.8));
+    }
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.5));
+    }
+}

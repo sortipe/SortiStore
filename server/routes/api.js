@@ -7,6 +7,7 @@ const products = require('../controllers/productController');
 const orders = require('../controllers/orderController');
 const customer = require('../controllers/customerController');
 const admin = require('../controllers/adminController');
+const vip = require('../controllers/vipController');
 
 // Middlewares
 const { authenticate, requireAuth, requireRole } = require('../middleware/auth');
@@ -40,6 +41,14 @@ router.post('/customer/courses/lesson-complete', requireAuth, customer.toggleLes
 router.get('/customer/wallet', requireAuth, customer.getWallet);
 router.get('/customer/coupons', requireAuth, customer.getCoupons);
 router.put('/customer/profile', requireAuth, customer.updateProfile);
+
+// Rutas VIP - Clientes
+router.get('/vip/status', requireAuth, vip.getVipStatus);
+router.get('/vip/suppliers', requireAuth, vip.getSuppliers);
+router.get('/vip/gifts', requireAuth, vip.getGifts);
+router.post('/vip/gifts/:id/claim', requireAuth, vip.claimGift);
+router.get('/vip/raffles', requireAuth, vip.getRaffles);
+router.post('/vip/raffles/:id/enter', requireAuth, vip.enterRaffle);
 
 // ==========================================
 // RUTAS PRIVADAS - EMPLEADOS / ADMINISTRADORES
@@ -75,5 +84,26 @@ router.delete('/admin/categories/:id', requireAuth, adminOrEmployee, admin.delet
 // Ajustes del Sistema
 router.get('/admin/settings', requireAuth, adminOrEmployee, admin.getSettings);
 router.put('/admin/settings', requireAuth, adminOnly, admin.updateSettings);
+
+// Gestión VIP Admin (Admin / Empleado)
+router.get('/admin/vip/users', requireAuth, adminOrEmployee, vip.adminGetUsers);
+router.put('/admin/vip/users/:id/status', requireAuth, adminOnly, vip.adminToggleUserVip);
+router.put('/admin/vip/users/:id/coins', requireAuth, adminOnly, vip.adminAdjustUserVipCoins);
+
+// CRUD Proveedores VIP
+router.post('/admin/vip/suppliers', requireAuth, adminOrEmployee, vip.adminCreateSupplier);
+router.put('/admin/vip/suppliers/:id', requireAuth, adminOrEmployee, vip.adminUpdateSupplier);
+router.delete('/admin/vip/suppliers/:id', requireAuth, adminOrEmployee, vip.adminDeleteSupplier);
+
+// CRUD Cuentas Regalo VIP
+router.post('/admin/vip/gifts', requireAuth, adminOrEmployee, vip.adminCreateGift);
+router.put('/admin/vip/gifts/:id', requireAuth, adminOrEmployee, vip.adminUpdateGift);
+router.delete('/admin/vip/gifts/:id', requireAuth, adminOrEmployee, vip.adminDeleteGift);
+
+// CRUD Sorteos VIP
+router.post('/admin/vip/raffles', requireAuth, adminOrEmployee, vip.adminCreateRaffle);
+router.put('/admin/vip/raffles/:id', requireAuth, adminOrEmployee, vip.adminUpdateRaffle);
+router.delete('/admin/vip/raffles/:id', requireAuth, adminOrEmployee, vip.adminDeleteRaffle);
+router.post('/admin/vip/raffles/:id/draw', requireAuth, adminOrEmployee, vip.adminDrawRaffle);
 
 module.exports = router;

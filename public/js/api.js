@@ -251,5 +251,123 @@ const AdminService = {
             method: 'PUT',
             body: JSON.stringify(settingsData)
         });
+    },
+
+    async getVipUsers() {
+        return await apiCall('/admin/vip/users');
+    },
+
+    async toggleVipStatus(userId, isVip) {
+        return await apiCall(`/admin/vip/users/${userId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ is_vip: isVip ? 1 : 0 })
+        });
+    },
+
+    async adjustVipCoins(userId, coins) {
+        return await apiCall(`/admin/vip/users/${userId}/coins`, {
+            method: 'PUT',
+            body: JSON.stringify({ coins })
+        });
+    },
+
+    // CRUD Proveedores
+    async createVipSupplier(data) {
+        return await apiCall('/admin/vip/suppliers', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async updateVipSupplier(id, data) {
+        return await apiCall(`/admin/vip/suppliers/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async deleteVipSupplier(id) {
+        return await apiCall(`/admin/vip/suppliers/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    // CRUD Cuentas Regalo
+    async createVipGift(data) {
+        return await apiCall('/admin/vip/gifts', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async updateVipGift(id, data) {
+        return await apiCall(`/admin/vip/gifts/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async deleteVipGift(id) {
+        return await apiCall(`/admin/vip/gifts/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    // CRUD Sorteos
+    async createVipRaffle(data) {
+        return await apiCall('/admin/vip/raffles', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async updateVipRaffle(id, data) {
+        return await apiCall(`/admin/vip/raffles/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async deleteVipRaffle(id) {
+        return await apiCall(`/admin/vip/raffles/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    async drawVipRaffle(id) {
+        return await apiCall(`/admin/vip/raffles/${id}/draw`, {
+            method: 'POST'
+        });
+    }
+};
+
+// Servicios de la Zona VIP para Clientes
+const VipService = {
+    async getStatus() {
+        return await apiCall('/vip/status');
+    },
+
+    async getSuppliers() {
+        return await apiCall('/vip/suppliers');
+    },
+
+    async getGifts() {
+        return await apiCall('/vip/gifts');
+    },
+
+    async claimGift(id) {
+        return await apiCall(`/vip/gifts/${id}/claim`, {
+            method: 'POST'
+        });
+    },
+
+    async getRaffles() {
+        return await apiCall('/vip/raffles');
+    },
+
+    async enterRaffle(id) {
+        return await apiCall(`/vip/raffles/${id}/enter`, {
+            method: 'POST'
+        });
     }
 };
