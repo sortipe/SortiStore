@@ -571,40 +571,131 @@ async function renderShopPage() {
         <div class="main-storefront animate-fade-in" style="margin-top: 40px;">
             <div class="section-header">
                 <h2><i class="fas fa-store" style="color: var(--color-primary);"></i> Tienda de Productos Físicos</h2>
-                <span style="color: var(--text-muted); font-weight: 600;">Cargando productos...</span>
+                <span style="color: var(--text-muted); font-weight: 600;">Cargando tienda...</span>
             </div>
             <div class="skeleton" style="height: 350px; border-radius: var(--radius-lg);"></div>
         </div>
     `;
 
     try {
-        const allProducts = await ShopService.getProducts();
-        const products = allProducts.filter(p => p.type === 'physical');
-
+        const categories = await ShopService.getCategories();
+        
         container.innerHTML = `
             <div class="main-storefront animate-fade-in" style="margin-top: 40px;">
                 <div class="section-header">
                     <h2><i class="fas fa-store" style="color: var(--color-primary);"></i> Tienda de Productos Físicos</h2>
-                    <span style="color: var(--text-muted); font-weight: 600;">${products.length} productos físicos encontrados</span>
+                    <span id="shop-results-count" style="color: var(--text-muted); font-weight: 600;">Cargando...</span>
                 </div>
                 
-                ${products.length === 0 ? `
-                    <div style="text-align: center; padding: 80px 24px; background-color: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
-                        <i class="fas fa-box-open" style="font-size: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
-                        <h3>Aún no hay productos físicos disponibles en la tienda.</h3>
-                        <a href="#/" class="btn-primary" style="margin-top: 20px;">Explorar Inicio</a>
+                <div class="shop-filter-bar glass-panel" style="display: flex; flex-wrap: wrap; gap: 16px; padding: 16px; border-radius: var(--radius-md); margin-bottom: 24px; align-items: flex-end;">
+                    <div class="filter-group" style="flex: 1; min-width: 200px;">
+                        <label style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block;">Buscar Producto</label>
+                        <div style="position: relative;">
+                            <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                            <input type="text" id="shop-search" class="form-control" placeholder="Nombre, marca o SKU..." style="padding-left: 36px;" onkeyup="debounceApplyFilters()">
+                        </div>
                     </div>
-                ` : `
-                    <div class="product-grid">
-                        ${products.map(p => getProductCardHtml(p)).join('')}
+                    
+                    <div class="filter-group" style="min-width: 150px;">
+                        <label style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block;">Categoría</label>
+                        <select id="shop-category" class="form-control" onchange="applyShopFilters()">
+                            <option value="">Todas las categorías</option>
+                            ${categories.map(c => `<option value="${c.slug}">${c.name}</option>`).join('')}
+                        </select>
                     </div>
-                `}
+                    
+                    <div class="filter-group price-range-group" style="display: flex; gap: 8px; min-width: 180px;">
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block;">Precio Mín (S/.)</label>
+                            <input type="number" id="shop-min-price" class="form-control" placeholder="Min" min="0" style="width: 90px;" onkeyup="if(event.key==='Enter') applyShopFilters()">
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block;">Precio Máx (S/.)</label>
+                            <input type="number" id="shop-max-price" class="form-control" placeholder="Max" min="0" style="width: 90px;" onkeyup="if(event.key==='Enter') applyShopFilters()">
+                        </div>
+                    </div>
+                    
+                    <div class="filter-group" style="min-width: 150px;">
+                        <label style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block;">Ordenar por</label>
+                        <select id="shop-sort" class="form-control" onchange="applyShopFilters()">
+                            <option value="newest">Más recientes</option>
+                            <option value="price_asc">Precio: Menor a Mayor</option>
+                            <option value="price_desc">Precio: Mayor a Menor</option>
+                            <option value="name_asc">Nombre: A - Z</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <button class="btn-primary" onclick="applyShopFilters()" style="padding: 12px 20px;"><i class="fas fa-filter"></i> Filtrar</button>
+                    </div>
+                </div>
+                
+                <div id="shop-products-container">
+                    <div class="product-grid">${Skeletons.getProductGrid(4)}</div>
+                </div>
             </div>
         `;
+        
+        // Initial load
+        applyShopFilters();
+        
     } catch (error) {
         showToast('Error al cargar la tienda física', 'error');
     }
 }
+
+let shopFilterTimeout = null;
+window.debounceApplyFilters = () => {
+    if (shopFilterTimeout) clearTimeout(shopFilterTimeout);
+    shopFilterTimeout = setTimeout(() => {
+        applyShopFilters();
+    }, 500);
+};
+
+window.applyShopFilters = async () => {
+    const container = document.getElementById('shop-products-container');
+    const countEl = document.getElementById('shop-results-count');
+    if (!container) return;
+    
+    container.innerHTML = `<div class="product-grid">${Skeletons.getProductGrid(4)}</div>`;
+    
+    const q = document.getElementById('shop-search').value;
+    const category = document.getElementById('shop-category').value;
+    const min_price = document.getElementById('shop-min-price').value;
+    const max_price = document.getElementById('shop-max-price').value;
+    const sort = document.getElementById('shop-sort').value;
+    
+    const filters = { type: 'physical' };
+    if (q) filters.q = q;
+    if (category) filters.category = category;
+    if (min_price) filters.min_price = min_price;
+    if (max_price) filters.max_price = max_price;
+    if (sort) filters.sort = sort;
+    
+    try {
+        const products = await ShopService.getProducts(filters);
+        
+        countEl.textContent = `${products.length} productos físicos encontrados`;
+        
+        if (products.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 80px 24px; background-color: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                    <i class="fas fa-box-open" style="font-size: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
+                    <h3>No se encontraron productos que coincidan con los filtros.</h3>
+                    <button class="btn-primary" style="margin-top: 20px;" onclick="document.getElementById('shop-search').value=''; document.getElementById('shop-category').value=''; document.getElementById('shop-min-price').value=''; document.getElementById('shop-max-price').value=''; applyShopFilters();">Limpiar Filtros</button>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="product-grid">
+                    ${products.map(p => getProductCardHtml(p)).join('')}
+                </div>
+            `;
+        }
+    } catch (e) {
+        container.innerHTML = `<div style="text-align: center; color: var(--danger); padding: 40px;">Error al aplicar filtros.</div>`;
+    }
+};
 
 // ==========================================
 // GENERADOR DE CARTA DE PRODUCTO EN TIENDA

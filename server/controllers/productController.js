@@ -3,7 +3,7 @@ const db = require('../config/database');
 // Listar todos los productos con filtros (Búsqueda, Categoría, Ofertas, Destacados, etc.)
 exports.getProducts = async (req, res) => {
     try {
-        const { q, category, type, featured, recommended, presale, offer } = req.query;
+        const { q, category, type, featured, recommended, presale, offer, min_price, max_price, sort } = req.query;
         let query = 'SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE 1=1';
         const params = [];
 
@@ -39,7 +39,25 @@ exports.getProducts = async (req, res) => {
             query += ' AND p.price_offer IS NOT NULL AND p.price_offer < p.price_normal';
         }
 
-        query += ' ORDER BY p.created_at DESC';
+        if (min_price) {
+            query += ' AND COALESCE(p.price_offer, p.price_normal) >= ?';
+            params.push(parseFloat(min_price));
+        }
+
+        if (max_price) {
+            query += ' AND COALESCE(p.price_offer, p.price_normal) <= ?';
+            params.push(parseFloat(max_price));
+        }
+
+        if (sort === 'price_asc') {
+            query += ' ORDER BY COALESCE(p.price_offer, p.price_normal) ASC';
+        } else if (sort === 'price_desc') {
+            query += ' ORDER BY COALESCE(p.price_offer, p.price_normal) DESC';
+        } else if (sort === 'name_asc') {
+            query += ' ORDER BY p.name ASC';
+        } else {
+            query += ' ORDER BY p.created_at DESC';
+        }
 
         const products = await db.query(query, params);
 
