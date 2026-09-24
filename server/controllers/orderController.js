@@ -212,10 +212,10 @@ exports.getMyOrders = async (req, res) => {
         // Cargar ítems de cada pedido
         const enrichedOrders = await Promise.all(orders.map(async (order) => {
             const items = await db.query(`
-                SELECT oi.*, p.name, p.slug, p.type, 
+                SELECT oi.*, COALESCE(p.name, 'Producto Eliminado') as name, COALESCE(p.slug, '') as slug, COALESCE(p.type, 'physical') as type, 
                        (SELECT media_url FROM product_media WHERE product_id = p.id LIMIT 1) as image_url
                 FROM order_items oi
-                JOIN products p ON oi.product_id = p.id
+                LEFT JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = ?
             `, [order.id]);
 
@@ -250,10 +250,10 @@ exports.getOrderDetails = async (req, res) => {
         }
 
         const items = await db.query(`
-            SELECT oi.*, p.name, p.slug, p.type,
+            SELECT oi.*, COALESCE(p.name, 'Producto Eliminado') as name, COALESCE(p.slug, '') as slug, COALESCE(p.type, 'physical') as type,
                    (SELECT media_url FROM product_media WHERE product_id = p.id LIMIT 1) as image_url
             FROM order_items oi
-            JOIN products p ON oi.product_id = p.id
+            LEFT JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id = ?
         `, [order.id]);
 

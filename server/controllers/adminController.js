@@ -202,6 +202,38 @@ exports.updateProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
     try {
         const { id } = req.params;
+
+        const product = await db.querySingle('SELECT id FROM products WHERE id = ?', [id]);
+        if (!product) {
+            return res.status(404).json({ error: 'Producto no encontrado.' });
+        }
+
+        // 1. Eliminar multimedia y variantes asociadas
+        await db.execute('DELETE FROM product_media WHERE product_id = ?', [id]);
+        await db.execute('DELETE FROM product_variants WHERE product_id = ?', [id]);
+
+        // 2. Si es un curso, eliminar la estructura LMS asociada (lecciones, módulos, curso)
+        const course = await db.querySingle('SELECT id FROM courses WHERE product_id = ?', [id]);
+        if (course) {
+            const modules = await db.query('SELECT id FROM course_modules WHERE course_id = ?', [course.id]);
+            for (const mod of modules) {
+                const lessons = await db.query('SELECT id FROM course_lessons WHERE module_id = ?', [mod.id]);
+                for (const lesson of lessons) {
+                    await db.execute('DELETE FROM user_lesson_progress WHERE lesson_id = ?', [lesson.id]);
+                }
+                await db.execute('DELETE FROM course_lessons WHERE module_id = ?', [mod.id]);
+            }
+            await db.execute('DELETE FROM course_modules WHERE course_id = ?', [course.id]);
+            await db.execute('DELETE FROM courses WHERE id = ?', [course.id]);
+        }
+
+        // 3. Desvincular de cupones
+        await db.execute('UPDATE coupons SET product_id = NULL WHERE product_id = ?', [id]);
+
+        // 4. Eliminar ítems de pedidos asociados para evitar violar restricciones de clave foránea
+        await db.execute('DELETE FROM order_items WHERE product_id = ?', [id]);
+
+        // 5. Eliminar el producto principal
         const result = await db.execute('DELETE FROM products WHERE id = ?', [id]);
         
         if (result.changes === 0) {
@@ -210,7 +242,7 @@ exports.deleteProduct = async (req, res) => {
         return res.json({ message: 'Producto eliminado con éxito.' });
     } catch (error) {
         console.error('Error al eliminar producto:', error);
-        return res.status(500).json({ error: 'Error interno del servidor.' });
+        return res.status(500).json({ error: error.message || 'Error interno del servidor al eliminar producto.' });
     }
 };
 
@@ -232,9 +264,9 @@ exports.getOrders = async (req, res) => {
 
         const enrichedOrders = await Promise.all(orders.map(async (order) => {
             const items = await db.query(`
-                SELECT oi.*, p.name, p.slug, p.type
+                SELECT oi.*, COALESCE(p.name, 'Producto Eliminado') as name, COALESCE(p.slug, '') as slug, COALESCE(p.type, 'physical') as type
                 FROM order_items oi
-                JOIN products p ON oi.product_id = p.id
+                LEFT JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = ?
             `, [order.id]);
 
@@ -583,16 +615,32 @@ exports.createCategory = async (req, res) => {
 exports.deleteCategory = async (req, res) => {
     try {
         const { id } = req.params;
+
+        const category = await db.querySingle('SELECT id, name, parent_id FROM categories WHERE id = ?', [id]);
+        if (!category) {
+            return res.status(404).json({ error: 'Categoría no encontrada.' });
+        }
         
-        // Eliminar subcategorías primero para limpiar
+        // 1. Desvincular productos asociados a esta categoría / subcategoría
+        await db.execute('UPDATE products SET category_id = NULL WHERE category_id = ?', [id]);
+        await db.execute('UPDATE products SET subcategory_id = NULL WHERE subcategory_id = ?', [id]);
+        
+        // 2. Si es una categoría principal (padre), desvincular productos de sus subcategorías hijas
+        const subcategories = await db.query('SELECT id FROM categories WHERE parent_id = ?', [id]);
+        for (const sub of subcategories) {
+            await db.execute('UPDATE products SET category_id = NULL WHERE category_id = ?', [sub.id]);
+            await db.execute('UPDATE products SET subcategory_id = NULL WHERE subcategory_id = ?', [sub.id]);
+        }
+
+        // 3. Eliminar subcategorías hijas (si las hubiera)
         await db.execute('DELETE FROM categories WHERE parent_id = ?', [id]);
         
-        // Eliminar categoría
+        // 4. Eliminar la categoría / subcategoría solicitada
         await db.execute('DELETE FROM categories WHERE id = ?', [id]);
         
         return res.json({ message: 'Categoría eliminada con éxito.' });
     } catch (error) {
         console.error('Error al eliminar categoría:', error);
-        return res.status(500).json({ error: 'Error interno del servidor.' });
+        return res.status(500).json({ error: error.message || 'Error interno del servidor.' });
     }
 };

@@ -371,7 +371,7 @@ window.openProductFormModal = async (productId = null) => {
             <div class="admin-modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                 <div class="form-group">
                     <label>Nombre del Producto</label>
-                    <input type="text" id="prod-name" class="form-control" value="${product.name}" required>
+                    <input type="text" id="prod-name" class="form-control" value="${product.name}" oninput="${!productId ? "document.getElementById('prod-slug').value = this.value.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');" : ""}" required>
                 </div>
                 <div class="form-group">
                     <label>Slug de URL (Único)</label>
@@ -461,6 +461,15 @@ window.openProductFormModal = async (productId = null) => {
                     </div>
                 </div>
 
+                <!-- Especificaciones / Ficha Técnica -->
+                <div class="form-group" style="grid-column: span 2;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label style="font-weight: 700; color: var(--text-secondary);">Especificaciones / Ficha Técnica</label>
+                        <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 11px;" onclick="addProductFeatureRow()"><i class="fas fa-plus"></i> Agregar Especificación</button>
+                    </div>
+                    <div id="product-features-rows-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+
                 <!-- Galería Multimedia (URLs o archivos locales optimizados) -->
                 <div class="form-group" style="grid-column: span 2;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -478,6 +487,7 @@ window.openProductFormModal = async (productId = null) => {
         </form>
     `;
 
+    modal.style.display = 'flex';
     modal.classList.add('active');
 
     window.currentProductMedia = [...(product.media || [])];
@@ -548,19 +558,58 @@ window.toggleProductTypeForm = (val) => {
     document.getElementById('digital-download-fields').style.display = ['digital', 'software'].includes(val) ? 'grid' : 'none';
 };
 
-window.togglePresaleDateForm = (isChecked) => {
-    document.getElementById('group-presale').style.display = isChecked ? 'block' : 'none';
+window.closeAdminModal = () => {
+    const modal = document.getElementById('admin-details-modal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
 };
 
-window.deleteProductCall = async (id) => {
-    if (confirm('¿Estás seguro de eliminar este producto del catálogo?')) {
-        try {
-            await AdminService.deleteProduct(id);
-            showToast('Producto eliminado.', 'info');
-            switchTab('products');
-        } catch (e) {
-            showToast('Error al eliminar producto.', 'error');
-        }
+window.deleteProductCall = (id, name = '') => {
+    const product = globalProductList ? globalProductList.find(p => p.id === id) : null;
+    const prodName = name || (product ? product.name : `#${id}`);
+    
+    const modal = document.getElementById('admin-details-modal');
+    const modalContent = document.getElementById('admin-modal-content-area');
+    
+    if (!modal || !modalContent) return;
+
+    modalContent.innerHTML = `
+        <div class="admin-modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: var(--danger); font-weight: 700; margin: 0;"><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación</h3>
+            <button onclick="closeAdminModal()" style="font-size: 20px; border:none; background:none; color: var(--text-muted); cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="admin-modal-body" style="padding: 24px 0; text-align: center;">
+            <div style="font-size: 52px; color: var(--danger); margin-bottom: 16px;">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <p style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">¿Estás seguro de eliminar este producto?</p>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">
+                <strong style="color: var(--text-main);">${prodName}</strong> (ID: #${id})<br>
+                Esta acción eliminará el producto del catálogo y limpiará todos sus recursos asociados.
+            </p>
+        </div>
+        <div class="admin-modal-footer" style="display: flex; justify-content: center; gap: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+            <button type="button" class="btn-outline" style="padding: 8px 20px; font-size: 14px;" onclick="closeAdminModal()">Cancelar</button>
+            <button type="button" class="btn-primary" style="background: var(--danger); border-color: var(--danger); padding: 8px 20px; font-size: 14px;" onclick="executeDeleteProduct(${id})">
+                <i class="fas fa-trash"></i> Sí, Eliminar Producto
+            </button>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+};
+
+window.executeDeleteProduct = async (id) => {
+    try {
+        window.closeAdminModal();
+        await AdminService.deleteProduct(id);
+        showToast('Producto eliminado con éxito.', 'info');
+        await switchTab('products');
+    } catch (e) {
+        showToast(e.message || 'Error al eliminar el producto.', 'error');
     }
 };
 
@@ -694,6 +743,7 @@ window.openOrderDetailsModal = (orderId) => {
         </div>
     `;
 
+    modal.style.display = 'flex';
     modal.classList.add('active');
 };
 
@@ -786,6 +836,7 @@ window.openCourseBuilderModal = async (productId) => {
     }));
 
     renderLMSBuilderContent(courseId);
+    modal.style.display = 'flex';
     modal.classList.add('active');
 };
 
@@ -1039,6 +1090,7 @@ window.openCouponFormModal = () => {
         </form>
     `;
 
+    modal.style.display = 'flex';
     modal.classList.add('active');
 
     document.getElementById('coupon-crud-form').addEventListener('submit', async (e) => {
@@ -1494,7 +1546,7 @@ async function renderCategoriesTab(container) {
                                     <strong style="font-size: 15px; color: var(--text-primary);"><i class="fas fa-folder"></i> ${cat.name}</strong>
                                     <span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">(Slug: ${cat.slug})</span>
                                 </div>
-                                <button class="action-btn" style="color: var(--danger); border: none; background: none; cursor: pointer; padding: 6px 10px;" onclick="deleteCategoryCall(${cat.id})" title="Eliminar Categoría y todas sus subcategorías">
+                                <button class="action-btn" style="color: var(--danger); border: none; background: none; cursor: pointer; padding: 6px 10px;" onclick="deleteCategoryCall(${cat.id}, '${cat.name.replace(/'/g, "\\'")}', false)" title="Eliminar Categoría y todas sus subcategorías">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
@@ -1505,7 +1557,7 @@ async function renderCategoriesTab(container) {
                                     ${cat.subcategories.map(sub => `
                                         <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px;">
                                             <span><i class="fas fa-tag" style="font-size: 10px; color: var(--text-muted);"></i> ${sub.name} <span style="font-size: 10px; color: var(--text-muted);">(Slug: ${sub.slug})</span></span>
-                                            <button style="color: var(--danger); border: none; background: none; cursor: pointer; font-size: 11px;" onclick="deleteCategoryCall(${sub.id})" title="Eliminar Subcategoría">
+                                            <button style="color: var(--danger); border: none; background: none; cursor: pointer; font-size: 11px; padding: 4px 8px;" onclick="deleteCategoryCall(${sub.id}, '${sub.name.replace(/'/g, "\\'")}', true)" title="Eliminar Subcategoría">
                                                 <i class="fas fa-times"></i>
                                             </button>
                                         </div>
@@ -1539,20 +1591,52 @@ async function renderCategoriesTab(container) {
     });
 }
 
-// Window handler para borrar categorías
-window.deleteCategoryCall = async (id) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta categoría? Si eliminas una categoría principal, también se borrarán todas sus subcategorías.')) {
-        return;
-    }
+// Window handler para borrar categorías y subcategorías
+window.deleteCategoryCall = (id, name = '', isSub = false) => {
+    const modal = document.getElementById('admin-details-modal');
+    const modalContent = document.getElementById('admin-modal-content-area');
+    
+    if (!modal || !modalContent) return;
 
+    const labelType = isSub ? 'Subcategoría' : 'Categoría Principal';
+    const subNotice = !isSub ? '<br><span style="color: var(--danger); font-size: 12px; font-weight: 600;">⚠️ Al eliminar una categoría principal, también se borrarán todas sus subcategorías.</span>' : '';
+
+    modalContent.innerHTML = `
+        <div class="admin-modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="color: var(--danger); font-weight: 700; margin: 0;"><i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación</h3>
+            <button onclick="closeAdminModal()" style="font-size: 20px; border:none; background:none; color: var(--text-muted); cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="admin-modal-body" style="padding: 24px 0; text-align: center;">
+            <div style="font-size: 52px; color: var(--danger); margin-bottom: 16px;">
+                <i class="fas fa-folder-minus"></i>
+            </div>
+            <p style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">¿Estás seguro de eliminar esta ${labelType.toLowerCase()}?</p>
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">
+                <strong style="color: var(--text-main);">${name || `#${id}`}</strong> (${labelType})
+                ${subNotice}
+            </p>
+        </div>
+        <div class="admin-modal-footer" style="display: flex; justify-content: center; gap: 16px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+            <button type="button" class="btn-outline" style="padding: 8px 20px; font-size: 14px;" onclick="closeAdminModal()">Cancelar</button>
+            <button type="button" class="btn-primary" style="background: var(--danger); border-color: var(--danger); padding: 8px 20px; font-size: 14px;" onclick="executeDeleteCategory(${id})">
+                <i class="fas fa-trash"></i> Sí, Eliminar ${labelType}
+            </button>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+};
+
+window.executeDeleteCategory = async (id) => {
     try {
+        window.closeAdminModal();
         await AdminService.deleteCategory(id);
-        showToast('Categoría eliminada con éxito.', 'success');
-        // Recargar pestaña activa
+        showToast('Categoría/Subcategoría eliminada con éxito.', 'info');
         const contentArea = document.getElementById('admin-tab-content');
         await renderCategoriesTab(contentArea);
-    } catch (error) {
-        showToast(error.message, 'error');
+    } catch (e) {
+        showToast(e.message || 'Error al eliminar la categoría.', 'error');
     }
 };
 

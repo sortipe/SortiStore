@@ -1,5 +1,4 @@
 require('dotenv').config();
-const { DatabaseSync } = require('node:sqlite');
 const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
@@ -7,6 +6,7 @@ const fs = require('fs');
 const isPostgres = !!process.env.DB_HOST;
 let pgPool = null;
 let sqliteDb = null;
+
 
 if (isPostgres) {
     console.log('Detectada base de datos PostgreSQL/Supabase. Conectando...');
@@ -77,6 +77,7 @@ if (isPostgres) {
     })();
 } else {
     console.log('Usando base de datos local SQLite...');
+    const { DatabaseSync } = require('node:sqlite');
     const dbPath = process.env.DB_PATH || './server/db/database.sqlite';
     const dbDir = path.dirname(path.resolve(dbPath));
     if (!fs.existsSync(dbDir)) {
