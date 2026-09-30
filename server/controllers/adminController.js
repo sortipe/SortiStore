@@ -74,7 +74,7 @@ exports.getDashboardStats = async (req, res) => {
 exports.createProduct = async (req, res) => {
     try {
         const {
-            name, slug, description, type, sku, stock, category_id,
+            name, slug, description, type, sku, stock, category_id, brand,
             price_normal, price_offer, price_sorti, is_featured, is_recommended,
             is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
             download_url, download_file_size, download_version, features,
@@ -94,14 +94,14 @@ exports.createProduct = async (req, res) => {
 
         const resultRow = await db.querySingle(`
             INSERT INTO products (
-                name, slug, description, type, sku, stock, category_id,
+                name, slug, description, type, sku, stock, category_id, brand,
                 price_normal, price_offer, price_sorti, is_featured, is_recommended,
                 is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
                 download_url, download_file_size, download_version, features
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
         `, [
-            name, slug, description, type, sku, Number(stock) || 0, Number(category_id) || null,
+            name, slug, description, type, sku, Number(stock) || 0, Number(category_id) || null, brand || null,
             Number(price_normal), price_offer ? Number(price_offer) : null, price_sorti ? Number(price_sorti) : null,
             is_featured ? 1 : 0, is_recommended ? 1 : 0, is_new ? 1 : 0, is_sold_out ? 1 : 0,
             is_upcoming ? 1 : 0, is_presale ? 1 : 0, presale_launch_date || null,
@@ -144,7 +144,7 @@ exports.updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
         const {
-            name, slug, description, type, sku, stock, category_id,
+            name, slug, description, type, sku, stock, category_id, brand,
             price_normal, price_offer, price_sorti, is_featured, is_recommended,
             is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
             download_url, download_file_size, download_version, features,
@@ -156,17 +156,24 @@ exports.updateProduct = async (req, res) => {
             return res.status(404).json({ error: 'Producto no encontrado.' });
         }
 
+        if (slug) {
+            const slugExists = await db.querySingle('SELECT id FROM products WHERE slug = ? AND id != ?', [slug, id]);
+            if (slugExists) {
+                return res.status(400).json({ error: 'El slug ingresado ya pertenece a otro producto.' });
+            }
+        }
+
         const featuresStr = features ? (typeof features === 'string' ? features : JSON.stringify(features)) : null;
 
         await db.execute(`
             UPDATE products SET
-                name = ?, slug = ?, description = ?, type = ?, sku = ?, stock = ?, category_id = ?,
+                name = ?, slug = ?, description = ?, type = ?, sku = ?, stock = ?, category_id = ?, brand = ?,
                 price_normal = ?, price_offer = ?, price_sorti = ?, is_featured = ?, is_recommended = ?,
                 is_new = ?, is_sold_out = ?, is_upcoming = ?, is_presale = ?, presale_launch_date = ?,
                 download_url = ?, download_file_size = ?, download_version = ?, features = ?
             WHERE id = ?
         `, [
-            name, slug, description, type, sku, Number(stock) || 0, Number(category_id) || null,
+            name, slug, description, type, sku, Number(stock) || 0, Number(category_id) || null, brand || null,
             Number(price_normal), price_offer ? Number(price_offer) : null, price_sorti ? Number(price_sorti) : null,
             is_featured ? 1 : 0, is_recommended ? 1 : 0, is_new ? 1 : 0, is_sold_out ? 1 : 0,
             is_upcoming ? 1 : 0, is_presale ? 1 : 0, presale_launch_date || null,

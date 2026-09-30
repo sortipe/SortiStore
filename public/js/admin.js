@@ -343,7 +343,7 @@ window.openProductFormModal = async (productId = null) => {
     };
 
     if (productId) {
-        product = globalProductList.find(p => p.id === productId);
+        product = globalProductList.find(p => p.id == productId) || product;
     }
 
     // Cargar categorías del sistema para el selector
@@ -351,10 +351,10 @@ window.openProductFormModal = async (productId = null) => {
     try {
         const categories = await ShopService.getCategories();
         categories.forEach(cat => {
-            catOptions += `<option value="${cat.id}" ${product.category_id === cat.id ? 'selected' : ''}>${cat.name} (Principal)</option>`;
+            catOptions += `<option value="${cat.id}" ${product.category_id == cat.id ? 'selected' : ''}>${cat.name} (Principal)</option>`;
             if (cat.subcategories && cat.subcategories.length > 0) {
                 cat.subcategories.forEach(sub => {
-                    catOptions += `<option value="${sub.id}" ${product.category_id === sub.id ? 'selected' : ''}>&nbsp;&nbsp;&nbsp;↳ ${sub.name}</option>`;
+                    catOptions += `<option value="${sub.id}" ${product.category_id == sub.id ? 'selected' : ''}>&nbsp;&nbsp;&nbsp;↳ ${sub.name}</option>`;
                 });
             }
         });
@@ -435,6 +435,12 @@ window.openProductFormModal = async (productId = null) => {
                         <input type="checkbox" id="chk-new" ${product.is_new ? 'checked' : ''}> Nuevo
                     </label>
                     <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; text-transform: none;">
+                        <input type="checkbox" id="chk-sold-out" ${product.is_sold_out ? 'checked' : ''}> Agotado
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; text-transform: none;">
+                        <input type="checkbox" id="chk-upcoming" ${product.is_upcoming ? 'checked' : ''}> Próximamente
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; text-transform: none;">
                         <input type="checkbox" id="chk-presale" ${product.is_presale ? 'checked' : ''} onchange="togglePresaleDateForm(this.checked)"> Preventa
                     </label>
                 </div>
@@ -499,9 +505,21 @@ window.openProductFormModal = async (productId = null) => {
     window.currentProductFeatures = [];
     if (product.features) {
         try {
-            window.currentProductFeatures = typeof product.features === 'string' ? JSON.parse(product.features) : product.features;
+            let parsed = typeof product.features === 'string' ? JSON.parse(product.features) : product.features;
+            if (Array.isArray(parsed)) {
+                window.currentProductFeatures = parsed.map(item => ({
+                    name: item.name || item.key || '',
+                    value: item.value || ''
+                }));
+            } else if (typeof parsed === 'object' && parsed !== null) {
+                window.currentProductFeatures = Object.entries(parsed).map(([key, val]) => ({
+                    name: key,
+                    value: String(val)
+                }));
+            }
         } catch (e) {
             console.error('Error al cargar especificaciones de producto:', e);
+            window.currentProductFeatures = [];
         }
     }
     window.renderProductFeaturesRows();
@@ -510,8 +528,8 @@ window.openProductFormModal = async (productId = null) => {
     document.getElementById('product-crud-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const mediaArray = window.currentProductMedia.filter(item => item.media_url.trim() !== '');
-        const featuresArray = window.currentProductFeatures.filter(f => f.name.trim() !== '' && f.value.trim() !== '');
+        const mediaArray = window.currentProductMedia.filter(item => item && item.media_url && item.media_url.trim() !== '');
+        const featuresArray = (window.currentProductFeatures || []).filter(f => f && f.name && f.name.trim() !== '' && f.value && f.value.trim() !== '');
 
         const payload = {
             name: document.getElementById('prod-name').value.trim(),
@@ -520,6 +538,7 @@ window.openProductFormModal = async (productId = null) => {
             sku: document.getElementById('prod-sku').value.trim() || null,
             stock: Number(document.getElementById('prod-stock').value) || 0,
             category_id: Number(document.getElementById('prod-category').value) || null,
+            brand: document.getElementById('prod-brand')?.value.trim() || null,
             price_normal: Number(document.getElementById('prod-price-normal').value),
             price_offer: Number(document.getElementById('prod-price-offer').value) || null,
             price_sorti: Number(document.getElementById('prod-price-sorti').value) || null,
@@ -527,14 +546,16 @@ window.openProductFormModal = async (productId = null) => {
             is_featured: document.getElementById('chk-featured').checked,
             is_recommended: document.getElementById('chk-recommended').checked,
             is_new: document.getElementById('chk-new').checked,
+            is_sold_out: document.getElementById('chk-sold-out')?.checked || false,
+            is_upcoming: document.getElementById('chk-upcoming')?.checked || false,
             is_presale: document.getElementById('chk-presale').checked,
             presale_launch_date: document.getElementById('prod-presale-date').value || null,
-            download_url: document.getElementById('prod-download-url').value.trim() || null,
-            download_file_size: document.getElementById('prod-download-size').value.trim() || null,
-            download_version: document.getElementById('prod-download-version').value.trim() || null,
+            download_url: document.getElementById('prod-download-url')?.value.trim() || null,
+            download_file_size: document.getElementById('prod-download-size')?.value.trim() || null,
+            download_version: document.getElementById('prod-download-version')?.value.trim() || null,
             media: mediaArray,
             features: featuresArray,
-            variants: [] // Variantes se agregan por backend o simplificado
+            variants: []
         };
 
         try {
@@ -1778,6 +1799,10 @@ window.insertDescriptionTag = (tag) => {
 window.renderProductFeaturesRows = () => {
     const container = document.getElementById('product-features-rows-container');
     if (!container) return;
+
+    if (!Array.isArray(window.currentProductFeatures)) {
+        window.currentProductFeatures = [];
+    }
 
     if (window.currentProductFeatures.length === 0) {
         container.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0; border: 1px dashed var(--border-color); border-radius: var(--radius-md);">No se han agregado especificaciones a este producto.</p>`;
