@@ -78,6 +78,7 @@ exports.createProduct = async (req, res) => {
             price_normal, price_offer, price_sorti, is_featured, is_recommended,
             is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
             download_url, download_file_size, download_version, features,
+            streaming_platform, streaming_account_id,
             media, variants
         } = req.body;
 
@@ -97,8 +98,9 @@ exports.createProduct = async (req, res) => {
                 name, slug, description, type, sku, stock, category_id, brand,
                 price_normal, price_offer, price_sorti, is_featured, is_recommended,
                 is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
-                download_url, download_file_size, download_version, features
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                download_url, download_file_size, download_version, features,
+                streaming_platform, streaming_account_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
         `, [
             name, slug, description, type, sku, Number(stock) || 0, Number(category_id) || null, brand || null,
@@ -106,7 +108,8 @@ exports.createProduct = async (req, res) => {
             is_featured ? 1 : 0, is_recommended ? 1 : 0, is_new ? 1 : 0, is_sold_out ? 1 : 0,
             is_upcoming ? 1 : 0, is_presale ? 1 : 0, presale_launch_date || null,
             download_url || null, download_file_size || null, download_version || null,
-            featuresStr
+            featuresStr,
+            streaming_platform || null, streaming_account_id ? Number(streaming_account_id) : null
         ]);
 
         const productId = resultRow.id;
@@ -148,6 +151,7 @@ exports.updateProduct = async (req, res) => {
             price_normal, price_offer, price_sorti, is_featured, is_recommended,
             is_new, is_sold_out, is_upcoming, is_presale, presale_launch_date,
             download_url, download_file_size, download_version, features,
+            streaming_platform, streaming_account_id,
             media, variants
         } = req.body;
 
@@ -170,7 +174,8 @@ exports.updateProduct = async (req, res) => {
                 name = ?, slug = ?, description = ?, type = ?, sku = ?, stock = ?, category_id = ?, brand = ?,
                 price_normal = ?, price_offer = ?, price_sorti = ?, is_featured = ?, is_recommended = ?,
                 is_new = ?, is_sold_out = ?, is_upcoming = ?, is_presale = ?, presale_launch_date = ?,
-                download_url = ?, download_file_size = ?, download_version = ?, features = ?
+                download_url = ?, download_file_size = ?, download_version = ?, features = ?,
+                streaming_platform = ?, streaming_account_id = ?
             WHERE id = ?
         `, [
             name, slug, description, type, sku, Number(stock) || 0, Number(category_id) || null, brand || null,
@@ -179,6 +184,7 @@ exports.updateProduct = async (req, res) => {
             is_upcoming ? 1 : 0, is_presale ? 1 : 0, presale_launch_date || null,
             download_url || null, download_file_size || null, download_version || null,
             featuresStr,
+            streaming_platform || null, streaming_account_id ? Number(streaming_account_id) : null,
             id
         ]);
 

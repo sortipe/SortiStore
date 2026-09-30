@@ -198,6 +198,49 @@ const AdminService = {
         });
     },
 
+    // Cuentas / Perfiles Streaming
+    async getStreamingAccounts(filters = {}) {
+        const params = new URLSearchParams();
+        Object.keys(filters).forEach(k => {
+            if (filters[k] !== undefined && filters[k] !== '') params.append(k, filters[k]);
+        });
+        const query = params.toString() ? `?${params.toString()}` : '';
+        return await apiCall(`/admin/streaming${query}`);
+    },
+
+    async createStreamingAccount(data) {
+        return await apiCall('/admin/streaming', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async updateStreamingAccount(id, data) {
+        return await apiCall(`/admin/streaming/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async deleteStreamingAccount(id) {
+        return await apiCall(`/admin/streaming/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    async assignStreamingUser(data) {
+        return await apiCall('/admin/streaming/assign', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async unassignStreamingUser(assignmentId) {
+        return await apiCall(`/admin/streaming/assign/${assignmentId}`, {
+            method: 'DELETE'
+        });
+    },
+
     async createCourseStructure(courseId, modules) {
         return await apiCall('/admin/courses/structure', {
             method: 'POST',

@@ -8,6 +8,7 @@ const orders = require('../controllers/orderController');
 const customer = require('../controllers/customerController');
 const admin = require('../controllers/adminController');
 const vip = require('../controllers/vipController');
+const streaming = require('../controllers/streamingController');
 
 // Middlewares
 const { authenticate, requireAuth, requireRole } = require('../middleware/auth');
@@ -105,5 +106,13 @@ router.post('/admin/vip/raffles', requireAuth, adminOrEmployee, vip.adminCreateR
 router.put('/admin/vip/raffles/:id', requireAuth, adminOrEmployee, vip.adminUpdateRaffle);
 router.delete('/admin/vip/raffles/:id', requireAuth, adminOrEmployee, vip.adminDeleteRaffle);
 router.post('/admin/vip/raffles/:id/draw', requireAuth, adminOrEmployee, vip.adminDrawRaffle);
+
+// Cuentas y Perfiles de Streaming
+router.get('/admin/streaming', requireAuth, adminOrEmployee, streaming.getAccounts);
+router.post('/admin/streaming', requireAuth, adminOrEmployee, streaming.createAccount);
+router.put('/admin/streaming/:id', requireAuth, adminOrEmployee, streaming.updateAccount);
+router.delete('/admin/streaming/:id', requireAuth, adminOrEmployee, streaming.deleteAccount);
+router.post('/admin/streaming/assign', requireAuth, adminOrEmployee, streaming.assignUser);
+router.delete('/admin/streaming/assign/:assignment_id', requireAuth, adminOrEmployee, streaming.unassignUser);
 
 module.exports = router;

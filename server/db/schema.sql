@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS products (
     download_file_size TEXT,
     download_version TEXT,
     features TEXT, -- Especificaciones técnicas y características (JSON)
+    streaming_platform TEXT, -- Plataforma de streaming asociada (ej: Netflix, Disney+, Spotify, Gemini, etc.)
+    streaming_account_id INTEGER, -- Perfil/cuenta de streaming asociada por defecto
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(category_id) REFERENCES categories(id) ON DELETE SET NULL,
     FOREIGN KEY(subcategory_id) REFERENCES categories(id) ON DELETE SET NULL
@@ -253,3 +255,34 @@ CREATE TABLE IF NOT EXISTS vip_raffle_entries (
     FOREIGN KEY(raffle_id) REFERENCES vip_raffles(id) ON DELETE CASCADE,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Cuentas y Perfiles de Streaming
+CREATE TABLE IF NOT EXISTS streaming_accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    platform TEXT NOT NULL,
+    email TEXT NOT NULL,
+    password TEXT NOT NULL,
+    profile_name TEXT,
+    profile_pin TEXT,
+    activation_link TEXT,
+    max_devices INTEGER DEFAULT 1,
+    expiration_date DATETIME,
+    product_id INTEGER,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE SET NULL
+);
+
+-- Asignaciones de Perfiles Streaming a Usuarios / Pedidos
+CREATE TABLE IF NOT EXISTS streaming_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL,
+    order_id INTEGER,
+    user_id INTEGER NOT NULL,
+    assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME,
+    FOREIGN KEY(account_id) REFERENCES streaming_accounts(id) ON DELETE CASCADE,
+    FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+

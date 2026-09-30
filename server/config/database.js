@@ -69,8 +69,39 @@ if (isPostgres) {
                     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
+
+                CREATE TABLE IF NOT EXISTS streaming_accounts (
+                    id SERIAL PRIMARY KEY,
+                    platform TEXT NOT NULL,
+                    email TEXT NOT NULL,
+                    password TEXT NOT NULL,
+                    profile_name TEXT,
+                    profile_pin TEXT,
+                    activation_link TEXT,
+                    max_devices INTEGER DEFAULT 1,
+                    expiration_date TIMESTAMP,
+                    product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+                    notes TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE TABLE IF NOT EXISTS streaming_assignments (
+                    id SERIAL PRIMARY KEY,
+                    account_id INTEGER NOT NULL REFERENCES streaming_accounts(id) ON DELETE CASCADE,
+                    order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TIMESTAMP
+                );
             `);
-            console.log('Migraciones VIP ejecutadas con éxito en Postgres.');
+
+            // Verificar columnas de streaming en products (Postgres)
+            const prodPlatRes = await pgPool.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'streaming_platform'");
+            if (prodPlatRes.rowCount === 0) {
+                await pgPool.query("ALTER TABLE products ADD COLUMN streaming_platform TEXT;");
+                await pgPool.query("ALTER TABLE products ADD COLUMN streaming_account_id INTEGER;");
+            }
+            console.log('Migraciones VIP y Streaming ejecutadas con éxito en Postgres.');
         } catch (err) {
             console.error("Error al aplicar migración Postgres:", err);
         }
@@ -94,6 +125,13 @@ if (isPostgres) {
             sqliteDb.exec("ALTER TABLE products ADD COLUMN features TEXT;");
         }
 
+        const hasStreamingPlat = tableInfo.some(col => col.name === 'streaming_platform');
+        if (!hasStreamingPlat && tableInfo.length > 0) {
+            console.log('Migración SQLite: agregando columnas de streaming a la tabla products...');
+            sqliteDb.exec("ALTER TABLE products ADD COLUMN streaming_platform TEXT;");
+            sqliteDb.exec("ALTER TABLE products ADD COLUMN streaming_account_id INTEGER;");
+        }
+
         const catTableInfo = sqliteDb.prepare("PRAGMA table_info(categories)").all();
         const hasParentId = catTableInfo.some(col => col.name === 'parent_id');
         if (!hasParentId && catTableInfo.length > 0) {
@@ -111,7 +149,7 @@ if (isPostgres) {
             sqliteDb.exec("ALTER TABLE users ADD COLUMN vip_last_renovation TEXT;");
         }
 
-        // Crear nuevas tablas VIP si no existen
+        // Crear nuevas tablas VIP y Streaming si no existen
         sqliteDb.exec(`
             CREATE TABLE IF NOT EXISTS vip_suppliers (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -151,6 +189,32 @@ if (isPostgres) {
                 user_id INTEGER NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY(raffle_id) REFERENCES vip_raffles(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS streaming_accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                platform TEXT NOT NULL,
+                email TEXT NOT NULL,
+                password TEXT NOT NULL,
+                profile_name TEXT,
+                profile_pin TEXT,
+                activation_link TEXT,
+                max_devices INTEGER DEFAULT 1,
+                expiration_date DATETIME,
+                product_id INTEGER,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE SET NULL
+            );
+            CREATE TABLE IF NOT EXISTS streaming_assignments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                order_id INTEGER,
+                user_id INTEGER NOT NULL,
+                assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                expires_at DATETIME,
+                FOREIGN KEY(account_id) REFERENCES streaming_accounts(id) ON DELETE CASCADE,
+                FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE SET NULL,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
         `);

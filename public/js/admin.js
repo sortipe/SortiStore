@@ -77,6 +77,7 @@ async function switchTab(tabName) {
     const titles = {
         dashboard: 'Dashboard General',
         products: 'Catálogo de Productos',
+        streaming: 'Gestión de Cuentas y Perfiles Streaming',
         categories: 'Gestión de Categorías y Subcategorías',
         orders: 'Gestión de Pedidos',
         courses: 'Estructura LMS Cursos',
@@ -98,6 +99,9 @@ async function switchTab(tabName) {
                 break;
             case 'products':
                 await renderProductsTab(contentArea);
+                break;
+            case 'streaming':
+                await renderStreamingTab(contentArea);
                 break;
             case 'categories':
                 await renderCategoriesTab(contentArea);
@@ -451,10 +455,10 @@ window.openProductFormModal = async (productId = null) => {
                     <input type="datetime-local" id="prod-presale-date" class="form-control" value="${product.presale_launch_date ? product.presale_launch_date.substring(0, 16) : ''}">
                 </div>
 
-                <!-- Campos de Descarga Digital / Software -->
+                <!-- Campos de Descarga Digital / Software / Streaming -->
                 <div id="digital-download-fields" style="grid-column: span 2; display: ${['digital', 'software'].includes(product.type) ? 'grid' : 'none'}; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div class="form-group" style="grid-column: span 2;">
-                        <label>URL de Descarga Directa del Archivo</label>
+                        <label>URL de Descarga Directa del Archivo (Si aplica)</label>
                         <input type="text" id="prod-download-url" class="form-control" value="${product.download_url || ''}" placeholder="https://example.com/files/setup.zip">
                     </div>
                     <div class="form-group">
@@ -464,6 +468,10 @@ window.openProductFormModal = async (productId = null) => {
                     <div class="form-group">
                         <label>Versión del Software / Archivo</label>
                         <input type="text" id="prod-download-version" class="form-control" value="${product.download_version || ''}" placeholder="ej: v1.0.4">
+                    </div>
+                    <div class="form-group">
+                        <label>Plataforma Streaming Asociada</label>
+                        <input type="text" id="prod-streaming-platform" class="form-control" value="${product.streaming_platform || ''}" placeholder="ej: Netflix, Disney+, Spotify, Gemini AI">
                     </div>
                 </div>
 
@@ -553,6 +561,7 @@ window.openProductFormModal = async (productId = null) => {
             download_url: document.getElementById('prod-download-url')?.value.trim() || null,
             download_file_size: document.getElementById('prod-download-size')?.value.trim() || null,
             download_version: document.getElementById('prod-download-version')?.value.trim() || null,
+            streaming_platform: document.getElementById('prod-streaming-platform')?.value.trim() || null,
             media: mediaArray,
             features: featuresArray,
             variants: []
@@ -2568,3 +2577,326 @@ window.closeAdminModalModal = () => {
         modal.classList.remove('open');
     }
 };
+
+// ==========================================
+// PESTAÑA: CUENTAS Y PERFILES STREAMING
+// ==========================================
+async function renderStreamingTab(container) {
+    let accounts = [];
+    try {
+        accounts = await AdminService.getStreamingAccounts();
+    } catch (err) {
+        showToast('Error al cargar cuentas de streaming.', 'error');
+    }
+
+    const html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <h3 style="font-size: 20px; font-weight: 700; margin: 0;">Gestión de Cuentas y Perfiles Streaming</h3>
+                <p style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;">Administra accesos a servicios digitales (Netflix, Disney+, Prime Video, Spotify, Gemini, IPTV, etc.) y asignaciones a clientes.</p>
+            </div>
+            <button class="btn-primary" onclick="openStreamingAccountModal()"><i class="fas fa-plus"></i> Nueva Cuenta / Perfil</button>
+        </div>
+
+        <div class="glass-panel" style="padding: 20px; margin-bottom: 24px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <input type="text" id="search-streaming" class="form-control" placeholder="Buscar por correo, perfil o plataforma..." onkeyup="filterStreamingAccounts()">
+                <select id="filter-streaming-platform" class="form-control" onchange="filterStreamingAccounts()">
+                    <option value="">Todas las plataformas</option>
+                    <option value="Netflix">Netflix</option>
+                    <option value="Disney+">Disney+</option>
+                    <option value="HBO Max / Max">HBO Max / Max</option>
+                    <option value="Prime Video">Prime Video</option>
+                    <option value="Spotify">Spotify</option>
+                    <option value="YouTube Premium">YouTube Premium</option>
+                    <option value="Gemini AI / ChatGPT">Gemini AI / ChatGPT</option>
+                    <option value="Otro">Otro / Personalizada</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-responsive glass-panel" style="overflow-x: auto;">
+            <table class="admin-table" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1fr solid var(--border-color); text-align: left;">
+                        <th style="padding: 12px 16px;">Plataforma</th>
+                        <th style="padding: 12px 16px;">Credenciales (Email / Clave)</th>
+                        <th style="padding: 12px 16px;">Perfil / PIN</th>
+                        <th style="padding: 12px 16px;">Cupos / Dispositivos</th>
+                        <th style="padding: 12px 16px;">Vencimiento</th>
+                        <th style="padding: 12px 16px;">Asignaciones Activas</th>
+                        <th style="padding: 12px 16px; text-align: right;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="streaming-accounts-tbody">
+                    ${renderStreamingAccountsRows(accounts)}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = html;
+    window._cachedStreamingAccounts = accounts;
+}
+
+function renderStreamingAccountsRows(accounts) {
+    if (!accounts || accounts.length === 0) {
+        return `<tr><td colspan="7" style="text-align: center; padding: 32px; color: var(--text-muted);">No hay cuentas ni perfiles de streaming registrados.</td></tr>`;
+    }
+
+    return accounts.map(acc => {
+        const isFull = acc.is_full;
+        const isExpired = acc.is_expired;
+        const statusBadge = isExpired
+            ? `<span class="badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">Vencida</span>`
+            : isFull
+            ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">Llena (${acc.current_users_count}/${acc.max_devices})</span>`
+            : `<span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">Disponible (${acc.current_users_count}/${acc.max_devices})</span>`;
+
+        const assignmentsList = acc.assignments && acc.assignments.length > 0
+            ? acc.assignments.map(as => `
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; margin-bottom: 4px; background: var(--bg-hover); padding: 4px 8px; border-radius: 4px;">
+                    <span><i class="fas fa-user" style="font-size: 10px;"></i> ${as.user_name || 'Usuario ID: ' + as.user_id} ${as.order_id ? '(Pedido #' + as.order_id + ')' : ''}</span>
+                    <button type="button" class="btn-icon" style="color: var(--danger); font-size: 11px; padding: 2px 4px;" title="Liberar cupo" onclick="handleUnassignStreamingUser(${as.assignment_id})"><i class="fas fa-times"></i></button>
+                </div>
+              `).join('')
+            : `<span style="font-size: 12px; color: var(--text-muted);">Sin asignar</span>`;
+
+        return `
+            <tr style="border-bottom: 1px solid var(--border-color);">
+                <td style="padding: 12px 16px;">
+                    <div style="font-weight: 700;"><i class="fas fa-tv" style="color: var(--primary); margin-right: 6px;"></i> ${acc.platform}</div>
+                    ${acc.product_name ? `<div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Prod: ${acc.product_name}</div>` : ''}
+                </td>
+                <td style="padding: 12px 16px; font-size: 13px;">
+                    <div><strong>Mail:</strong> ${acc.email}</div>
+                    <div><strong>Pass:</strong> <span style="font-family: monospace; background: var(--bg-hover); padding: 2px 6px; border-radius: 4px;">${acc.password}</span></div>
+                    ${acc.activation_link ? `<a href="${acc.activation_link}" target="_blank" style="font-size: 11px; color: var(--primary);">Link de activación</a>` : ''}
+                </td>
+                <td style="padding: 12px 16px; font-size: 13px;">
+                    <div><strong>Perfil:</strong> ${acc.profile_name || 'N/A'}</div>
+                    ${acc.profile_pin ? `<div><strong>PIN:</strong> ${acc.profile_pin}</div>` : ''}
+                </td>
+                <td style="padding: 12px 16px;">
+                    ${statusBadge}
+                </td>
+                <td style="padding: 12px 16px; font-size: 12px; color: var(--text-secondary);">
+                    ${acc.expiration_date ? new Date(acc.expiration_date).toLocaleDateString('es-ES') : 'Sin expiración'}
+                </td>
+                <td style="padding: 12px 16px;">
+                    ${assignmentsList}
+                </td>
+                <td style="padding: 12px 16px; text-align: right;">
+                    <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                        <button class="btn-outline" style="padding: 4px 8px; font-size: 12px;" title="Asignar Usuario" onclick="openAssignStreamingUserModal(${acc.id})"><i class="fas fa-user-plus"></i></button>
+                        <button class="btn-outline" style="padding: 4px 8px; font-size: 12px;" title="Editar Cuenta" onclick="openStreamingAccountModal(${acc.id})"><i class="fas fa-edit"></i></button>
+                        <button class="btn-outline" style="padding: 4px 8px; font-size: 12px; color: var(--danger);" title="Eliminar Cuenta" onclick="handleDeleteStreamingAccount(${acc.id})"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+window.filterStreamingAccounts = () => {
+    const search = document.getElementById('search-streaming')?.value.toLowerCase() || '';
+    const platform = document.getElementById('filter-streaming-platform')?.value.toLowerCase() || '';
+    const accounts = window._cachedStreamingAccounts || [];
+
+    const filtered = accounts.filter(acc => {
+        const matchSearch = !search || acc.email.toLowerCase().includes(search) || (acc.profile_name && acc.profile_name.toLowerCase().includes(search)) || acc.platform.toLowerCase().includes(search);
+        const matchPlat = !platform || acc.platform.toLowerCase() === platform;
+        return matchSearch && matchPlat;
+    });
+
+    const tbody = document.getElementById('streaming-accounts-tbody');
+    if (tbody) {
+        tbody.innerHTML = renderStreamingAccountsRows(filtered);
+    }
+};
+
+window.openStreamingAccountModal = async (accountId = null) => {
+    let acc = null;
+    if (accountId && window._cachedStreamingAccounts) {
+        acc = window._cachedStreamingAccounts.find(a => a.id === accountId);
+    }
+
+    let products = [];
+    try {
+        const prodRes = await AdminService.getProducts({ type: 'digital' });
+        products = prodRes.products || prodRes || [];
+    } catch (e) {}
+
+    const prodOptions = products.map(p => `<option value="${p.id}" ${acc && acc.product_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('');
+
+    const html = `
+        <div style="padding: 24px; max-width: 600px; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin: 0;">${acc ? 'Editar' : 'Registrar'} Cuenta / Perfil Streaming</h3>
+                <button class="btn-icon" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="handleSaveStreamingAccount(event, ${acc ? acc.id : 'null'})">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Plataforma *</label>
+                        <input type="text" id="stream-platform" class="form-control" required value="${acc ? acc.platform : ''}" placeholder="ej: Netflix, Disney+, Spotify">
+                    </div>
+                    <div class="form-group">
+                        <label>Correo / Usuario *</label>
+                        <input type="email" id="stream-email" class="form-control" required value="${acc ? acc.email : ''}" placeholder="usuario@correo.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Contraseña *</label>
+                        <input type="text" id="stream-password" class="form-control" required value="${acc ? acc.password : ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del Perfil</label>
+                        <input type="text" id="stream-profile-name" class="form-control" value="${acc && acc.profile_name ? acc.profile_name : ''}" placeholder="ej: Perfil 1 / Joel">
+                    </div>
+                    <div class="form-group">
+                        <label>PIN de Perfil</label>
+                        <input type="text" id="stream-profile-pin" class="form-control" value="${acc && acc.profile_pin ? acc.profile_pin : ''}" placeholder="ej: 1234">
+                    </div>
+                    <div class="form-group">
+                        <label>Cupos / Dispositivos Máximos</label>
+                        <input type="number" id="stream-max-devices" class="form-control" value="${acc ? acc.max_devices : 1}" min="1">
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Link de Activación / Invitación (Opcional)</label>
+                        <input type="url" id="stream-activation-link" class="form-control" value="${acc && acc.activation_link ? acc.activation_link : ''}" placeholder="https://...">
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Vencimiento de Cuenta</label>
+                        <input type="date" id="stream-expiration-date" class="form-control" value="${acc && acc.expiration_date ? acc.expiration_date.substring(0, 10) : ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Producto Asociado (Opcional)</label>
+                        <select id="stream-product-id" class="form-control">
+                            <option value="">Ninguno / Libre</option>
+                            ${prodOptions}
+                        </select>
+                    </div>
+                    <div class="form-group" style="grid-column: span 2;">
+                        <label>Notas Internas</label>
+                        <textarea id="stream-notes" class="form-control" rows="2" placeholder="Notas sobre el proveedor, renovación, etc.">${acc && acc.notes ? acc.notes : ''}</textarea>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px;">
+                    <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Guardar Cuenta</button>
+                </div>
+            </form>
+        </div>
+    `;
+    openAdminModalModal(html);
+};
+
+window.handleSaveStreamingAccount = async (e, accountId) => {
+    e.preventDefault();
+    const data = {
+        platform: document.getElementById('stream-platform').value,
+        email: document.getElementById('stream-email').value,
+        password: document.getElementById('stream-password').value,
+        profile_name: document.getElementById('stream-profile-name').value || null,
+        profile_pin: document.getElementById('stream-profile-pin').value || null,
+        max_devices: Number(document.getElementById('stream-max-devices').value) || 1,
+        activation_link: document.getElementById('stream-activation-link').value || null,
+        expiration_date: document.getElementById('stream-expiration-date').value || null,
+        product_id: document.getElementById('stream-product-id').value || null,
+        notes: document.getElementById('stream-notes').value || null
+    };
+
+    try {
+        if (accountId) {
+            const res = await AdminService.updateStreamingAccount(accountId, data);
+            showToast(res.message, 'success');
+        } else {
+            const res = await AdminService.createStreamingAccount(data);
+            showToast(res.message, 'success');
+        }
+        closeAdminModalModal();
+        switchTab('streaming');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+window.handleDeleteStreamingAccount = async (accountId) => {
+    if (!confirm('¿Estás seguro de eliminar esta cuenta de streaming? Se liberarán todas sus asignaciones.')) return;
+    try {
+        const res = await AdminService.deleteStreamingAccount(accountId);
+        showToast(res.message, 'success');
+        switchTab('streaming');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+window.openAssignStreamingUserModal = async (accountId) => {
+    const acc = (window._cachedStreamingAccounts || []).find(a => a.id === accountId);
+    if (!acc) return;
+
+    const html = `
+        <div style="padding: 24px; max-width: 500px; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin: 0;">Asignar Usuario a Cuenta Streaming</h3>
+                <button class="btn-icon" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="margin-bottom: 16px; background: var(--bg-hover); padding: 12px; border-radius: 8px; font-size: 13px;">
+                <div><strong>Plataforma:</strong> ${acc.platform}</div>
+                <div><strong>Cuenta:</strong> ${acc.email} (${acc.profile_name || 'Sin perfil'})</div>
+                <div><strong>Cupos libres:</strong> ${acc.max_devices - acc.current_users_count} de ${acc.max_devices}</div>
+            </div>
+            <form onsubmit="handleSubmitAssignStreamingUser(event, ${acc.id})">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>ID del Usuario *</label>
+                    <input type="number" id="assign-user-id" class="form-control" required placeholder="ej: 5">
+                </div>
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label>ID del Pedido / Orden (Opcional)</label>
+                    <input type="number" id="assign-order-id" class="form-control" placeholder="ej: 12">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label>Fecha de Expiración del Acceso (Opcional)</label>
+                    <input type="date" id="assign-expires-at" class="form-control" value="${acc.expiration_date ? acc.expiration_date.substring(0, 10) : ''}">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary">Asignar Cupo</button>
+                </div>
+            </form>
+        </div>
+    `;
+    openAdminModalModal(html);
+};
+
+window.handleSubmitAssignStreamingUser = async (e, accountId) => {
+    e.preventDefault();
+    const payload = {
+        account_id: accountId,
+        user_id: Number(document.getElementById('assign-user-id').value),
+        order_id: document.getElementById('assign-order-id').value ? Number(document.getElementById('assign-order-id').value) : null,
+        expires_at: document.getElementById('assign-expires-at').value || null
+    };
+
+    try {
+        const res = await AdminService.assignStreamingUser(payload);
+        showToast(res.message, 'success');
+        closeAdminModalModal();
+        switchTab('streaming');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+window.handleUnassignStreamingUser = async (assignmentId) => {
+    if (!confirm('¿Liberar este cupo de usuario?')) return;
+    try {
+        const res = await AdminService.unassignStreamingUser(assignmentId);
+        showToast(res.message, 'success');
+        switchTab('streaming');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+

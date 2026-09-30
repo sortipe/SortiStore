@@ -1,12 +1,12 @@
 const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 
-// 1. Obtener Descargas del Cliente
+// 1. Obtener Descargas y Cuentas Streaming del Cliente
 exports.getDownloads = async (req, res) => {
     try {
         const userId = req.user.id;
         const downloads = await db.query(`
-            SELECT DISTINCT p.id, p.name, p.slug, p.download_url, p.download_file_size, p.download_version, o.created_at
+            SELECT DISTINCT p.id, p.name, p.slug, p.type, p.download_url, p.download_file_size, p.download_version, p.streaming_platform, o.id as order_id, o.created_at
             FROM orders o
             JOIN order_items oi ON o.id = oi.order_id
             JOIN products p ON oi.product_id = p.id
@@ -15,7 +15,34 @@ exports.getDownloads = async (req, res) => {
             ORDER BY o.created_at DESC
         `, [userId]);
 
-        return res.json(downloads);
+        const enriched = await Promise.all(downloads.map(async (d) => {
+            const streamingAss = await db.querySingle(`
+                SELECT s.platform, s.email, s.password, s.profile_name, s.profile_pin, s.activation_link, 
+                       COALESCE(a.expires_at, s.expiration_date) as expiration_date
+                FROM streaming_assignments a
+                JOIN streaming_accounts s ON a.account_id = s.id
+                WHERE a.user_id = ? AND (a.order_id = ? OR s.product_id = ?)
+                ORDER BY a.assigned_at DESC
+                LIMIT 1
+            `, [userId, d.order_id, d.id]);
+
+            let streamingAccount = streamingAss;
+            if (!streamingAccount) {
+                streamingAccount = await db.querySingle(`
+                    SELECT platform, email, password, profile_name, profile_pin, activation_link, expiration_date
+                    FROM streaming_accounts
+                    WHERE product_id = ?
+                    LIMIT 1
+                `, [d.id]);
+            }
+
+            return {
+                ...d,
+                streaming_account: streamingAccount || null
+            };
+        }));
+
+        return res.json(enriched);
     } catch (error) {
         console.error('Error al obtener descargas:', error);
         return res.status(500).json({ error: 'Error interno del servidor.' });
