@@ -2729,6 +2729,28 @@ window.openStreamingAccountModal = async (accountId = null) => {
 
     const prodOptions = products.map(p => `<option value="${p.id}" ${acc && acc.product_id === p.id ? 'selected' : ''}>${p.name}</option>`).join('');
 
+    const defaultPlatforms = [
+        'Netflix',
+        'Disney+',
+        'HBO Max / Max',
+        'Prime Video',
+        'Spotify',
+        'YouTube Premium',
+        'Paramount+',
+        'Star+',
+        'Apple TV+',
+        'Crunchyroll',
+        'Canva',
+        'IPTV',
+        'Gemini AI / ChatGPT'
+    ];
+
+    const currentPlatform = acc ? acc.platform : '';
+    const isCustomPlatform = currentPlatform && !defaultPlatforms.includes(currentPlatform);
+    const platformSelectOptions = defaultPlatforms.map(p => 
+        `<option value="${p}" ${currentPlatform === p ? 'selected' : ''}>${p}</option>`
+    ).join('');
+
     const html = `
         <div style="padding: 24px; max-width: 600px; width: 100%;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -2739,7 +2761,12 @@ window.openStreamingAccountModal = async (accountId = null) => {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="form-group">
                         <label>Plataforma *</label>
-                        <input type="text" id="stream-platform" class="form-control" required value="${acc ? acc.platform : ''}" placeholder="ej: Netflix, Disney+, Spotify">
+                        <select id="stream-platform" class="form-control" required onchange="const c = document.getElementById('stream-platform-custom'); if(c) { c.style.display = this.value === 'Otro' ? 'block' : 'none'; if(this.value === 'Otro') c.focus(); }">
+                            <option value="">Seleccionar plataforma...</option>
+                            ${platformSelectOptions}
+                            <option value="Otro" ${isCustomPlatform ? 'selected' : ''}>Otro / Personalizada...</option>
+                        </select>
+                        <input type="text" id="stream-platform-custom" class="form-control" style="margin-top: 8px; display: ${isCustomPlatform ? 'block' : 'none'};" value="${isCustomPlatform ? currentPlatform : ''}" placeholder="Escribe la plataforma...">
                     </div>
                     <div class="form-group">
                         <label>Correo / Usuario *</label>
@@ -2793,8 +2820,18 @@ window.openStreamingAccountModal = async (accountId = null) => {
 
 window.handleSaveStreamingAccount = async (e, accountId) => {
     e.preventDefault();
+
+    const platformSelectVal = document.getElementById('stream-platform').value;
+    const platformCustomVal = document.getElementById('stream-platform-custom')?.value.trim();
+    const finalPlatform = platformSelectVal === 'Otro' ? platformCustomVal : platformSelectVal;
+
+    if (!finalPlatform) {
+        showToast('Por favor selecciona o ingresa el nombre de la plataforma', 'error');
+        return;
+    }
+
     const data = {
-        platform: document.getElementById('stream-platform').value,
+        platform: finalPlatform,
         email: document.getElementById('stream-email').value,
         password: document.getElementById('stream-password').value,
         profile_name: document.getElementById('stream-profile-name').value || null,
