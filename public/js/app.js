@@ -1331,7 +1331,7 @@ async function renderDashboard() {
                 </div>
                 <div class="portal-nav-links">
                     <div class="portal-nav-link active" data-tab="purchases"><i class="fas fa-shopping-bag"></i> Mis Compras</div>
-                    <div class="portal-nav-link" data-tab="downloads"><i class="fas fa-download"></i> Descargas</div>
+                    <div class="portal-nav-link" data-tab="downloads"><i class="fas fa-tv"></i> Streaming & Descargas</div>
                     <div class="portal-nav-link" data-tab="courses"><i class="fas fa-graduation-cap"></i> Mis Cursos</div>
                     <div class="portal-nav-link" data-tab="wallet"><i class="fas fa-coins"></i> Mis Monedas</div>
                     <div class="portal-nav-link" data-tab="coupons"><i class="fas fa-ticket-alt"></i> Mis Cupones</div>
@@ -1506,35 +1506,161 @@ async function renderPurchasesTab(container) {
     `;
 }
 
-// 2. Pestaña de descargas digitales
+// 2. Pestaña de descargas y accesos streaming
 async function renderDownloadsTab(container) {
     const downloads = await CustomerService.getDownloads();
 
     container.innerHTML = `
-        <h3 class="portal-section-title"><i class="fas fa-download" style="color: var(--color-primary);"></i> Mis Descargas</h3>
+        <h3 class="portal-section-title"><i class="fas fa-tv" style="color: var(--color-primary);"></i> Mis Cuentas Streaming & Descargas</h3>
         ${downloads.length === 0 ? `
             <div style="text-align: center; padding: 40px 0;">
-                <p style="color: var(--text-muted);">No tienes archivos digitales o licencias de software pendientes de descarga.</p>
+                <p style="color: var(--text-muted);">No tienes cuentas de streaming activas ni archivos de software pendientes de descarga.</p>
+                <a href="#/category/contenido-digital" class="btn-primary" style="margin-top: 16px; display: inline-block;">Explorar Catálogo Streaming</a>
             </div>
         ` : `
             <div class="download-grid">
-                ${downloads.map(d => `
-                    <div class="download-card animate-fade-in">
-                        <h4>${d.name}</h4>
-                        <div class="download-meta">
-                            <span><i class="fas fa-file"></i> Peso: ${d.download_file_size || 'N/A'}</span>
-                            <span><i class="fas fa-code-branch"></i> Versión: ${d.download_version || 'v1.0'}</span>
-                            <span><i class="fas fa-calendar-alt"></i> Comprado el: ${new Date(d.created_at).toLocaleDateString()}</span>
+                ${downloads.map((d, index) => {
+                    const acc = d.streaming_account;
+                    const pwdId = `pwd-stream-${index}`;
+                    
+                    if (acc) {
+                        const platformIcons = {
+                            'Netflix': '<i class="fas fa-play" style="color: #e50914;"></i>',
+                            'Disney+': '<i class="fas fa-film" style="color: #113ccf;"></i>',
+                            'HBO Max / Max': '<i class="fas fa-tv" style="color: #9933ff;"></i>',
+                            'Spotify': '<i class="fab fa-spotify" style="color: #1db954;"></i>',
+                            'YouTube Premium': '<i class="fab fa-youtube" style="color: #ff0000;"></i>',
+                            'Gemini AI / ChatGPT': '<i class="fas fa-robot" style="color: #6366f1;"></i>'
+                        };
+                        const icon = platformIcons[acc.platform] || '<i class="fas fa-tv" style="color: var(--color-primary);"></i>';
+
+                        let expText = 'Sin límite';
+                        if (acc.expiration_date) {
+                            const expDate = new Date(acc.expiration_date);
+                            const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
+                            expText = `${expDate.toLocaleDateString()} (${daysLeft > 0 ? `${daysLeft} días restantes` : 'Expirado'})`;
+                        }
+
+                        return `
+                            <div class="streaming-access-card animate-fade-in">
+                                <div class="streaming-card-header">
+                                    <div>
+                                        <span class="streaming-platform-pill">${icon} ${acc.platform}</span>
+                                        <h4 style="font-size: 15px; font-weight: 700; margin: 10px 0 4px 0;">${d.name}</h4>
+                                        <span style="font-size: 11px; color: var(--text-muted);"><i class="fas fa-shopping-bag"></i> Pedido #${d.order_id}</span>
+                                    </div>
+                                    <span class="badge badge-new" style="font-size: 11px;"><i class="fas fa-check-circle"></i> Activo</span>
+                                </div>
+
+                                <div class="streaming-cred-grid">
+                                    <div class="cred-box">
+                                        <span class="cred-label">Correo / Usuario</span>
+                                        <div class="cred-value-row">
+                                            <span class="cred-val">${acc.email}</span>
+                                            <button type="button" class="btn-cred-copy" title="Copiar Correo" onclick="copyStreamingText('${acc.email}', 'Correo')">
+                                                <i class="fas fa-copy"></i> Copiar
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="cred-box">
+                                        <span class="cred-label">Contraseña</span>
+                                        <div class="cred-value-row">
+                                            <input type="password" id="${pwdId}" class="cred-val" value="${acc.password}" readonly style="background: transparent; border: none; outline: none; width: 100px; color: inherit;">
+                                            <div style="display: flex; gap: 4px;">
+                                                <button type="button" class="btn-cred-copy" title="Mostrar/Ocultar" onclick="toggleStreamingPassword('${pwdId}')">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button type="button" class="btn-cred-copy" title="Copiar Contraseña" onclick="copyStreamingText('${acc.password}', 'Contraseña')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    ${acc.profile_name ? `
+                                        <div class="cred-box">
+                                            <span class="cred-label">Perfil Asignado</span>
+                                            <div class="cred-value-row">
+                                                <span class="cred-val" style="color: var(--color-secondary); font-weight: 700;">${acc.profile_name}</span>
+                                                <button type="button" class="btn-cred-copy" title="Copiar Perfil" onclick="copyStreamingText('${acc.profile_name}', 'Nombre de Perfil')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+
+                                    ${acc.profile_pin ? `
+                                        <div class="cred-box">
+                                            <span class="cred-label">PIN de Seguridad</span>
+                                            <div class="cred-value-row">
+                                                <span class="cred-val" style="color: #f59e0b; font-weight: 800; letter-spacing: 2px;">${acc.profile_pin}</span>
+                                                <button type="button" class="btn-cred-copy" title="Copiar PIN" onclick="copyStreamingText('${acc.profile_pin}', 'PIN')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ` : ''}
+                                </div>
+
+                                <div class="streaming-expiry-bar">
+                                    <span><i class="fas fa-calendar-check" style="color: var(--color-primary); margin-right: 6px;"></i> Vigencia:</span>
+                                    <strong style="color: var(--text-primary);">${expText}</strong>
+                                </div>
+
+                                <div style="display: flex; gap: 8px; margin-top: auto;">
+                                    ${acc.activation_link ? `
+                                        <a href="${acc.activation_link}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; padding: 10px 16px; font-size: 13px;">
+                                            <i class="fas fa-external-link-alt"></i> Abrir Plataforma
+                                        </a>
+                                    ` : ''}
+                                </div>
+
+                                <div class="streaming-security-note">
+                                    <i class="fas fa-shield-alt" style="color: var(--color-primary);"></i> <em>Garantía SortiStore: No modificar el correo o la contraseña de la cuenta para mantener tu soporte activo.</em>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div class="download-card animate-fade-in">
+                            <h4>${d.name}</h4>
+                            <div class="download-meta">
+                                <span><i class="fas fa-file"></i> Peso: ${d.download_file_size || 'N/A'}</span>
+                                <span><i class="fas fa-code-branch"></i> Versión: ${d.download_version || 'v1.0'}</span>
+                                <span><i class="fas fa-calendar-alt"></i> Comprado el: ${new Date(d.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <button class="btn-primary" onclick="simulateFileDownload('${d.name}', '${d.download_url}')">
+                                <i class="fas fa-download"></i> Descargar
+                            </button>
                         </div>
-                        <button class="btn-primary" onclick="simulateFileDownload('${d.name}', '${d.download_url}')">
-                            <i class="fas fa-download"></i> Descargar
-                        </button>
-                    </div>
-                `).join('')}
+                    `;
+                }).join('')}
             </div>
         `}
     `;
 }
+
+window.copyStreamingText = (text, label) => {
+    if (!navigator.clipboard) {
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+    } else {
+        navigator.clipboard.writeText(text);
+    }
+    showToast(`${label} copiado al portapapeles.`, 'success');
+};
+
+window.toggleStreamingPassword = (id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.type = el.type === 'password' ? 'text' : 'password';
+};
 
 window.simulateFileDownload = (filename, url) => {
     showToast(`Iniciando descarga segura de: ${filename}`, 'info');
