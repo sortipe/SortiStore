@@ -337,7 +337,7 @@ async function renderProductDetail(slug) {
     const container = document.getElementById('app-view');
     container.innerHTML = `
         <div class="product-detail-layout">
-            <div class="skeleton" style="height: 500px; border-radius: var(--radius-lg);"></div>
+            <div class="skeleton" style="width: 100%; aspect-ratio: 1 / 1; border-radius: var(--radius-lg);"></div>
             <div style="display: flex; flex-direction: column; gap: 20px;">
                 <div class="skeleton" style="height: 48px; width: 80%;"></div>
                 <div class="skeleton" style="height: 24px; width: 30%;"></div>
@@ -399,13 +399,15 @@ async function renderProductDetail(slug) {
                     <div class="gallery-main">
                         <img src="${mainImage}" alt="${product.name}" id="detail-main-img">
                     </div>
-                    <div class="gallery-thumbs">
-                        ${(product.media || []).map((m, idx) => `
-                            <div class="thumb-item ${idx === 0 ? 'active' : ''}" onclick="document.getElementById('detail-main-img').src='${m.media_url}'; document.querySelectorAll('.thumb-item').forEach(t=>t.classList.remove('active')); this.classList.add('active');">
-                                <img src="${m.media_url}" alt="thumb">
-                            </div>
-                        `).join('')}
-                    </div>
+                    ${(product.media && product.media.length > 1) ? `
+                        <div class="gallery-thumbs">
+                            ${product.media.map((m, idx) => `
+                                <div class="thumb-item ${idx === 0 ? 'active' : ''}" onclick="document.getElementById('detail-main-img').src='${m.media_url}'; document.querySelectorAll('.thumb-item').forEach(t=>t.classList.remove('active')); this.classList.add('active');">
+                                    <img src="${m.media_url}" alt="thumb">
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
                 </div>
 
                 <!-- Detalles e Información -->
