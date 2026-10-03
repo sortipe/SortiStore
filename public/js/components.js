@@ -85,24 +85,6 @@ const Skeletons = {
             `;
         }
         return cards;
-    },
-    
-    getCourseList(count = 2) {
-        let items = '';
-        for (let i = 0; i < count; i++) {
-            items += `
-                <div class="course-card" style="height: 160px; display: flex; gap: 20px; padding: 16px; align-items: center; border: 1px solid var(--border-color); border-radius: var(--radius-lg);">
-                    <div class="skeleton" style="width: 200px; height: 100%; border-radius: var(--radius-md);"></div>
-                    <div class="course-card-details" style="flex: 1; display: flex; flex-direction: column; gap: 10px;">
-                        <div class="skeleton" style="height: 20px; width: 60%;"></div>
-                        <div class="skeleton" style="height: 14px; width: 90%;"></div>
-                        <div class="skeleton" style="height: 8px; width: 100%; border-radius: 4px;"></div>
-                        <div class="skeleton" style="height: 35px; width: 120px; border-radius: 8px; align-self: flex-end;"></div>
-                    </div>
-                </div>
-            `;
-        }
-        return items;
     }
 };
 

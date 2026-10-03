@@ -192,7 +192,7 @@ async function renderHome() {
                     image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
                     badge: 'Campaña de Julio',
                     title: 'Tecnología y Software en un solo lugar',
-                    description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
+                    description: 'Descubre hardware premium, licencias de software y cuentas streaming con entrega instantánea.',
                     link: '#/category/tecnologia',
                     bg_y: 50
                 }
@@ -1332,7 +1332,6 @@ async function renderDashboard() {
                 <div class="portal-nav-links">
                     <div class="portal-nav-link active" data-tab="purchases"><i class="fas fa-shopping-bag"></i> Mis Compras</div>
                     <div class="portal-nav-link" data-tab="downloads"><i class="fas fa-tv"></i> Streaming & Descargas</div>
-                    <div class="portal-nav-link" data-tab="courses"><i class="fas fa-graduation-cap"></i> Mis Cursos</div>
                     <div class="portal-nav-link" data-tab="wallet"><i class="fas fa-coins"></i> Mis Monedas</div>
                     <div class="portal-nav-link" data-tab="coupons"><i class="fas fa-ticket-alt"></i> Mis Cupones</div>
                     <div class="portal-nav-link" data-tab="account"><i class="fas fa-user-cog"></i> Mi Cuenta</div>
@@ -1390,9 +1389,6 @@ async function switchTab(tabName) {
                 break;
             case 'downloads':
                 await renderDownloadsTab(tabContent);
-                break;
-            case 'courses':
-                await renderCoursesTab(tabContent);
                 break;
             case 'wallet':
                 await renderWalletTab(tabContent);
@@ -1669,45 +1665,7 @@ window.simulateFileDownload = (filename, url) => {
     }, 2000);
 };
 
-// 3. Pestaña de Cursos LMS
-async function renderCoursesTab(container) {
-    const courses = await CustomerService.getCourses();
-
-    container.innerHTML = `
-        <h3 class="portal-section-title"><i class="fas fa-graduation-cap" style="color: var(--color-primary);"></i> Mis Cursos</h3>
-        ${courses.length === 0 ? `
-            <div style="text-align: center; padding: 40px 0;">
-                <p style="color: var(--text-muted); margin-bottom: 16px;">Aún no estás matriculado en ningún curso.</p>
-                <a href="#/category/cursos" class="btn-primary">Ver Cursos Disponibles</a>
-            </div>
-        ` : courses.map(course => `
-            <div class="course-card animate-fade-in">
-                <div class="course-card-cover">
-                    <img src="${course.cover_image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=300'}" alt="${course.title}">
-                </div>
-                <div class="course-card-details">
-                    <div>
-                        <h4 style="font-size: 18px; margin-bottom: 8px;">${course.title}</h4>
-                        <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 12px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${course.description}</p>
-                    </div>
-                    <div>
-                        <div class="progress-bar-container">
-                            <div class="progress-bar-fill" style="width: ${course.progressPercent}%;"></div>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 12px; font-weight: 700; color: var(--color-primary);">${course.progressPercent}% Completado</span>
-                            <button class="btn-secondary" style="padding: 8px 16px; font-size: 13px;" onclick="openCoursePlayer(${course.id})">
-                                <i class="fas fa-play"></i> ${course.progressPercent === 100 ? 'Repasar Clases' : 'Continuar Aprendiendo'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('')}
-    `;
-}
-
-// 4. Pestaña de Billetera Virtual (Monedas Sorti)
+// 3. Pestaña de Billetera Virtual (Monedas Sorti)
 async function renderWalletTab(container) {
     const wallet = await CustomerService.getWallet();
 
@@ -1891,278 +1849,6 @@ function renderAccountTab(container) {
 }
 
 // ==========================================
-// REPRODUCTOR DE CURSOS LMS (LÓGICA CLIENTE)
-// ==========================================
-let currentCourseStructure = null;
-let currentActiveLessonId = null;
-
-window.openCoursePlayer = async (courseId) => {
-    const player = document.getElementById('lms-course-player');
-    const playerModules = document.getElementById('lms-player-modules-list');
-    
-    // Cargar animación de cargando
-    playerModules.innerHTML = '<div class="skeleton" style="height: 100px; margin: 16px;"></div>';
-    player.classList.add('active');
-    document.body.style.overflow = 'hidden'; // Evitar scroll de fondo
-
-    try {
-        const data = await CustomerService.getCourseDetails(courseId);
-        currentCourseStructure = data;
-
-        // Renderizar estructura en sidebar
-        document.getElementById('lms-player-course-title').textContent = data.course.title;
-        renderLMSStructure(data.modules);
-        updateLMSProgressBar();
-
-        // Cargar primera lección del primer módulo por defecto
-        if (data.modules.length > 0 && data.modules[0].lessons.length > 0) {
-            loadLMSLesson(data.modules[0].lessons[0].id);
-        } else {
-            showToast('Este curso no tiene lecciones estructuradas aún.', 'warning');
-        }
-        
-    } catch (error) {
-        showToast('No se pudo acceder a la estructura del curso.', 'error');
-        closeCoursePlayer();
-    }
-};
-
-function closeCoursePlayer() {
-    document.getElementById('lms-course-player').classList.remove('active');
-    document.body.style.overflow = ''; // Restaurar scroll
-    document.getElementById('lms-lesson-video').src = ''; // Detener video
-    // Refrescar pestaña de cursos por si actualizó progresos
-    if (AppState.currentView === 'dashboard') {
-        switchTab('courses');
-    }
-}
-
-document.getElementById('close-lms-player-btn').addEventListener('click', closeCoursePlayer);
-
-// Renderizar módulos y lecciones en barra lateral del reproductor
-function renderLMSStructure(modules) {
-    const container = document.getElementById('lms-player-modules-list');
-    
-    container.innerHTML = modules.map(mod => `
-        <div class="lms-module-accordion">
-            <div class="lms-module-title">
-                <span>${mod.title}</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <div class="lms-lessons-list">
-                ${mod.lessons.map(les => `
-                    <div class="lms-lesson-item ${les.completed ? 'completed' : ''}" 
-                         id="les-item-${les.id}" 
-                         onclick="loadLMSLesson(${les.id})">
-                        <span><i class="${les.completed ? 'fas fa-check-circle' : 'far fa-play-circle'}" style="margin-right: 6px; color: ${les.completed ? 'var(--color-secondary)' : 'var(--text-muted)'};"></i> ${les.title}</span>
-                        <span style="font-size: 11px; color: var(--text-muted);">${les.duration}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `).join('');
-}
-
-// Cargar una lección en el reproductor principal
-function loadLMSLesson(lessonId) {
-    currentActiveLessonId = lessonId;
-    
-    // Buscar lección en la estructura cargada
-    let activeLesson = null;
-    currentCourseStructure.modules.forEach(m => {
-        const found = m.lessons.find(l => l.id === lessonId);
-        if (found) activeLesson = found;
-    });
-
-    if (!activeLesson) return;
-
-    // Resaltar elemento activo en sidebar
-    document.querySelectorAll('.lms-lesson-item').forEach(el => el.classList.remove('active'));
-    const activeSidebarItem = document.getElementById(`les-item-${lessonId}`);
-    if (activeSidebarItem) activeSidebarItem.classList.add('active');
-
-    // Cargar contenido en video y textos
-    document.getElementById('lms-player-lesson-title').textContent = activeLesson.title;
-    document.getElementById('lms-player-lesson-duration').innerHTML = `<i class="fas fa-clock"></i> Duración: ${activeLesson.duration}`;
-    
-    const videoElement = document.getElementById('lms-lesson-video');
-    videoElement.src = activeLesson.video_url || 'https://www.w3schools.com/html/mov_bbb.mp4';
-    
-    // Configurar checkbox de completado
-    const checkbox = document.getElementById('lms-lesson-complete-checkbox');
-    checkbox.checked = activeLesson.completed;
-
-    // Quitar listeners anteriores para evitar duplicados
-    checkbox.onchange = null;
-    checkbox.onchange = async (e) => {
-        const isChecked = e.target.checked;
-        await toggleLessonStatus(lessonId, isChecked);
-    };
-
-    // Cargar recursos adicionales
-    const resourcesContainer = document.getElementById('lms-resources-links-container');
-    const resourcesBox = document.getElementById('lms-lesson-resources-box');
-    
-    let resourcesHtml = '';
-    if (activeLesson.pdf_url) {
-        resourcesHtml += `<button class="btn-outline" style="font-size: 12px; padding: 8px 16px;" onclick="simulateFileDownload('Diapositivas PDF', '${activeLesson.pdf_url}')"><i class="fas fa-file-pdf" style="color: #ef4444;"></i> Diapositivas de Clase</button>`;
-    }
-    if (activeLesson.resources_url) {
-        resourcesHtml += `<button class="btn-outline" style="font-size: 12px; padding: 8px 16px;" onclick="simulateFileDownload('Archivos Código', '${activeLesson.resources_url}')"><i class="fas fa-file-archive" style="color: #eab308;"></i> Código Fuente</button>`;
-    }
-
-    if (resourcesHtml) {
-        resourcesBox.style.display = 'block';
-        resourcesContainer.innerHTML = resourcesHtml;
-    } else {
-        resourcesBox.style.display = 'none';
-    }
-
-    // Configurar Examenes de lección
-    const examBox = document.getElementById('lms-lesson-exam-box');
-    if (activeLesson.has_exam && activeLesson.exam_questions && activeLesson.exam_questions.length > 0) {
-        examBox.style.display = 'block';
-        renderLMSLessonExam(activeLesson.exam_questions);
-    } else {
-        examBox.style.display = 'none';
-    }
-}
-
-// Alternar estado de completado en lección
-async function toggleLessonStatus(lessonId, isCompleted) {
-    try {
-        const response = await CustomerService.toggleLessonComplete(lessonId, isCompleted);
-        
-        // Actualizar datos locales
-        currentCourseStructure.modules.forEach(m => {
-            const idx = m.lessons.findIndex(l => l.id === lessonId);
-            if (idx > -1) {
-                m.lessons[idx].completed = isCompleted;
-            }
-        });
-
-        // Refrescar item visual
-        const itemEl = document.getElementById(`les-item-${lessonId}`);
-        if (itemEl) {
-            const icon = itemEl.querySelector('i');
-            if (isCompleted) {
-                itemEl.classList.add('completed');
-                icon.className = 'fas fa-check-circle';
-                icon.style.color = 'var(--color-secondary)';
-            } else {
-                itemEl.classList.remove('completed');
-                icon.className = 'far fa-play-circle';
-                icon.style.color = 'var(--text-muted)';
-            }
-        }
-
-        // Actualizar barra de progreso
-        updateLMSProgressBar();
-
-        // Si el curso llega al 100%, detonar pop-up de felicitación
-        if (response.isCourseCompleted) {
-            triggerCourseCompletionScreen(currentCourseStructure.course.title);
-        }
-
-    } catch (e) {
-        showToast('Error al guardar progreso de clase.', 'error');
-    }
-}
-
-function updateLMSProgressBar() {
-    let total = 0;
-    let completed = 0;
-    
-    currentCourseStructure.modules.forEach(m => {
-        m.lessons.forEach(l => {
-            total++;
-            if (l.completed) completed++;
-        });
-    });
-
-    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
-    document.getElementById('lms-player-progress-bar').style.width = `${percent}%`;
-    document.getElementById('lms-player-progress-text').textContent = `Progreso: ${percent}%`;
-}
-
-// Renderizar examen rápido interactivo
-function renderLMSLessonExam(questions) {
-    const card = document.getElementById('lms-exam-question-card');
-    
-    card.innerHTML = `
-        <div id="exam-questions-list">
-            ${questions.map((q, qIdx) => `
-                <div style="margin-bottom: 20px;">
-                    <p style="font-weight: 700; margin-bottom: 8px;">Pregunta ${qIdx + 1}: ${q.question}</p>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        ${q.options.map((opt, optIdx) => `
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
-                                <input type="radio" name="question-${qIdx}" value="${optIdx}">
-                                <span>${opt}</span>
-                            </label>
-                        `).join('')}
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-        <button class="btn-primary" style="margin-top: 12px; padding: 8px 16px; font-size: 13px;" onclick="validateLMSExam()">Enviar Respuestas</button>
-        <div id="exam-feedback-text" style="margin-top: 12px; font-weight: 700; font-size: 14px;"></div>
-    `;
-
-    window.validateLMSExam = () => {
-        let correctAnswers = 0;
-        let hasErrors = false;
-
-        questions.forEach((q, qIdx) => {
-            const selected = card.querySelector(`input[name="question-${qIdx}"]:checked`);
-            if (!selected) {
-                hasErrors = true;
-                return;
-            }
-            if (Number(selected.value) === q.answer) {
-                correctAnswers++;
-            }
-        });
-
-        if (hasErrors) {
-            showToast('Por favor responda todas las preguntas.', 'warning');
-            return;
-        }
-
-        const score = Math.round((correctAnswers / questions.length) * 100);
-        const feedbackEl = document.getElementById('exam-feedback-text');
-        
-        if (score >= 70) {
-            feedbackEl.style.color = 'var(--color-secondary)';
-            feedbackEl.innerHTML = `<i class="fas fa-check-circle"></i> ¡Aprobado! Calificación: ${score}% (${correctAnswers}/${questions.length})`;
-            showToast('Examen aprobado.', 'success');
-        } else {
-            feedbackEl.style.color = 'var(--danger)';
-            feedbackEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> Reprobado. Calificación: ${score}% (${correctAnswers}/${questions.length}). Inténtalo de nuevo.`;
-            showToast('Examen reprobado.', 'error');
-        }
-    };
-}
-
-// Pantalla final del curso
-function triggerCourseCompletionScreen(courseTitle) {
-    const popup = document.getElementById('lms-completion-popup');
-    document.getElementById('completed-course-name-text').textContent = courseTitle;
-    popup.classList.add('active');
-
-    document.getElementById('close-completion-popup-btn').onclick = () => {
-        popup.classList.remove('active');
-    };
-
-    document.getElementById('download-certificate-btn').onclick = () => {
-        showToast('Generando certificado premium PDF...', 'info');
-        setTimeout(() => {
-            showToast('Certificado descargado con éxito.', 'success');
-        }, 1500);
-    };
-}
-
-// ==========================================
 // VISTA: AUTENTICACIÓN (LOGIN / REGISTRO)
 // ==========================================
 function renderAuth() {
@@ -2342,15 +2028,11 @@ function initGlobalEvents() {
         }, 100);
     });
 
-    document.getElementById('nav-software-btn').addEventListener('click', () => {
+    document.getElementById('nav-software-btn')?.addEventListener('click', () => {
         window.location.hash = '#/category/sistemas-y-software';
     });
 
-    document.getElementById('nav-courses-btn').addEventListener('click', () => {
-        window.location.hash = '#/category/cursos';
-    });
-
-    document.getElementById('nav-presales-btn').addEventListener('click', () => {
+    document.getElementById('nav-presales-btn')?.addEventListener('click', () => {
         window.location.hash = '#/';
         setTimeout(() => {
             const headers = document.querySelectorAll('.section-header');

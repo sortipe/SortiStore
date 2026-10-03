@@ -80,7 +80,6 @@ async function switchTab(tabName) {
         streaming: 'Gestión de Cuentas y Perfiles Streaming',
         categories: 'Gestión de Categorías y Subcategorías',
         orders: 'Gestión de Pedidos',
-        courses: 'Estructura LMS Cursos',
         wallet: 'Ajuste de Monedas Virtuales',
         coupons: 'Gestión de Cupones',
         vip_users: 'Gestión de Usuarios VIP',
@@ -108,9 +107,6 @@ async function switchTab(tabName) {
                 break;
             case 'orders':
                 await renderOrdersTab(contentArea);
-                break;
-            case 'courses':
-                await renderCoursesTab(contentArea);
                 break;
             case 'wallet':
                 renderWalletTab(contentArea);
@@ -234,7 +230,7 @@ async function renderDashboardTab(container) {
                     ` : salesByType.map(s => {
                         const maxRevenue = Math.max(...salesByType.map(item => Number(item.revenue))) || 1;
                         const percent = Math.round((Number(s.revenue) / maxRevenue) * 100);
-                        const icons = { course: 'fa-graduation-cap', software: 'fa-laptop-code', digital: 'fa-download', physical: 'fa-box' };
+                        const icons = { software: 'fa-laptop-code', digital: 'fa-download', physical: 'fa-box' };
                         return `
                             <div>
                                 <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
@@ -366,6 +362,18 @@ window.openProductFormModal = async (productId = null) => {
         console.error('Error al cargar categorías para el formulario:', e);
     }
 
+    // Inicializar medios (Portada y Galería)
+    let initialCover = '';
+    let initialGallery = [];
+
+    if (product.media && product.media.length > 0) {
+        initialCover = product.media[0].media_url || '';
+        initialGallery = product.media.slice(1).map(m => typeof m === 'string' ? { media_url: m, is_video: 0 } : m);
+    }
+
+    window.currentProductCover = initialCover;
+    window.currentProductGallery = initialGallery;
+
     modalContent.innerHTML = `
         <div class="admin-modal-header">
             <h3>${productId ? 'Editar Producto' : 'Crear Nuevo Producto'}</h3>
@@ -387,7 +395,6 @@ window.openProductFormModal = async (productId = null) => {
                         <option value="physical" ${product.type === 'physical' ? 'selected' : ''}>Físico</option>
                         <option value="digital" ${product.type === 'digital' ? 'selected' : ''}>Digital (E-book, streaming)</option>
                         <option value="software" ${product.type === 'software' ? 'selected' : ''}>Software / Sistemas / CRM</option>
-                        <option value="course" ${product.type === 'course' ? 'selected' : ''}>Curso LMS</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -484,13 +491,81 @@ window.openProductFormModal = async (productId = null) => {
                     <div id="product-features-rows-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
 
-                <!-- Galería Multimedia (URLs o archivos locales optimizados) -->
+                <!-- SECCIÓN 1: IMAGEN DE PORTADA DEL PRODUCTO (DESDE EL COMPUTADOR O URL) -->
                 <div class="form-group" style="grid-column: span 2;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <label style="font-weight: 700; color: var(--text-secondary);">Galería de Imágenes del Producto</label>
-                        <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 11px;" onclick="addProductMediaRow()"><i class="fas fa-plus"></i> Agregar Imagen</button>
+                    <div class="product-image-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <div>
+                                <label style="font-weight: 700; color: var(--text-primary); font-size: 14px;">
+                                    <i class="fas fa-image" style="color: var(--color-primary); margin-right: 6px;"></i> Imagen de Portada (Principal)
+                                </label>
+                                <span style="font-size: 11px; color: var(--text-muted); display: block;">
+                                    Es la imagen frontal que aparecerá en el catálogo, tarjetas y cabecera de la tienda.
+                                </span>
+                            </div>
+                            <button type="button" class="btn-outline" style="padding: 4px 10px; font-size: 11px;" onclick="toggleCoverUrlInput()">
+                                <i class="fas fa-link"></i> <span id="cover-url-toggle-text">Ingresar URL</span>
+                            </button>
+                        </div>
+                        
+                        <div class="cover-upload-wrapper">
+                            <div class="cover-preview-box" id="cover-preview-box" style="background-image: ${initialCover ? `url('${initialCover}')` : 'none'};">
+                                ${!initialCover ? '<i class="fas fa-camera" style="font-size: 32px; color: var(--text-muted);"></i>' : ''}
+                            </div>
+                            <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px;">
+                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                    <label class="btn-primary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; font-size: 13px; margin: 0;">
+                                        <i class="fas fa-laptop"></i> Subir Portada desde el PC
+                                        <input type="file" id="prod-cover-file-input" accept="image/*" style="display: none;" onchange="handleProductCoverUpload(event)">
+                                    </label>
+                                    <button type="button" id="remove-cover-btn" class="action-btn" style="color: var(--danger); display: ${initialCover ? 'inline-flex' : 'none'}; align-items: center; gap: 6px; font-size: 12px; padding: 6px 12px; border: 1px solid var(--danger); border-radius: var(--radius-md);" onclick="removeProductCover()" title="Quitar portada">
+                                        <i class="fas fa-trash-alt"></i> Quitar Portada
+                                    </button>
+                                </div>
+                                <div id="cover-url-input-container" style="display: ${initialCover && !initialCover.startsWith('data:') ? 'block' : 'none'}; margin-top: 4px;">
+                                    <input type="text" id="prod-cover-url" class="form-control" placeholder="https://images.unsplash.com/..." value="${initialCover && !initialCover.startsWith('data:') ? initialCover : ''}" oninput="updateCoverFromUrl(this.value)">
+                                </div>
+                                <span style="font-size: 11px; color: var(--text-muted);">
+                                    Formatos compatibles: JPG, PNG, WEBP, GIF. Compresión y optimización automática para máxima velocidad.
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <div id="product-media-rows-container" style="display: flex; flex-direction: column; gap: 12px;"></div>
+                </div>
+
+                <!-- SECCIÓN 2: GALERÍA DE IMÁGENES ADICIONALES (DESDE EL COMPUTADOR O MULTI-ARCHIVOS) -->
+                <div class="form-group" style="grid-column: span 2;">
+                    <div class="product-image-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                            <div>
+                                <label style="font-weight: 700; color: var(--text-primary); font-size: 14px;">
+                                    <i class="fas fa-images" style="color: var(--color-secondary); margin-right: 6px;"></i> Galería de Fotos Adicionales
+                                </label>
+                                <span style="font-size: 11px; color: var(--text-muted); display: block;">
+                                    Imágenes secundarias para el carrusel de detalles del producto.
+                                </span>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <label class="btn-secondary" style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 12px; margin: 0;">
+                                    <i class="fas fa-file-upload"></i> Subir Fotos del PC
+                                    <input type="file" id="prod-gallery-files-input" accept="image/*" multiple style="display: none;" onchange="handleGalleryMultipleUpload(event)">
+                                </label>
+                                <button type="button" class="btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="addGalleryUrlRow()">
+                                    <i class="fas fa-link"></i> Añadir por URL
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Drag & Drop Zone -->
+                        <div class="drag-drop-zone" id="gallery-dropzone" onclick="document.getElementById('prod-gallery-files-input').click()">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 28px; color: var(--color-secondary); margin-bottom: 6px;"></i>
+                            <p style="font-size: 13px; font-weight: 600; margin-bottom: 2px;">Haz clic aquí o arrastra fotos desde tu computadora</p>
+                            <span style="font-size: 11px; color: var(--text-muted);">Puedes seleccionar y subir múltiples imágenes a la vez</span>
+                        </div>
+
+                        <!-- Grid de Miniaturas de la Galería -->
+                        <div id="product-gallery-grid-container" class="gallery-grid"></div>
+                    </div>
                 </div>
             </div>
             
@@ -504,12 +579,38 @@ window.openProductFormModal = async (productId = null) => {
     modal.style.display = 'flex';
     modal.classList.add('active');
 
-    window.currentProductMedia = [...(product.media || [])];
-    if (window.currentProductMedia.length === 0) {
-        window.currentProductMedia.push({ media_url: '', is_video: 0 });
-    }
-    window.renderProductMediaRows();
+    // Inicializar listeners de Drag & Drop para la galería
+    const dropzone = document.getElementById('gallery-dropzone');
+    if (dropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('dragover');
+            }, false);
+        });
 
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                handleFilesForGallery(Array.from(files));
+            }
+        }, false);
+    }
+
+    // Renderizar la grilla de galería
+    window.renderProductGalleryGrid();
+
+    // Renderizar especificaciones
     window.currentProductFeatures = [];
     if (product.features) {
         try {
@@ -536,7 +637,19 @@ window.openProductFormModal = async (productId = null) => {
     document.getElementById('product-crud-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const mediaArray = window.currentProductMedia.filter(item => item && item.media_url && item.media_url.trim() !== '');
+        // Construir arreglo de medios: Portada primero, luego galería
+        const allMedia = [];
+        if (window.currentProductCover && window.currentProductCover.trim() !== '') {
+            allMedia.push({ media_url: window.currentProductCover.trim(), is_video: 0 });
+        }
+        if (window.currentProductGallery && window.currentProductGallery.length > 0) {
+            window.currentProductGallery.forEach(item => {
+                if (item && item.media_url && item.media_url.trim() !== '') {
+                    allMedia.push({ media_url: item.media_url.trim(), is_video: item.is_video ? 1 : 0 });
+                }
+            });
+        }
+
         const featuresArray = (window.currentProductFeatures || []).filter(f => f && f.name && f.name.trim() !== '' && f.value && f.value.trim() !== '');
 
         const payload = {
@@ -562,7 +675,7 @@ window.openProductFormModal = async (productId = null) => {
             download_file_size: document.getElementById('prod-download-size')?.value.trim() || null,
             download_version: document.getElementById('prod-download-version')?.value.trim() || null,
             streaming_platform: document.getElementById('prod-streaming-platform')?.value.trim() || null,
-            media: mediaArray,
+            media: allMedia,
             features: featuresArray,
             variants: []
         };
@@ -790,182 +903,7 @@ window.saveOrderStatusCall = async (orderId) => {
 };
 
 // ==========================================
-// 4. PESTAÑA: ESTRUCTURADOR LMS DE CURSOS
-// ==========================================
-let globalCoursesList = [];
-
-async function renderCoursesTab(container) {
-    // Filtrar del catálogo general todos los productos que sean cursos
-    const products = await ShopService.getProducts();
-    globalCoursesList = products.filter(p => p.type === 'course');
-
-    container.innerHTML = `
-        <div class="admin-table-container animate-fade-in">
-            <div class="admin-table-header">
-                <h3>Cursos Disponibles</h3>
-            </div>
-            
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Curso</th>
-                        <th>Precio</th>
-                        <th>Estructura</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${globalCoursesList.map(c => `
-                        <tr>
-                            <td><strong>${c.name}</strong><br><span style="font-size: 11px; color: var(--text-muted);">${c.brand || 'Facilitador'}</span></td>
-                            <td>S/. ${c.price_normal.toFixed(2)}</td>
-                            <td id="course-struct-badge-${c.id}"><span class="badge badge-featured">Configurable</span></td>
-                            <td>
-                                <button class="btn-secondary" style="padding: 8px 16px; font-size: 12px;" onclick="openCourseBuilderModal(${c.id})">
-                                    <i class="fas fa-stream"></i> Estructurar Módulos/Clases
-                                </button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
-}
-
-// Estructurador visual modular interactivo
-let builderModules = [];
-
-window.openCourseBuilderModal = async (productId) => {
-    const modal = document.getElementById('admin-details-modal');
-    const modalContent = document.getElementById('admin-modal-content-area');
-    
-    let courseId = null;
-    let modulesList = [];
-    
-    try {
-        const details = await AdminService.getCourseStructure(productId);
-        courseId = details.id;
-        modulesList = details.modules;
-    } catch (e) {
-        showToast('Error al cargar la estructura del curso. Asegúrate de que el producto esté registrado como curso en la base de datos.', 'error');
-        return;
-    }
-
-    builderModules = modulesList.map(m => ({
-        title: m.title,
-        lessons: (m.lessons || []).map(l => ({
-            title: l.title,
-            video_url: l.video_url,
-            duration: l.duration,
-            pdf_url: l.pdf_url,
-            resources_url: l.resources_url,
-            has_exam: !!l.has_exam,
-            exam_questions: l.exam_questions ? (typeof l.exam_questions === 'string' ? JSON.parse(l.exam_questions) : l.exam_questions) : []
-        }))
-    }));
-
-    renderLMSBuilderContent(courseId);
-    modal.style.display = 'flex';
-    modal.classList.add('active');
-};
-
-function renderLMSBuilderContent(courseId) {
-    const modalContent = document.getElementById('admin-modal-content-area');
-    
-    modalContent.innerHTML = `
-        <div class="admin-modal-header">
-            <h3>Estructurador LMS - Módulos y Clases</h3>
-            <button onclick="closeAdminModal()" style="font-size: 20px;"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="admin-modal-body">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <p style="font-size: 13px; color: var(--text-muted);">Configure los módulos didácticos y las clases de video asociadas a este curso.</p>
-                <button type="button" class="btn-outline" onclick="addLMSBuilderModule(${courseId})"><i class="fas fa-plus"></i> Añadir Módulo</button>
-            </div>
-            
-            <div id="lms-modules-builder-list">
-                ${builderModules.map((mod, modIdx) => `
-                    <div class="lms-builder-module" data-mod-idx="${modIdx}">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                            <input type="text" class="form-control" style="font-weight: 700; width: 70%;" value="${mod.title}" oninput="builderModules[${modIdx}].title = this.value" placeholder="Nombre del Módulo (ej: Módulo 1: Introducción)">
-                            <button type="button" class="btn-outline" style="color: var(--danger); border-color: var(--danger); padding: 6px 12px; font-size:12px;" onclick="removeLMSBuilderModule(${modIdx}, ${courseId})"><i class="fas fa-trash"></i> Eliminar Módulo</button>
-                        </div>
-
-                        <!-- Clases del Módulo -->
-                        <div class="lms-lessons-builder-list" style="margin-left: 20px; display: flex; flex-direction: column; gap: 12px;">
-                            ${mod.lessons.map((les, lesIdx) => `
-                                <div class="lms-builder-lesson-row">
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                                        <div class="form-group" style="margin-bottom:8px;">
-                                            <label>Título de la Clase</label>
-                                            <input type="text" class="form-control" value="${les.title}" oninput="builderModules[${modIdx}].lessons[${lesIdx}].title = this.value" placeholder="ej: 1.1 Introducción">
-                                        </div>
-                                        <div class="form-group" style="margin-bottom:8px;">
-                                            <label>URL del Video MP4 / YouTube</label>
-                                            <input type="text" class="form-control" value="${les.video_url || ''}" oninput="builderModules[${modIdx}].lessons[${lesIdx}].video_url = this.value" placeholder="https://example.com/video.mp4">
-                                        </div>
-                                        <div class="form-group" style="margin-bottom:8px;">
-                                            <label>Duración</label>
-                                            <input type="text" class="form-control" value="${les.duration || '00:00'}" oninput="builderModules[${modIdx}].lessons[${lesIdx}].duration = this.value" placeholder="ej: 12:45">
-                                        </div>
-                                        <div class="form-group" style="margin-bottom:8px;">
-                                            <label>URL Diapositivas PDF</label>
-                                            <input type="text" class="form-control" value="${les.pdf_url || ''}" oninput="builderModules[${modIdx}].lessons[${lesIdx}].pdf_url = this.value" placeholder="https://example.com/slides.pdf">
-                                        </div>
-                                    </div>
-                                    <div style="text-align: right; margin-top: 4px;">
-                                        <button type="button" style="color: var(--danger); font-size:12px; font-weight:700;" onclick="removeLMSBuilderLesson(${modIdx}, ${lesIdx}, ${courseId})"><i class="fas fa-times"></i> Remover Clase</button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <button type="button" class="btn-outline" style="margin-top:12px; padding: 6px 12px; font-size: 11px;" onclick="addLMSBuilderLesson(${modIdx}, ${courseId})"><i class="fas fa-plus"></i> Añadir Clase</button>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-        <div class="admin-modal-footer">
-            <button class="btn-outline" onclick="closeAdminModal()">Cancelar</button>
-            <button class="btn-primary" onclick="saveCourseStructureCall(${courseId})">Guardar Cambios de Curso</button>
-        </div>
-    `;
-}
-
-window.addLMSBuilderModule = (courseId) => {
-    builderModules.push({ title: '', lessons: [] });
-    renderLMSBuilderContent(courseId);
-};
-
-window.removeLMSBuilderModule = (idx, courseId) => {
-    builderModules.splice(idx, 1);
-    renderLMSBuilderContent(courseId);
-};
-
-window.addLMSBuilderLesson = (modIdx, courseId) => {
-    builderModules[modIdx].lessons.push({
-        title: '', video_url: '', duration: '00:00', pdf_url: '', resources_url: '', has_exam: false, exam_questions: []
-    });
-    renderLMSBuilderContent(courseId);
-};
-
-window.removeLMSBuilderLesson = (modIdx, lesIdx, courseId) => {
-    builderModules[modIdx].lessons.splice(lesIdx, 1);
-    renderLMSBuilderContent(courseId);
-};
-
-window.saveCourseStructureCall = async (courseId) => {
-    try {
-        await AdminService.createCourseStructure(courseId, builderModules);
-        showToast('Estructura de lecciones LMS guardada.', 'success');
-        closeAdminModal();
-    } catch (e) {
-        showToast('Error al estructurar curso.', 'error');
-    }
-};
-
-// ==========================================
-// 5. PESTAÑA: AJUSTAR MONEDAS VIRTUALES (SORTI)
+// 4. PESTAÑA: AJUSTAR MONEDAS VIRTUALES (SORTI)
 // ==========================================
 function renderWalletTab(container) {
     container.innerHTML = `
@@ -1174,7 +1112,7 @@ async function renderSettingsTab(container) {
             image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
             badge: 'Campaña de Julio',
             title: 'Tecnología y Software en un solo lugar',
-            description: 'Descubre hardware premium, cursos interactivos LMS y software empresarial con entrega instantánea.',
+            description: 'Descubre hardware premium, licencias de software y cuentas streaming con entrega instantánea.',
             link: '#/category/tecnologia',
             bg_y: 50
         }];
@@ -1670,116 +1608,194 @@ window.executeDeleteCategory = async (id) => {
     }
 };
 
-// Helpers para la edición reactiva de la galería multimedia de productos
-window.renderProductMediaRows = () => {
-    const container = document.getElementById('product-media-rows-container');
+// ==========================================
+// UTILIDADES DE PROCESAMIENTO Y COMPRESIÓN DE IMÁGENES
+// ==========================================
+function compressImageFile(file, maxWidth = 900, quality = 0.82) {
+    return new Promise((resolve, reject) => {
+        if (!file || !file.type.startsWith('image/')) {
+            return reject(new Error('El archivo seleccionado no es una imagen válida.'));
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                const base64 = canvas.toDataURL('image/jpeg', quality);
+                resolve(base64);
+            };
+            img.onerror = () => reject(new Error('Error al procesar la imagen.'));
+            img.src = e.target.result;
+        };
+        reader.onerror = () => reject(new Error('Error al leer el archivo.'));
+        reader.readAsDataURL(file);
+    });
+}
+
+// 1. Manejo de Imagen de Portada del Producto
+window.handleProductCoverUpload = async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    try {
+        showToast('Procesando imagen de portada...', 'info');
+        const base64 = await compressImageFile(file, 1000, 0.85);
+        window.currentProductCover = base64;
+        
+        const preview = document.getElementById('cover-preview-box');
+        if (preview) {
+            preview.style.backgroundImage = `url('${base64}')`;
+            preview.innerHTML = '';
+        }
+        const removeBtn = document.getElementById('remove-cover-btn');
+        if (removeBtn) removeBtn.style.display = 'inline-flex';
+
+        const urlInput = document.getElementById('prod-cover-url');
+        if (urlInput) urlInput.value = '';
+
+        showToast('Imagen de portada cargada con éxito.', 'success');
+    } catch (e) {
+        showToast(e.message || 'Error al cargar la portada.', 'error');
+    }
+};
+
+window.toggleCoverUrlInput = () => {
+    const container = document.getElementById('cover-url-input-container');
+    const toggleText = document.getElementById('cover-url-toggle-text');
+    if (!container) return;
+    if (container.style.display === 'none') {
+        container.style.display = 'block';
+        if (toggleText) toggleText.textContent = 'Ocultar URL';
+    } else {
+        container.style.display = 'none';
+        if (toggleText) toggleText.textContent = 'Ingresar URL';
+    }
+};
+
+window.updateCoverFromUrl = (val) => {
+    const trimmed = (val || '').trim();
+    window.currentProductCover = trimmed;
+    const preview = document.getElementById('cover-preview-box');
+    const removeBtn = document.getElementById('remove-cover-btn');
+    if (preview) {
+        if (trimmed) {
+            preview.style.backgroundImage = `url('${trimmed}')`;
+            preview.innerHTML = '';
+        } else {
+            preview.style.backgroundImage = 'none';
+            preview.innerHTML = '<i class="fas fa-camera" style="font-size: 32px; color: var(--text-muted);"></i>';
+        }
+    }
+    if (removeBtn) {
+        removeBtn.style.display = trimmed ? 'inline-flex' : 'none';
+    }
+};
+
+window.removeProductCover = () => {
+    window.currentProductCover = '';
+    const preview = document.getElementById('cover-preview-box');
+    const urlInput = document.getElementById('prod-cover-url');
+    const fileInput = document.getElementById('prod-cover-file-input');
+    const removeBtn = document.getElementById('remove-cover-btn');
+
+    if (preview) {
+        preview.style.backgroundImage = 'none';
+        preview.innerHTML = '<i class="fas fa-camera" style="font-size: 32px; color: var(--text-muted);"></i>';
+    }
+    if (urlInput) urlInput.value = '';
+    if (fileInput) fileInput.value = '';
+    if (removeBtn) removeBtn.style.display = 'none';
+    showToast('Portada removida.', 'info');
+};
+
+// 2. Manejo de Galería de Imágenes Adicionales
+window.handleFilesForGallery = async (files) => {
+    if (!files || files.length === 0) return;
+    showToast(`Cargando ${files.length} foto(s) a la galería...`, 'info');
+    let loadedCount = 0;
+
+    for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        try {
+            const base64 = await compressImageFile(file, 900, 0.82);
+            window.currentProductGallery.push({ media_url: base64, is_video: 0 });
+            loadedCount++;
+        } catch (err) {
+            console.error('Error al procesar imagen de galería:', err);
+        }
+    }
+
+    window.renderProductGalleryGrid();
+    if (loadedCount > 0) {
+        showToast(`${loadedCount} imagen(es) agregada(s) a la galería.`, 'success');
+    }
+};
+
+window.handleGalleryMultipleUpload = async (event) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+        await window.handleFilesForGallery(Array.from(files));
+        event.target.value = '';
+    }
+};
+
+window.renderProductGalleryGrid = () => {
+    const container = document.getElementById('product-gallery-grid-container');
     if (!container) return;
 
-    if (window.currentProductMedia.length === 0) {
-        container.innerHTML = `<p style="font-size: 12px; color: var(--text-muted); text-align: center; padding: 10px 0;">No hay imágenes cargadas en la galería.</p>`;
+    if (!Array.isArray(window.currentProductGallery)) {
+        window.currentProductGallery = [];
+    }
+
+    if (window.currentProductGallery.length === 0) {
+        container.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; padding: 12px; color: var(--text-muted); font-size: 12px; border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+                No hay fotos adicionales en la galería aún. Sube fotos desde tu PC con el botón superior o arrástralas aquí.
+            </div>
+        `;
         return;
     }
 
-    container.innerHTML = window.currentProductMedia.map((item, idx) => {
+    container.innerHTML = window.currentProductGallery.map((item, idx) => {
         const isBase64 = item.media_url && item.media_url.startsWith('data:image/');
+        const badge = isBase64 ? 'Archivo local' : 'URL';
         return `
-            <div class="glass-panel" style="padding: 12px; display: grid; grid-template-columns: 1fr 1.2fr auto; gap: 12px; align-items: center; background: rgba(255,255,255,0.01);" data-media-row-idx="${idx}">
-                <div>
-                    <label style="font-size: 11px; margin-bottom: 4px; display: block; text-transform: uppercase; color:var(--text-muted);">Origen Imagen #${idx + 1}</label>
-                    <div style="display: flex; gap: 12px; align-items: center; height: 38px;">
-                        <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; text-transform:none; margin:0; font-size:12px; font-weight:normal; color:var(--text-primary);">
-                            <input type="radio" name="prod-media-src-${idx}" value="url" ${!isBase64 ? 'checked' : ''} onchange="toggleProductMediaSrcType(${idx}, 'url')"> URL
-                        </label>
-                        <label style="display: inline-flex; align-items: center; gap: 4px; cursor: pointer; text-transform:none; margin:0; font-size:12px; font-weight:normal; color:var(--text-primary);">
-                            <input type="radio" name="prod-media-src-${idx}" value="file" ${isBase64 ? 'checked' : ''} onchange="toggleProductMediaSrcType(${idx}, 'file')"> Archivo
-                        </label>
-                    </div>
-                </div>
-                <div>
-                    <!-- Input URL -->
-                    <div id="prod-media-url-grp-${idx}" style="display: ${!isBase64 ? 'block' : 'none'};">
-                        <label style="font-size: 11px; margin-bottom: 4px; display: block; text-transform: uppercase; color:var(--text-muted);">Dirección URL</label>
-                        <input type="text" class="form-control" style="padding: 8px 12px;" value="${!isBase64 ? (item.media_url || '') : ''}" placeholder="https://images.unsplash.com/..." oninput="updateProductMediaUrl(${idx}, this.value)">
-                    </div>
-                    <!-- Input File -->
-                    <div id="prod-media-file-grp-${idx}" style="display: ${isBase64 ? 'block' : 'none'};">
-                        <label style="font-size: 11px; margin-bottom: 4px; display: block; text-transform: uppercase; color:var(--text-muted);">Seleccionar Archivo</label>
-                        <input type="file" accept="image/*" class="form-control" style="padding: 6px 12px; font-size: 12px;" onchange="handleProductMediaFileUpload(event, ${idx})">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: center; align-self: end; margin-bottom: 2px;">
-                    <div id="prod-media-preview-${idx}" style="background-image: url('${item.media_url || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}'); background-size: cover; background-position: center; width: 40px; height: 40px; border-radius: 6px; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);"></div>
-                    <button type="button" class="action-btn" style="color: var(--danger); padding: 8px;" onclick="removeProductMediaRow(${idx})" title="Quitar imagen"><i class="fas fa-trash-alt"></i></button>
+            <div class="gallery-card animate-fade-in">
+                <div class="gallery-thumb" style="background-image: url('${item.media_url || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}');"></div>
+                <div class="gallery-actions">
+                    <span style="font-size: 10px; color: var(--text-muted); text-transform: uppercase;">#${idx + 1} (${badge})</span>
+                    <button type="button" class="action-btn" style="color: var(--danger); padding: 4px;" onclick="removeGalleryItem(${idx})" title="Eliminar foto">
+                        <i class="fas fa-trash-alt" style="font-size: 11px;"></i>
+                    </button>
                 </div>
             </div>
         `;
     }).join('');
 };
 
-window.toggleProductMediaSrcType = (idx, type) => {
-    const urlGrp = document.getElementById(`prod-media-url-grp-${idx}`);
-    const fileGrp = document.getElementById(`prod-media-file-grp-${idx}`);
-    if (type === 'url') {
-        urlGrp.style.display = 'block';
-        fileGrp.style.display = 'none';
-    } else {
-        urlGrp.style.display = 'none';
-        fileGrp.style.display = 'block';
+window.addGalleryUrlRow = () => {
+    const url = prompt('Ingrese la dirección URL de la imagen (ej: https://...):');
+    if (url && url.trim() !== '') {
+        window.currentProductGallery.push({ media_url: url.trim(), is_video: 0 });
+        window.renderProductGalleryGrid();
+        showToast('Imagen agregada a la galería.', 'success');
     }
 };
 
-window.updateProductMediaUrl = (idx, val) => {
-    window.currentProductMedia[idx].media_url = val;
-    const preview = document.getElementById(`prod-media-preview-${idx}`);
-    if (preview) preview.style.backgroundImage = `url('${val || 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=100'}')`;
-};
-
-window.addProductMediaRow = () => {
-    window.currentProductMedia.push({ media_url: '', is_video: 0 });
-    window.renderProductMediaRows();
-};
-
-window.removeProductMediaRow = (idx) => {
-    window.currentProductMedia.splice(idx, 1);
-    window.renderProductMediaRows();
-};
-
-window.handleProductMediaFileUpload = (event, idx) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-            const canvas = document.createElement('canvas');
-            let width = img.width;
-            let height = img.height;
-            
-            // Comprimir para productos (max 800px para mantener la BD liviana)
-            const MAX_WIDTH = 800;
-            if (width > MAX_WIDTH) {
-                height = Math.round((height * MAX_WIDTH) / width);
-                width = MAX_WIDTH;
-            }
-            
-            canvas.width = width;
-            canvas.height = height;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, width, height);
-            
-            const base64 = canvas.toDataURL('image/jpeg', 0.8);
-            
-            window.currentProductMedia[idx].media_url = base64;
-            const preview = document.getElementById(`prod-media-preview-${idx}`);
-            if (preview) preview.style.backgroundImage = `url('${base64}')`;
-            
-            showToast('Imagen del producto cargada y optimizada con éxito.', 'success');
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+window.removeGalleryItem = (idx) => {
+    window.currentProductGallery.splice(idx, 1);
+    window.renderProductGalleryGrid();
+    showToast('Foto eliminada de la galería.', 'info');
 };
 
 window.insertDescriptionTag = (tag) => {

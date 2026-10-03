@@ -73,17 +73,9 @@ async function runSeed() {
         {
             image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
             badge: 'EDICIÓN ESPECIAL 2026',
-            title: 'Tecnología, Cursos LMS y Software en SortiStore',
-            description: 'Explora nuestros productos físicos de alta gama, licencias de software, proyectos con IA y cursos certificados con entrega digital instantánea.',
+            title: 'Tecnología, Streaming y Software en SortiStore',
+            description: 'Explora nuestros productos físicos de alta gama, licencias de software original, cuentas streaming y proyectos digitales con entrega instantánea.',
             link: '#/category/tecnologia',
-            bg_y: 50
-        },
-        {
-            image_url: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1600',
-            badge: 'ACADEMIA ONLINE',
-            title: 'Cursos & Masterclasses de Nivel Profesional',
-            description: 'Aprende Desarrollo Web con Next.js 14, Arquitectura de Agentes IA y Marketing Digital con lecciones interactivas y exámenes.',
-            link: '#/category/cursos-y-masterclasses',
             bg_y: 50
         }
     ];
@@ -118,13 +110,11 @@ async function runSeed() {
     const c2 = await db.querySingle("INSERT INTO categories (name, slug, parent_id) VALUES ('Hogar & Confort', 'hogar-y-confort', null) RETURNING id");
     const c3 = await db.querySingle("INSERT INTO categories (name, slug, parent_id) VALUES ('Contenido Digital', 'contenido-digital', null) RETURNING id");
     const c4 = await db.querySingle("INSERT INTO categories (name, slug, parent_id) VALUES ('Sistemas & Software', 'sistemas-y-software', null) RETURNING id");
-    const c5 = await db.querySingle("INSERT INTO categories (name, slug, parent_id) VALUES ('Cursos & Masterclasses', 'cursos-y-masterclasses', null) RETURNING id");
 
     const catTec = c1.id;
     const catHogar = c2.id;
     const catDigital = c3.id;
     const catSoftware = c4.id;
-    const catCursos = c5.id;
 
     // Productos Demos
     const p1 = await db.querySingle(`
@@ -164,29 +154,6 @@ async function runSeed() {
         ) RETURNING id
     `, [catSoftware]);
     await db.execute("INSERT INTO product_media (product_id, media_url, is_video) VALUES (?, ?, 0)", [p3.id, 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800']);
-
-    const p4 = await db.querySingle(`
-        INSERT INTO products (
-            name, slug, description, type, sku, stock, category_id,
-            price_normal, price_offer, price_sorti, is_featured, is_recommended
-        ) VALUES (
-            'Curso Completo Next.js 14 & Node.js: De Cero a Experto', 'curso-completo-nextjs-14-and-nodejs-de-cero-a-experto',
-            'Aprende a construir plataformas web modernas de alto rendimiento con Next.js 14.',
-            'course', 'CUR-NEXT-012', 9999, ?, 299.00, 149.00, 6000, 1, 1
-        ) RETURNING id
-    `, [catCursos]);
-    await db.execute("INSERT INTO product_media (product_id, media_url, is_video) VALUES (?, ?, 0)", [p4.id, 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800']);
-
-    const courseNext = await db.querySingle(`
-        INSERT INTO courses (product_id, title, description, cover_image)
-        VALUES (?, ?, ?, ?) RETURNING id
-    `, [p4.id, 'Curso Completo Next.js 14 & Node.js: De Cero a Experto', 'Aprende Next.js 14.', 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800']);
-
-    const mod1 = await db.querySingle("INSERT INTO course_modules (course_id, title, sort_order) VALUES (?, 'Módulo 1: Fundamentos Next.js 14', 1) RETURNING id", [courseNext.id]);
-    await db.querySingle(`
-        INSERT INTO course_lessons (module_id, title, video_url, duration, pdf_url, resources_url, has_exam, sort_order)
-        VALUES (?, '1.1 Bienvenida y Configuración', 'https://www.w3schools.com/html/mov_bbb.mp4', '12:30', 'https://example.com/slides.pdf', 'https://example.com/repo.zip', 0, 1)
-    `, [mod1.id]);
 
     // Cupones
     const expiryDate = new Date();

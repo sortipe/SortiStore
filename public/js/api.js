@@ -129,21 +129,6 @@ const CustomerService = {
         return await apiCall('/customer/downloads');
     },
 
-    async getCourses() {
-        return await apiCall('/customer/courses');
-    },
-
-    async getCourseDetails(courseId) {
-        return await apiCall(`/customer/courses/${courseId}`);
-    },
-
-    async toggleLessonComplete(lessonId, completed) {
-        return await apiCall('/customer/courses/lesson-complete', {
-            method: 'POST',
-            body: JSON.stringify({ lessonId, completed: completed ? 1 : 0 })
-        });
-    },
-
     async getWallet() {
         return await apiCall('/customer/wallet');
     },
@@ -241,13 +226,6 @@ const AdminService = {
         });
     },
 
-    async createCourseStructure(courseId, modules) {
-        return await apiCall('/admin/courses/structure', {
-            method: 'POST',
-            body: JSON.stringify({ courseId, modules })
-        });
-    },
-
     async adjustWallet(email, amount, description) {
         return await apiCall('/admin/wallet/adjust', {
             method: 'POST',
@@ -279,10 +257,6 @@ const AdminService = {
         return await apiCall(`/admin/categories/${id}`, {
             method: 'DELETE'
         });
-    },
-
-    async getCourseStructure(productId) {
-        return await apiCall(`/admin/courses/${productId}`);
     },
 
     async getSettings() {

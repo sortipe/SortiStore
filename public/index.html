@@ -27,7 +27,7 @@
             <!-- Buscador inteligente con autocompletado -->
             <div class="search-box">
                 <i class="fas fa-search search-icon"></i>
-                <input type="text" id="store-search-input" placeholder="Buscar productos físicos, digitales, software, cursos..." autocomplete="off">
+                <input type="text" id="store-search-input" placeholder="Buscar productos físicos, digitales, software..." autocomplete="off">
                 <div class="autocomplete-suggestions" id="search-suggestions-box"></div>
             </div>
 
@@ -74,9 +74,6 @@
             </a>
             <a href="#" class="menu-trigger" id="nav-software-btn">
                 <i class="fas fa-laptop-code"></i> Software
-            </a>
-            <a href="#" class="menu-trigger" id="nav-courses-btn">
-                <i class="fas fa-graduation-cap"></i> Cursos LMS
             </a>
             <a href="#" class="menu-trigger" id="nav-presales-btn">
                 <i class="fas fa-calendar-alt"></i> Preventas
@@ -160,89 +157,6 @@
         </div>
     </div>
 
-    <!-- REPRODUCTOR DE CURSOS LMS (OVERLAY DE APRENDIZAJE) -->
-    <div class="lms-player-container" id="lms-course-player">
-        <!-- Área de Video y Detalle de Clase -->
-        <div class="lms-video-area">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 id="lms-player-course-title">Curso Completo</h3>
-                <button class="btn-outline" id="close-lms-player-btn" style="padding: 6px 12px;">
-                    <i class="fas fa-arrow-left"></i> Salir del Curso
-                </button>
-            </div>
-            
-            <!-- Video Player wrapper 16:9 -->
-            <div class="lms-video-wrapper">
-                <video id="lms-lesson-video" src="" controls controlsList="nodownload"></video>
-            </div>
-
-            <!-- Contenido de la Lección -->
-            <div class="lms-class-description">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
-                    <div>
-                        <h2 id="lms-player-lesson-title">Cargando Lección...</h2>
-                        <p style="color: var(--text-muted); font-size: 13px;" id="lms-player-lesson-duration"><i class="fas fa-clock"></i> Duración: --:--</p>
-                    </div>
-                    <!-- Acción de Completado -->
-                    <label class="btn-secondary" style="cursor: pointer; padding: 8px 16px; border-radius: var(--radius-md); display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="lms-lesson-complete-checkbox" style="transform: scale(1.2);"> Marcada como Completada
-                    </label>
-                </div>
-                
-                <!-- Recursos y Materiales -->
-                <div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;" id="lms-lesson-resources-box">
-                    <h3>Recursos de la Clase</h3>
-                    <div style="display: flex; gap: 12px; margin-top: 12px;" id="lms-resources-links-container">
-                        <!-- Botones de descargas generados dinámicamente -->
-                    </div>
-                </div>
-
-                <!-- Examen de la Lección (si tiene) -->
-                <div id="lms-lesson-exam-box" style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px; display: none;">
-                    <h3>Examen Rápido</h3>
-                    <div id="lms-exam-question-card" class="glass-panel" style="padding: 20px; margin-top: 12px;">
-                        <!-- Preguntas -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Estructura del Curso (Sidebar) -->
-        <div class="lms-sidebar-structure">
-            <div class="lms-sidebar-header">
-                <h3>Estructura del Curso</h3>
-                <!-- Progreso -->
-                <div class="progress-bar-container">
-                    <div class="progress-bar-fill" id="lms-player-progress-bar" style="width: 0%;"></div>
-                </div>
-                <div style="font-size: 12px; color: var(--text-secondary); text-align: right;" id="lms-player-progress-text">Progreso: 0%</div>
-            </div>
-            <div class="lms-sidebar-body" id="lms-player-modules-list">
-                <!-- Módulos e Ítems de Clases -->
-            </div>
-        </div>
-    </div>
-
-    <!-- PANTALLA FELICITACIONES LMS FIN DE CURSO -->
-    <div class="lms-completion-overlay" id="lms-completion-popup">
-        <div class="lms-completion-box animate-fade-in">
-            <div class="lms-completion-badge"><i class="fas fa-trophy"></i></div>
-            <h2>¡Felicidades!</h2>
-            <p>Has completado satisfactoriamente el curso:</p>
-            <h3 id="completed-course-name-text" style="color: var(--color-primary); font-size: 22px; margin-bottom: 24px;">Nombre del Curso</h3>
-            <p style="font-size: 14px; margin-bottom: 32px;">Has revisado todas las clases y aprobado los exámenes del curso. Tu certificado virtual ha sido emitido con éxito.</p>
-            
-            <div style="display: flex; justify-content: center; gap: 16px;">
-                <button class="btn-accent" id="download-certificate-btn">
-                    <i class="fas fa-certificate"></i> Descargar Certificado
-                </button>
-                <button class="btn-outline" id="close-completion-popup-btn">
-                    Volver al Panel
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- VISTA PRINCIPAL INYECTADA DE LA SPA -->
     <main id="app-view" class="animate-fade-in">
         <!-- Cargado mediante app.js -->
@@ -252,7 +166,7 @@
     <footer style="background-color: var(--bg-card); border-top: 1px solid var(--border-color); padding: 48px 24px; text-align: center; font-size: 14px; color: var(--text-muted); margin-top: auto;">
         <div style="max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
             <h3>Sortistore E-commerce Platform</h3>
-            <p>Una tienda en línea modular, moderna y elegante para productos físicos, digitales, software, proyectos y cursos.</p>
+            <p>Una tienda en línea modular, moderna y elegante para productos físicos, digitales, software y cuentas streaming.</p>
             <div style="display: flex; justify-content: center; gap: 16px; font-size: 18px;">
                 <a href="#"><i class="fab fa-facebook"></i></a>
                 <a href="#"><i class="fab fa-instagram"></i></a>

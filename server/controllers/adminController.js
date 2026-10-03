@@ -128,13 +128,6 @@ exports.createProduct = async (req, res) => {
             }
         }
 
-        // Si el tipo es curso, crear automáticamente el curso asociado en el LMS
-        if (type === 'course') {
-            await db.execute('INSERT INTO courses (product_id, title, description, cover_image) VALUES (?, ?, ?, ?)', [
-                productId, name, description, media && media.length > 0 ? media[0].media_url : 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800'
-            ]);
-        }
-
         return res.status(201).json({ message: 'Producto creado con éxito.', productId });
     } catch (error) {
         console.error('Error al crear producto:', error);
@@ -225,22 +218,7 @@ exports.deleteProduct = async (req, res) => {
         await db.execute('DELETE FROM product_media WHERE product_id = ?', [id]);
         await db.execute('DELETE FROM product_variants WHERE product_id = ?', [id]);
 
-        // 2. Si es un curso, eliminar la estructura LMS asociada (lecciones, módulos, curso)
-        const course = await db.querySingle('SELECT id FROM courses WHERE product_id = ?', [id]);
-        if (course) {
-            const modules = await db.query('SELECT id FROM course_modules WHERE course_id = ?', [course.id]);
-            for (const mod of modules) {
-                const lessons = await db.query('SELECT id FROM course_lessons WHERE module_id = ?', [mod.id]);
-                for (const lesson of lessons) {
-                    await db.execute('DELETE FROM user_lesson_progress WHERE lesson_id = ?', [lesson.id]);
-                }
-                await db.execute('DELETE FROM course_lessons WHERE module_id = ?', [mod.id]);
-            }
-            await db.execute('DELETE FROM course_modules WHERE course_id = ?', [course.id]);
-            await db.execute('DELETE FROM courses WHERE id = ?', [course.id]);
-        }
-
-        // 3. Desvincular de cupones
+        // 2. Desvincular de cupones
         await db.execute('UPDATE coupons SET product_id = NULL WHERE product_id = ?', [id]);
 
         // 4. Eliminar ítems de pedidos asociados para evitar violar restricciones de clave foránea
@@ -416,63 +394,7 @@ exports.createCoupon = async (req, res) => {
     }
 };
 
-// 9. Crear Estructura de LMS (Módulos/Lecciones)
-exports.createCourseStructure = async (req, res) => {
-    try {
-        const { courseId, modules } = req.body;
-
-        if (!courseId || !modules || modules.length === 0) {
-            return res.status(400).json({ error: 'El ID del curso y la estructura de módulos son obligatorios.' });
-        }
-
-        // Eliminar estructura actual
-        const currentModules = await db.query('SELECT id FROM course_modules WHERE course_id = ?', [courseId]);
-        for (const mod of currentModules) {
-            await db.execute('DELETE FROM course_lessons WHERE module_id = ?', [mod.id]);
-        }
-        await db.execute('DELETE FROM course_modules WHERE course_id = ?', [courseId]);
-
-        // Insertar nueva estructura
-        let modOrder = 1;
-        for (const mod of modules) {
-            const modRow = await db.querySingle(`
-                INSERT INTO course_modules (course_id, title, sort_order) 
-                VALUES (?, ?, ?)
-                RETURNING id
-            `, [courseId, mod.title, modOrder++]);
-            
-            const moduleId = modRow.id;
-
-            if (mod.lessons && mod.lessons.length > 0) {
-                let lessonOrder = 1;
-                for (const lesson of mod.lessons) {
-                    await db.execute(`
-                        INSERT INTO course_lessons (
-                            module_id, title, video_url, duration, pdf_url, resources_url, has_exam, exam_questions, sort_order
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `, [
-                        moduleId,
-                        lesson.title,
-                        lesson.video_url || null,
-                        lesson.duration || '00:00',
-                        lesson.pdf_url || null,
-                        lesson.resources_url || null,
-                        lesson.has_exam ? 1 : 0,
-                        lesson.exam_questions ? JSON.stringify(lesson.exam_questions) : null,
-                        lessonOrder++
-                    ]);
-                }
-            }
-        }
-
-        return res.json({ message: 'Estructura del curso LMS configurada con éxito.' });
-    } catch (error) {
-        console.error('Error al guardar estructura LMS:', error);
-        return res.status(500).json({ error: 'Error interno del servidor.' });
-    }
-};
-
-// 10. Configurar Ajustes de Sistema
+// 9. Configurar Ajustes de Sistema
 exports.getSettings = async (req, res) => {
     try {
         const settings = await db.query('SELECT * FROM system_settings');
@@ -558,41 +480,7 @@ exports.deleteCoupon = async (req, res) => {
     }
 };
 
-// 12. Obtener Estructura LMS Completa para un Curso por ID de Producto (Admin)
-exports.getCourseStructure = async (req, res) => {
-    try {
-        const { productId } = req.params;
-        const course = await db.querySingle('SELECT * FROM courses WHERE product_id = ?', [productId]);
-        if (!course) {
-            return res.status(404).json({ error: 'Curso no encontrado.' });
-        }
-
-        // Obtener módulos
-        const modules = await db.query('SELECT * FROM course_modules WHERE course_id = ? ORDER BY sort_order ASC', [course.id]);
-        
-        // Obtener lecciones para cada módulo
-        const enrichedModules = await Promise.all(modules.map(async (mod) => {
-            const lessons = await db.query('SELECT * FROM course_lessons WHERE module_id = ? ORDER BY sort_order ASC', [mod.id]);
-            return {
-                ...mod,
-                lessons
-            };
-        }));
-
-        return res.json({
-            id: course.id,
-            title: course.title,
-            description: course.description,
-            cover_image: course.cover_image,
-            modules: enrichedModules
-        });
-    } catch (error) {
-        console.error('Error al obtener estructura de curso admin:', error);
-        return res.status(500).json({ error: 'Error interno del servidor.' });
-    }
-};
-
-// 13. Crear Categoría o Subcategoría
+// 11. Crear Categoría o Subcategoría
 exports.createCategory = async (req, res) => {
     try {
         const { name, parent_id } = req.body;

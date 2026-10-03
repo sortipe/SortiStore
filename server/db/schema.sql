@@ -39,13 +39,13 @@ CREATE TABLE IF NOT EXISTS categories (
     FOREIGN KEY(parent_id) REFERENCES categories(id) ON DELETE SET NULL
 );
 
--- Productos (Físicos, Digitales, Software, Cursos)
+-- Productos (Físicos, Digitales, Software)
 CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     description TEXT,
-    type TEXT CHECK(type IN ('physical', 'digital', 'software', 'course')) NOT NULL,
+    type TEXT CHECK(type IN ('physical', 'digital', 'software')) NOT NULL,
     sku TEXT UNIQUE,
     stock INTEGER DEFAULT 0,
     category_id INTEGER,
@@ -155,51 +155,6 @@ CREATE TABLE IF NOT EXISTS order_items (
     variant_info TEXT, -- Almacenará un JSON string de variantes elegidas
     FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE,
     FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
-);
-
--- Cursos (LMS)
-CREATE TABLE IF NOT EXISTS courses (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER UNIQUE NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    cover_image TEXT,
-    FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE CASCADE
-);
-
--- Módulos de los Cursos
-CREATE TABLE IF NOT EXISTS course_modules (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    course_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    sort_order INTEGER DEFAULT 0,
-    FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
-);
-
--- Lecciones/Clases de los Módulos
-CREATE TABLE IF NOT EXISTS course_lessons (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    module_id INTEGER NOT NULL,
-    title TEXT NOT NULL,
-    video_url TEXT,
-    duration TEXT,
-    pdf_url TEXT,
-    resources_url TEXT,
-    has_exam BOOLEAN DEFAULT 0,
-    exam_questions TEXT, -- JSON string de preguntas de examen
-    sort_order INTEGER DEFAULT 0,
-    FOREIGN KEY(module_id) REFERENCES course_modules(id) ON DELETE CASCADE
-);
-
--- Progreso del Usuario por Lección
-CREATE TABLE IF NOT EXISTS user_lesson_progress (
-    user_id INTEGER NOT NULL,
-    lesson_id INTEGER NOT NULL,
-    completed BOOLEAN DEFAULT 0,
-    completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(user_id, lesson_id),
-    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY(lesson_id) REFERENCES course_lessons(id) ON DELETE CASCADE
 );
 
 -- Configuración del Sistema (Parámetros Dinámicos)

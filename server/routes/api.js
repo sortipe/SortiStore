@@ -36,9 +36,6 @@ router.post('/orders/payment-proof', authenticate, orders.uploadPaymentProof);
 router.get('/customer/orders', requireAuth, orders.getMyOrders);
 router.get('/customer/orders/:id', requireAuth, orders.getOrderDetails);
 router.get('/customer/downloads', requireAuth, customer.getDownloads);
-router.get('/customer/courses', requireAuth, customer.getCourses);
-router.get('/customer/courses/:id', requireAuth, customer.getCourseDetails);
-router.post('/customer/courses/lesson-complete', requireAuth, customer.toggleLessonComplete);
 router.get('/customer/wallet', requireAuth, customer.getWallet);
 router.get('/customer/coupons', requireAuth, customer.getCoupons);
 router.put('/customer/profile', requireAuth, customer.updateProfile);
@@ -66,10 +63,6 @@ router.post('/admin/orders/:id/status', requireAuth, adminOrEmployee, admin.upda
 router.post('/admin/products', requireAuth, adminOrEmployee, admin.createProduct);
 router.put('/admin/products/:id', requireAuth, adminOrEmployee, admin.updateProduct);
 router.delete('/admin/products/:id', requireAuth, adminOrEmployee, admin.deleteProduct);
-
-// Cursos LMS Admin
-router.post('/admin/courses/structure', requireAuth, adminOrEmployee, admin.createCourseStructure);
-router.get('/admin/courses/:productId', requireAuth, adminOrEmployee, admin.getCourseStructure);
 
 // Billetera & Ajustes Sorti (Solo Admin)
 router.post('/admin/wallet/adjust', requireAuth, adminOnly, admin.adjustWallet);
