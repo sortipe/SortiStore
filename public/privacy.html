@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Política de Privacidad | Sortipe & SortiStore Apps</title>
+  <meta name="description" content="Política de privacidad para las aplicaciones móviles de Sortipe / SortiStore publicadas en Google Play Store.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --tag-bg: #eff6ff;
+      --tag-color: #1d4ed8;
+      --accent: #10b981;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --primary: #3b82f6;
+        --primary-hover: #60a5fa;
+        --bg-page: #0b0f19;
+        --bg-card: #131b2e;
+        --text-main: #f1f5f9;
+        --text-muted: #94a3b8;
+        --border: #1e293b;
+        --tag-bg: #1e293b;
+        --tag-color: #60a5fa;
+        --accent: #34d399;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-page);
+      color: var(--text-main);
+      line-height: 1.65;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    header.header {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.35rem 0.8rem;
+      border-radius: 9999px;
+      background-color: var(--tag-bg);
+      color: var(--tag-color);
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: 0.75rem;
+      color: var(--text-main);
+    }
+
+    .meta-info {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .meta-item strong {
+      color: var(--text-main);
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.25rem 2rem;
+      margin-bottom: 1.75rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+    }
+
+    h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin: 1.25rem 0 0.5rem;
+      color: var(--text-main);
+    }
+
+    p {
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+    }
+
+    p:last-child {
+      margin-bottom: 0;
+    }
+
+    ul, ol {
+      margin: 0.75rem 0 1.25rem 1.5rem;
+      color: var(--text-muted);
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+
+    li strong {
+      color: var(--text-main);
+    }
+
+    .alert-box {
+      background: rgba(37, 99, 235, 0.08);
+      border-left: 4px solid var(--primary);
+      padding: 1.2rem;
+      border-radius: 8px;
+      margin: 1.25rem 0;
+    }
+
+    .alert-box p {
+      color: var(--text-main);
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+
+    .highlight-box {
+      background: rgba(16, 185, 129, 0.08);
+      border-left: 4px solid var(--accent);
+      padding: 1.2rem;
+      border-radius: 8px;
+      margin: 1.25rem 0;
+    }
+
+    .highlight-box p {
+      color: var(--text-main);
+      font-size: 0.95rem;
+      margin-bottom: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.25rem 0;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--tag-bg);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    td {
+      color: var(--text-muted);
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    a:hover {
+      color: var(--primary-hover);
+    }
+
+    .btn-contact {
+      display: inline-block;
+      background-color: var(--primary);
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-top: 1rem;
+      transition: background-color 0.2s ease;
+    }
+
+    .btn-contact:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .table-of-contents {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .table-of-contents h3 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      font-size: 1.1rem;
+    }
+
+    .table-of-contents ol {
+      margin-bottom: 0;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header class="header">
+      <span class="badge">Google Play Store Compliant</span>
+      <h1>Política de Privacidad</h1>
+      <p>
+        Esta Política de Privacidad describe cómo se recopila, utiliza, procesa y protege la información en todas las aplicaciones móviles y servicios publicados y desarrollados bajo la cuenta de desarrollador <strong>Sortipe / SortiStore</strong> en Google Play Store.
+      </p>
+      <div class="meta-info">
+        <div class="meta-item"><strong>Desarrollador:</strong> Sortipe / SortiStore</div>
+        <div class="meta-item"><strong>Última actualización:</strong> 14 de octubre de 2026</div>
+        <div class="meta-item"><strong>Ámbito:</strong> Todas las aplicaciones móviles y servicios asociados</div>
+      </div>
+    </header>
+
+    <div class="table-of-contents">
+      <h3>Índice de Contenidos</h3>
+      <ol>
+        <li><a href="#alcance">1. Alcance y Aplicabilidad</a></li>
+        <li><a href="#informacion">2. Información que Recopilamos</a></li>
+        <li><a href="#permisos">3. Permisos del Dispositivo</a></li>
+        <li><a href="#uso">4. Finalidad y Uso de la Información</a></li>
+        <li><a href="#terceros">5. Servicios de Terceros y SDKs</a></li>
+        <li><a href="#retencion">6. Retención de Datos</a></li>
+        <li><a href="#eliminacion">7. Eliminación de Datos y Cuenta (Requisito de Google Play)</a></li>
+        <li><a href="#menores">8. Privacidad de Menores (COPPA)</a></li>
+        <li><a href="#seguridad">9. Seguridad de la Información</a></li>
+        <li><a href="#derechos">10. Derechos del Usuario</a></li>
+        <li><a href="#cambios">11. Modificaciones a la Política</a></li>
+        <li><a href="#contacto">12. Información de Contacto</a></li>
+      </ol>
+    </div>
+
+    <!-- 1. ALCANCE -->
+    <section class="card" id="alcance">
+      <h2>1. Alcance y Aplicabilidad</h2>
+      <p>
+        Esta Política de Privacidad se aplica a todas las aplicaciones móviles para Android distribuidas a través de Google Play Store, aplicaciones web complementarias y servicios asociados desarrollados y operados por <strong>Sortipe</strong> (en adelante, "el Desarrollador", "nosotros" o "nuestro"), incluyendo pero no limitándose a la aplicación <strong>SortiStore</strong> y cualquier versión futura, actualización o app publicada en dicha cuenta.
+      </p>
+      <p>
+        Al descargar, instalar o utilizar cualquiera de nuestras aplicaciones móviles, usted acepta los términos descritos en este documento. Si no está de acuerdo con esta política, le solicitamos que no instale ni use las aplicaciones.
+      </p>
+    </section>
+
+    <!-- 2. INFORMACIÓN QUE RECOPILAMOS -->
+    <section class="card" id="informacion">
+      <h2>2. Información que Recopilamos</h2>
+      <p>
+        Dependiendo de la funcionalidad de cada aplicación que utilice, podemos recopilar y procesar las siguientes categorías de información:
+      </p>
+
+      <h3>A. Información que usted nos proporciona directamente</h3>
+      <ul>
+        <li><strong>Información de cuenta y perfil:</strong> Nombre, dirección de correo electrónico, nombre de usuario y contraseña cifrada al registrarse o iniciar sesión.</li>
+        <li><strong>Información de compras y transacciones:</strong> En apps de comercio electrónico (como SortiStore), datos sobre los pedidos solicitados, dirección de entrega y registros de facturación. (Las transacciones financieras se procesan a través de pasarelas de pago seguras; nosotros no almacenamos datos completos de tarjetas de crédito/débito).</li>
+        <li><strong>Comunicaciones y soporte:</strong> Información que usted nos envíe al contactar con nuestro equipo de atención o soporte técnico.</li>
+      </ul>
+
+      <h3>B. Información recopilada automáticamente</h3>
+      <ul>
+        <li><strong>Información técnica del dispositivo:</strong> Modelo de hardware, fabricante, versión del sistema operativo Android, idioma predeterminado, identificadores únicos de dispositivo (ej. Android ID o ID de publicidad anónimo).</li>
+        <li><strong>Datos de uso y rendimiento:</strong> Registros de fallos del sistema (Crash logs), diagnósticos de rendimiento, tiempo de sesión, interacciones dentro de la app y estadísticas agregadas no identificables personalmente.</li>
+        <li><strong>Datos de red:</strong> Dirección IP aproximada (utilizada para enrutamiento técnico, prevención de fraude y geolocalización a nivel de país o región).</li>
+      </ul>
+    </section>
+
+    <!-- 3. PERMISOS -->
+    <section class="card" id="permisos">
+      <h2>3. Permisos del Dispositivo (Android Permissions)</h2>
+      <p>
+        Para ofrecer funciones específicas, nuestras aplicaciones pueden solicitar los siguientes permisos en su dispositivo Android. Cada permiso se solicita en el momento en que es requerido y puede ser revocado en cualquier momento desde los ajustes de su sistema operativo:
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Permiso</th>
+            <th>Propósito</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>INTERNET / ACCESS_NETWORK_STATE</strong></td>
+            <td>Permite la conexión con nuestros servidores seguros para sincronizar productos, catálogo, autenticación y transacciones.</td>
+          </tr>
+          <tr>
+            <td><strong>POST_NOTIFICATIONS</strong></td>
+            <td>Enviar notificaciones push sobre estado de pedidos, actualizaciones importantes o alertas del servicio (previa autorización del usuario).</td>
+          </tr>
+          <tr>
+            <td><strong>READ_MEDIA_IMAGES / CAMERA</strong> (si aplica)</td>
+            <td>Permitir al usuario subir fotos de perfil, comprobantes de pago o escanear códigos de barras/QR según la funcionalidad de la app.</td>
+          </tr>
+          <tr>
+            <td><strong>VIBRATE</strong></td>
+            <td>Retroalimentación háptica en interacciones del usuario y notificaciones.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 4. USO -->
+    <section class="card" id="uso">
+      <h2>4. Finalidad y Uso de la Información</h2>
+      <p>Utilizamos la información recopilada con las siguientes finalidades legítimas:</p>
+      <ul>
+        <li>Proporcionar, operar, mantener y optimizar las funciones de nuestras aplicaciones.</li>
+        <li>Procesar pedidos, compras, gestión de cuentas y envíos de productos (en SortiStore).</li>
+        <li>Responder a sus solicitudes de soporte técnico y preguntas frecuentes.</li>
+        <li>Detectar, prevenir e investigar fallos técnicos, errores de software, fraudes o actividades no autorizadas.</li>
+        <li>Cumplir con las obligaciones legales y normativas aplicables y las directrices para desarrolladores de Google Play.</li>
+      </ul>
+      <div class="alert-box">
+        <p><strong>Compromiso:</strong> No vendemos, no comercializamos ni alquilamos sus datos personales a terceros bajo ninguna circunstancia.</p>
+      </div>
+    </section>
+
+    <!-- 5. TERCEROS -->
+    <section class="card" id="terceros">
+      <h2>5. Servicios de Terceros y SDKs</h2>
+      <p>
+        Nuestras aplicaciones pueden incorporar kits de desarrollo de software (SDKs) y servicios de proveedores de confianza para garantizar su funcionamiento técnico, análisis y seguridad:
+      </p>
+      <ul>
+        <li><strong>Google Play Services:</strong> Infraestructura esencial para la distribución, actualizaciones y servicios del sistema Android. (<a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Política de Privacidad de Google</a>).</li>
+        <li><strong>Firebase Analytics / Crashlytics (Google LLC):</strong> Análisis anónimo de uso y reportes de errores en tiempo real para resolver caídas de la app.</li>
+        <li><strong>Vercel & Supabase / PostgreSQL:</strong> Infraestructura de hosting en la nube y base de datos con cifrado en reposo y en tránsito (SSL/TLS).</li>
+      </ul>
+    </section>
+
+    <!-- 6. RETENCIÓN -->
+    <section class="card" id="retencion">
+      <h2>6. Retención de Datos</h2>
+      <p>
+        Conservamos su información personal únicamente durante el tiempo que sea necesario para cumplir con los propósitos para los cuales fue recopilada, mientras mantenga una cuenta activa en la aplicación o según sea requerido por normativas legales aplicables (tales como obligaciones fiscales o contables en compras).
+      </p>
+      <p>
+        Cuando la información ya no sea necesaria, se eliminará de forma segura o se anonimizará permanentemente de nuestros sistemas.
+      </p>
+    </section>
+
+    <!-- 7. ELIMINACIÓN DE DATOS (GOOGLE PLAY MANDATORY) -->
+    <section class="card" id="eliminacion">
+      <h2>7. Solicitud de Eliminación de Datos y Cuenta (Google Play Data Deletion)</h2>
+      <p>
+        De conformidad con la política de seguridad de datos de Google Play, <strong>usted tiene el derecho absoluto de solicitar la eliminación total de su cuenta y de todos los datos personales asociados</strong> almacenados en nuestros servidores.
+      </p>
+      <div class="highlight-box">
+        <p><strong>¿Cómo solicitar el borrado de sus datos?</strong></p>
+        <p style="margin-top: 0.5rem; color: var(--text-muted);">
+          1. Envíe un correo electrónico a nuestro equipo de soporte: <a href="mailto:soporte.sortistore@gmail.com"><strong>soporte.sortistore@gmail.com</strong></a><br>
+          2. Indique en el asunto: <code>Solicitud de Eliminación de Cuenta y Datos</code><br>
+          3. Proporcione el correo electrónico o nombre de usuario registrado en la aplicación.<br>
+          4. Nuestro equipo procesará su solicitud y eliminará irreversiblemente su información en un plazo máximo de <strong>72 horas hábiles</strong>, enviándole una confirmación por correo.
+        </p>
+      </div>
+      <p>
+        <strong>Tipos de datos eliminados:</strong> Nombre, correo electrónico, perfil, historial de navegación y datos de cuenta. Ciertos registros de transacciones financieras previas pueden conservarse únicamente durante el período exigido por las leyes fiscales y comerciales locales.
+      </p>
+    </section>
+
+    <!-- 8. MENORES -->
+    <section class="card" id="menores">
+      <h2>8. Privacidad de Menores (COPPA)</h2>
+      <p>
+        Nuestras aplicaciones están dirigidas al público general y no recopilan intencionadamente información personal identificable de menores de 13 años (o la edad mínima legal en su jurisdicción).
+      </p>
+      <p>
+        Si usted es padre, madre o tutor legal y detecta que su hijo nos ha proporcionado información personal sin su consentimiento, comuníquese de inmediato con nosotros a <a href="mailto:soporte.sortistore@gmail.com">soporte.sortistore@gmail.com</a>. Procederemos a eliminar dicha información de nuestros servidores de forma inmediata.
+      </p>
+    </section>
+
+    <!-- 9. SEGURIDAD -->
+    <section class="card" id="seguridad">
+      <h2>9. Seguridad de la Información</h2>
+      <p>
+        Implementamos estrictas medidas de seguridad técnicas, administrativas y físicas para proteger sus datos personales contra el acceso no autorizado, la alteración, divulgación o destrucción:
+      </p>
+      <ul>
+        <li>Cifrado de todas las comunicaciones mediante protocolos seguros <strong>HTTPS / TLS</strong>.</li>
+        <li>Cifrado irreversible (hashing con sal - bcrypt) de las contraseñas de usuario.</li>
+        <li>Aislamiento de bases de datos y controles de acceso restringidos.</li>
+      </ul>
+    </section>
+
+    <!-- 10. DERECHOS -->
+    <section class="card" id="derechos">
+      <h2>10. Derechos del Usuario (ARCO / RGPD / CCPA)</h2>
+      <p>
+        Usted posee los siguientes derechos respecto a sus datos personales:
+      </p>
+      <ul>
+        <li><strong>Acceso:</strong> Conocer qué datos personales tenemos registrados sobre usted.</li>
+        <li><strong>Rectificación:</strong> Solicitar la corrección de datos incorrectos o desactualizados.</li>
+        <li><strong>Cancelación / Supresión:</strong> Solicitar el borrado de sus datos (ver Sección 7).</li>
+        <li><strong>Oposición y Limitación:</strong> Oponerse al tratamiento de sus datos o limitar su alcance.</li>
+      </ul>
+      <p>Para ejercer cualquiera de estos derechos, basta con remitir su solicitud a nuestro correo de contacto.</p>
+    </section>
+
+    <!-- 11. CAMBIOS -->
+    <section class="card" id="cambios">
+      <h2>11. Cambios a esta Política de Privacidad</h2>
+      <p>
+        Podemos actualizar esta Política de Privacidad periódicamente para reflejar cambios en nuestras aplicaciones, servicios o novedades regulatorias. Publicaremos cualquier modificación en esta misma página web indicando la fecha de la última actualización en la parte superior.
+      </p>
+      <p>
+        Le recomendamos revisar periódicamente esta página para mantenerse informado sobre cómo protegemos su información.
+      </p>
+    </section>
+
+    <!-- 12. CONTACTO -->
+    <section class="card" id="contacto">
+      <h2>12. Información de Contacto</h2>
+      <p>
+        Si tiene dudas, inquietudes, comentarios o solicitudes relativas a esta Política de Privacidad o al tratamiento de datos en cualquiera de nuestras aplicaciones de Google Play, contáctenos a:
+      </p>
+      <ul>
+        <li><strong>Desarrollador:</strong> Sortipe / SortiStore</li>
+        <li><strong>Correo electrónico de soporte:</strong> <a href="mailto:soporte.sortistore@gmail.com">soporte.sortistore@gmail.com</a></li>
+        <li><strong>Sitio Web Oficial:</strong> <a href="https://sortistore.vercel.app" target="_blank" rel="noopener">https://sortistore.vercel.app</a></li>
+      </ul>
+      <a class="btn-contact" href="mailto:soporte.sortistore@gmail.com?subject=Consulta%20Privacidad%20Sortipe">Contactar Soporte de Privacidad</a>
+    </section>
+
+    <footer>
+      <p>&copy; 2026 Sortipe / SortiStore. Todos los derechos reservados.</p>
+      <p style="margin-top: 0.5rem;">Documento público oficial de Política de Privacidad para aplicaciones de Google Play Store.</p>
+    </footer>
+  </div>
+
+</body>
+</html>

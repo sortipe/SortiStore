@@ -20,6 +20,18 @@
       "dest": "public/admin.html"
     },
     {
+      "src": "/privacy",
+      "dest": "public/privacy.html"
+    },
+    {
+      "src": "/politica-de-privacidad",
+      "dest": "public/privacy.html"
+    },
+    {
+      "src": "/privacy-policy",
+      "dest": "public/privacy.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "public/$1"
     }
