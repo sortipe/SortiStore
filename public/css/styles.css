@@ -2,71 +2,83 @@
    DISEÑO GLOBAL Y VARIABLES DE SORTISTORE (SOPORTA CLARO/OSCURO)
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 :root {
-    --font-heading: 'Outfit', sans-serif;
-    --font-body: 'Plus Jakarta Sans', sans-serif;
+    --font-heading: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-    /* MODO OSCURO (Predeterminado - Premium Cyberpunk/Glassmorphic) */
-    --bg-main: #0a0b10;
-    --bg-card: #121420;
-    --bg-card-hover: #191c2c;
-    --bg-header: rgba(10, 11, 16, 0.85);
-    --border-color: #212538;
-    --border-focus: #4f46e5;
-    
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    
-    --color-primary: #6366f1; /* Índigo */
-    --color-primary-hover: #4f46e5;
-    --color-secondary: #10b981; /* Esmeralda */
-    --color-secondary-hover: #059669;
-    --color-accent: #f59e0b; /* Sorti Gold */
-    --color-accent-hover: #d97706;
-    
-    --danger: #ef4444;
-    --success: #10b981;
-    --info: #0ea5e9;
-    
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
-    --shadow-primary: 0 4px 14px rgba(99, 102, 241, 0.3);
-    --shadow-gold: 0 4px 14px rgba(245, 158, 11, 0.3);
+    /* MODO OSCURO (sobrio, grafito con acento índigo) */
+    --bg-main: #0b0d12;
+    --bg-card: #12151c;
+    --bg-card-hover: #181c26;
+    --bg-header: rgba(11, 13, 18, 0.88);
+    --border-color: #232837;
+    --border-focus: #6366f1;
 
-    --radius-sm: 8px;
-    --radius-md: 16px;
-    --radius-lg: 24px;
-    --radius-xl: 32px;
-    
-    --glass-bg: rgba(18, 20, 32, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.05);
-    --glass-blur: blur(16px);
+    --text-primary: #f1f5f9;
+    --text-secondary: #a3aec2;
+    --text-muted: #6b7690;
+
+    --color-primary: #6366f1;
+    --color-primary-hover: #818cf8;
+    --color-secondary: #34d399;
+    --color-secondary-hover: #10b981;
+    --color-accent: #fbbf24;
+    --color-accent-hover: #f59e0b;
+
+    --danger: #f87171;
+    --success: #34d399;
+    --info: #38bdf8;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 18px 40px rgba(0, 0, 0, 0.5);
+    --shadow-primary: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-gold: 0 1px 2px rgba(0, 0, 0, 0.4);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    --glass-bg: rgba(18, 21, 28, 0.82);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-blur: blur(14px);
 }
 
-/* MODO CLARO OVERRIDES */
+/* MODO CLARO (predeterminado) */
 body.light-mode {
-    --bg-main: #f8fafc;
+    --bg-main: #f6f7f9;
     --bg-card: #ffffff;
-    --bg-card-hover: #f1f5f9;
-    --bg-header: rgba(248, 250, 252, 0.85);
-    --border-color: #e2e8f0;
-    --border-focus: #6366f1;
-    
+    --bg-card-hover: #f1f3f7;
+    --bg-header: rgba(255, 255, 255, 0.92);
+    --border-color: #e4e7ee;
+    --border-focus: #4f46e5;
+
     --text-primary: #0f172a;
     --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    
-    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.12);
-    --shadow-primary: 0 4px 14px rgba(99, 102, 241, 0.15);
-    
-    --glass-bg: rgba(255, 255, 255, 0.75);
-    --glass-border: rgba(0, 0, 0, 0.05);
+    --text-muted: #8492a6;
+
+    --color-primary: #4338ca;
+    --color-primary-hover: #3730a3;
+    --color-secondary: #047857;
+    --color-secondary-hover: #065f46;
+    --color-accent: #b45309;
+    --color-accent-hover: #92400e;
+
+    --danger: #dc2626;
+    --success: #047857;
+    --info: #0369a1;
+
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 6px 16px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 18px 40px rgba(15, 23, 42, 0.14);
+    --shadow-primary: 0 1px 2px rgba(15, 23, 42, 0.12);
+    --shadow-gold: 0 1px 2px rgba(15, 23, 42, 0.12);
+
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(15, 23, 42, 0.06);
 }
 
 /* RESET */
@@ -83,6 +95,7 @@ body {
     font-family: var(--font-body);
     font-size: 15px;
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
     transition: background-color 0.4s ease, color 0.4s ease;
 }
@@ -90,7 +103,7 @@ body {
 h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.015em;
 }
 
 a {

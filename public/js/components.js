@@ -199,7 +199,7 @@ const Cart = {
 
 // 5. CONTROLADOR DE TEMA (CLARO / OSCURO)
 function initTheme() {
-    const savedTheme = localStorage.getItem('sortistore_theme') || 'dark';
+    const savedTheme = localStorage.getItem('sortistore_theme') || 'light';
     const body = document.body;
     
     if (savedTheme === 'light') {
@@ -207,6 +207,8 @@ function initTheme() {
     } else {
         body.classList.remove('light-mode');
     }
+    const themeIcon = document.querySelector('#theme-toggle-btn i');
+    if (themeIcon) themeIcon.className = body.classList.contains('light-mode') ? 'fas fa-sun' : 'fas fa-moon';
 }
 
 function toggleTheme() {

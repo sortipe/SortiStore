@@ -3,20 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sortistore | E-commerce Premium y Modular</title>
+    <title>Sortistore | Tecnología, software y streaming con entrega inmediata</title>
+    <meta name="description" content="Sortistore: productos físicos, software, licencias y cuentas streaming con pago seguro y entrega inmediata en Perú.">
+    <meta name="theme-color" content="#4338ca">
     
     <!-- Hojas de estilo -->
     <link rel="stylesheet" href="/css/styles.css?v=3.1">
     <link rel="stylesheet" href="/css/shop.css?v=3.1">
     <link rel="stylesheet" href="/css/dashboard.css?v=3.1">
     <link rel="stylesheet" href="/css/vip.css?v=3.1">
+    <link rel="stylesheet" href="/css/pro.css?v=4.0">
     
     <!-- FontAwesome para iconos modernos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
 
-    <!-- CABECERA PRINCIPAL (STICKY GLASSMORPHIC) -->
+    <div class="announce-bar">
+        <span><i class="fas fa-bolt"></i>Entrega inmediata en productos digitales</span>
+        <span><i class="fas fa-shield-halved"></i>Compra 100% segura</span>
+        <span><i class="fas fa-coins"></i>Gana monedas Sorti en cada compra</span>
+    </div>
+
+    <!-- CABECERA PRINCIPAL -->
     <header>
         <div class="header-container">
             <!-- Logo -->
@@ -162,18 +171,49 @@
         <!-- Cargado mediante app.js -->
     </main>
 
+    <!-- BENEFICIOS -->
+    <section class="trust-strip" aria-label="Beneficios">
+        <div class="trust-strip-inner">
+            <div class="trust-item"><i class="fas fa-bolt"></i><div><strong>Entrega inmediata</strong><small>Productos digitales al instante</small></div></div>
+            <div class="trust-item"><i class="fas fa-lock"></i><div><strong>Pago seguro</strong><small>Tus datos siempre protegidos</small></div></div>
+            <div class="trust-item"><i class="fas fa-coins"></i><div><strong>Monedas Sorti</strong><small>Acumula y canjea por descuentos</small></div></div>
+            <div class="trust-item"><i class="fas fa-headset"></i><div><strong>Soporte cercano</strong><small>Te ayudamos antes y después</small></div></div>
+        </div>
+    </section>
+
     <!-- FOOTER -->
-    <footer style="background-color: var(--bg-card); border-top: 1px solid var(--border-color); padding: 48px 24px; text-align: center; font-size: 14px; color: var(--text-muted); margin-top: auto;">
-        <div style="max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;">
-            <h3>Sortistore E-commerce Platform</h3>
-            <p>Una tienda en línea modular, moderna y elegante para productos físicos, digitales, software y cuentas streaming.</p>
-            <div style="display: flex; justify-content: center; gap: 16px; font-size: 18px;">
-                <a href="#"><i class="fab fa-facebook"></i></a>
-                <a href="#"><i class="fab fa-instagram"></i></a>
-                <a href="#"><i class="fab fa-tiktok"></i></a>
-                <a href="#"><i class="fab fa-youtube"></i></a>
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-brand">
+                <a href="#/" class="logo"><i class="fas fa-shopping-bag"></i> Sorti<span>store</span></a>
+                <p>Tu tienda en línea para tecnología, software, licencias y cuentas streaming. Compra fácil, paga seguro y recibe al instante.</p>
+                <div class="footer-social">
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                    <a href="#" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
+                    <a href="#" aria-label="YouTube"><i class="fab fa-youtube"></i></a>
+                </div>
             </div>
-            <p style="font-size: 11px; margin-top: 24px;">&copy; 2026 Sortistore. Desarrollado con tecnología de vanguardia.</p>
+            <div class="footer-col">
+                <h4>Tienda</h4>
+                <a href="#/shop">Todos los productos</a>
+                <a href="#/category/tecnologia">Tecnología</a>
+                <a href="#/vip">Zona VIP</a>
+            </div>
+            <div class="footer-col">
+                <h4>Mi cuenta</h4>
+                <a href="#/dashboard">Mi panel</a>
+                <a href="#/auth">Ingresar o registrarse</a>
+                <a href="#/checkout">Finalizar compra</a>
+            </div>
+            <div class="footer-col">
+                <h4>Legal</h4>
+                <a href="/privacy">Política de privacidad</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>&copy; 2026 Sortistore. Todos los derechos reservados.</span>
+            <span>Pagos protegidos · Hecho en Perú</span>
         </div>
     </footer>
 

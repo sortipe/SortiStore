@@ -3,3 +3,5 @@ node_modules/
 server/db/database.sqlite
 .vercel
 scratch/
+*.rar
+
