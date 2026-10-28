@@ -15,25 +15,31 @@ if (isPostgres) {
     let host = process.env.DB_HOST ? process.env.DB_HOST.trim() : NEW_POOLER_HOST;
     let user = process.env.DB_USER ? process.env.DB_USER.trim() : `postgres.${NEW_SUPABASE_REF}`;
     let password = process.env.DB_PASSWORD ? process.env.DB_PASSWORD.trim() : '@Vyjys140601';
-    let port = process.env.DB_PORT ? parseInt(process.env.DB_PORT.trim(), 10) : 5432;
+    let port = 6543; // Modo transacción Supavisor (puerto 6543) óptimo para serverless / Vercel
     let database = process.env.DB_NAME ? process.env.DB_NAME.trim() : 'postgres';
 
-    // Si las variables de entorno aún apuntan al proyecto antiguo pausado, migrar automáticamente al nuevo
-    if (host.includes(OLD_SUPABASE_REF)) {
+    // Si las variables de entorno aún apuntan al proyecto antiguo (Canada ca-central-1 o lsbymgreuuattsxpyexf), migrar automáticamente al nuevo
+    if (host.includes(OLD_SUPABASE_REF) || host.includes('ca-central-1') || host.includes('supabase.co')) {
         host = NEW_POOLER_HOST;
     }
-    if (user.includes(OLD_SUPABASE_REF)) {
+    if (user.includes(OLD_SUPABASE_REF) || user === 'postgres') {
         user = `postgres.${NEW_SUPABASE_REF}`;
     }
+    if (!password || password === '@vYJYS140601') {
+        password = '@Vyjys140601';
+    }
 
-    console.log(`Detectada base de datos PostgreSQL/Supabase (${host}). Conectando...`);
+    console.log(`Detectada base de datos PostgreSQL/Supabase (${host}:${port}). Conectando...`);
     pgPool = new Pool({
         host,
         port,
         user,
         password,
         database,
-        ssl: { rejectUnauthorized: false }
+        ssl: { rejectUnauthorized: false },
+        max: 5,
+        idleTimeoutMillis: 5000,
+        connectionTimeoutMillis: 10000
     });
 
     pgPool.on('error', (err) => {
