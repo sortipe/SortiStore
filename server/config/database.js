@@ -3,20 +3,41 @@ const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
 
-const isPostgres = !!process.env.DB_HOST;
+const OLD_SUPABASE_REF = 'lsbymgreuuattsxpyexf';
+const NEW_SUPABASE_REF = 'ekqguywfuqykisjtzaxz';
+const NEW_POOLER_HOST = 'aws-1-us-west-2.pooler.supabase.com';
+
+const isPostgres = !!process.env.DB_HOST || !!process.env.VERCEL;
 let pgPool = null;
 let sqliteDb = null;
 
-
 if (isPostgres) {
-    console.log('Detectada base de datos PostgreSQL/Supabase. Conectando...');
+    let host = process.env.DB_HOST ? process.env.DB_HOST.trim() : NEW_POOLER_HOST;
+    let user = process.env.DB_USER ? process.env.DB_USER.trim() : `postgres.${NEW_SUPABASE_REF}`;
+    let password = process.env.DB_PASSWORD ? process.env.DB_PASSWORD.trim() : '@Vyjys140601';
+    let port = process.env.DB_PORT ? parseInt(process.env.DB_PORT.trim(), 10) : 5432;
+    let database = process.env.DB_NAME ? process.env.DB_NAME.trim() : 'postgres';
+
+    // Si las variables de entorno aún apuntan al proyecto antiguo pausado, migrar automáticamente al nuevo
+    if (host.includes(OLD_SUPABASE_REF)) {
+        host = NEW_POOLER_HOST;
+    }
+    if (user.includes(OLD_SUPABASE_REF)) {
+        user = `postgres.${NEW_SUPABASE_REF}`;
+    }
+
+    console.log(`Detectada base de datos PostgreSQL/Supabase (${host}). Conectando...`);
     pgPool = new Pool({
-        host: process.env.DB_HOST ? process.env.DB_HOST.trim() : undefined,
-        port: process.env.DB_PORT ? parseInt(process.env.DB_PORT.trim(), 10) : 5432,
-        user: process.env.DB_USER ? process.env.DB_USER.trim() : 'postgres',
-        password: process.env.DB_PASSWORD ? process.env.DB_PASSWORD.trim() : undefined,
-        database: process.env.DB_NAME ? process.env.DB_NAME.trim() : 'postgres',
-        ssl: { rejectUnauthorized: false } // Requerido para conexiones seguras en Supabase
+        host,
+        port,
+        user,
+        password,
+        database,
+        ssl: { rejectUnauthorized: false }
+    });
+
+    pgPool.on('error', (err) => {
+        console.error('Error imprevisto en pgPool:', err.message);
     });
 
     // Migración Postgres automática para zona VIP y otras columnas necesarias
