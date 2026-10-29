@@ -1395,7 +1395,7 @@ async function renderSettingsTab(container, reloadFromApi = true) {
                             Monedas ganadas por cada S/. 1.00 al comprar
                         </label>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="number" step="0.01" min="0" id="set-sorti-coins-per-sol" class="form-control" value="${currentSettings.sorti_coins_per_sol !== undefined ? currentSettings.sorti_coins_per_sol : '0.20'}" required style="font-size: 16px; font-weight: 700; text-align: center;" oninput="updateSortiConfigLivePreview()">
+                            <input type="number" step="any" min="0" id="set-sorti-coins-per-sol" class="form-control" value="${currentSettings.sorti_coins_per_sol !== undefined ? currentSettings.sorti_coins_per_sol : '0.20'}" required style="font-size: 16px; font-weight: 700; text-align: center;" oninput="updateSortiConfigLivePreview()">
                             <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap;">monedas / S/. 1.00</span>
                         </div>
                         <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
@@ -1411,7 +1411,7 @@ async function renderSettingsTab(container, reloadFromApi = true) {
                         </label>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span style="font-size: 14px; font-weight: 700; color: var(--text-secondary);">S/.</span>
-                            <input type="number" step="0.01" min="0.001" id="set-sorti-coin-value" class="form-control" value="${currentSettings.sorti_coin_value !== undefined ? currentSettings.sorti_coin_value : '0.50'}" required style="font-size: 16px; font-weight: 700; text-align: center;" oninput="updateSortiConfigLivePreview()">
+                            <input type="number" step="any" min="0" id="set-sorti-coin-value" class="form-control" value="${currentSettings.sorti_coin_value !== undefined ? currentSettings.sorti_coin_value : '0.50'}" required style="font-size: 16px; font-weight: 700; text-align: center;" oninput="updateSortiConfigLivePreview()">
                             <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap;">descuento / 1 moneda</span>
                         </div>
                         <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
