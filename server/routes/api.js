@@ -79,6 +79,12 @@ router.delete('/admin/categories/:id', requireAuth, adminOrEmployee, admin.delet
 router.get('/admin/settings', requireAuth, adminOrEmployee, admin.getSettings);
 router.put('/admin/settings', requireAuth, adminOnly, admin.updateSettings);
 
+// Gestión de Usuarios (CRUD completo para Admin)
+router.get('/admin/users', requireAuth, adminOrEmployee, admin.getUsers);
+router.post('/admin/users', requireAuth, adminOnly, admin.createUser);
+router.put('/admin/users/:id', requireAuth, adminOnly, admin.updateUser);
+router.delete('/admin/users/:id', requireAuth, adminOnly, admin.deleteUser);
+
 // Gestión VIP Admin (Admin / Empleado)
 router.get('/admin/vip/users', requireAuth, adminOrEmployee, vip.adminGetUsers);
 router.put('/admin/vip/users/:id/status', requireAuth, adminOnly, vip.adminToggleUserVip);

@@ -90,7 +90,7 @@ async function switchTab(tabName) {
         orders: 'Gestión de Pedidos',
         wallet: 'Ajuste de Monedas Virtuales',
         coupons: 'Gestión de Cupones',
-        vip_users: 'Gestión de Usuarios VIP',
+        vip_users: 'Gestión de Usuarios y Clientes',
         vip_resources: 'Gestión de Recursos de Zona VIP',
         settings: 'Configuraciones del Sistema'
     };
@@ -2225,73 +2225,291 @@ window.removeProductFeatureRow = (idx) => {
 
 AdminState.vipResourceSubTab = 'raffles';
 
-// 1. Pestaña: Gestión de Usuarios VIP
+// 1. Pestaña: Gestión de Usuarios y Clientes VIP (CRUD Completo)
 async function renderVipUsersTab(container) {
     container.innerHTML = `
-        <div class="glass-panel" style="padding: 24px; margin-bottom: 24px;">
-            <h3>Listado de Clientes y Estado VIP</h3>
-            <p style="color: var(--text-secondary); font-size: 13px; margin-top: 4px;">Activa o desactiva la suscripción VIP para los clientes. Al activarlo, el sistema les asigna 5 monedas VIP iniciales para el mes.</p>
+        <div class="glass-panel" style="padding: 20px 24px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <h3 style="margin: 0; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-users-cog" style="color: var(--color-primary);"></i> Gestión de Usuarios y Clientes
+                </h3>
+                <p style="color: var(--text-secondary); font-size: 13.5px; margin: 4px 0 0 0;">
+                    Administra cuentas de clientes, empleados y administradores. Crea, edita información, contraseñas, monedas Sorti y estado VIP.
+                </p>
+            </div>
+            <button class="btn-primary" onclick="openUserModal()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px;">
+                <i class="fas fa-user-plus"></i> Nuevo Usuario
+            </button>
         </div>
+
+        <!-- Filtros y Búsqueda -->
+        <div class="glass-panel" style="padding: 16px 20px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+            <div style="flex: 1; min-width: 220px; position: relative;">
+                <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+                <input type="text" id="admin-user-search" class="form-control" placeholder="Buscar por nombre o correo..." style="padding-left: 38px;" onkeyup="filterAdminUsersTable()">
+            </div>
+            <div style="min-width: 160px;">
+                <select id="admin-user-role-filter" class="form-control" onchange="filterAdminUsersTable()">
+                    <option value="">Todos los roles</option>
+                    <option value="client">Solo Clientes</option>
+                    <option value="employee">Solo Empleados</option>
+                    <option value="admin">Solo Administradores</option>
+                </select>
+            </div>
+            <div style="min-width: 160px;">
+                <select id="admin-user-vip-filter" class="form-control" onchange="filterAdminUsersTable()">
+                    <option value="">Todos los estados</option>
+                    <option value="vip">Solo Miembros VIP</option>
+                    <option value="standard">Solo Estándar</option>
+                </select>
+            </div>
+            <div>
+                <span id="admin-users-count" style="font-size: 12.5px; color: var(--text-muted); font-weight: 600;"></span>
+            </div>
+        </div>
+
         <div class="glass-panel" style="padding: 0; overflow-x: auto;">
             <table class="admin-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Correo</th>
+                        <th style="width: 50px;">ID</th>
+                        <th>Nombre y Correo</th>
+                        <th>Rol</th>
                         <th>¿Es VIP?</th>
                         <th>Monedas VIP</th>
+                        <th>Monedas Sorti</th>
                         <th>Última Renovación</th>
-                        <th>Acción</th>
+                        <th style="text-align: right; min-width: 180px;">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="admin-vip-users-table-body">
-                    <tr><td colspan="7" style="text-align: center; padding: 20px;">Cargando usuarios...</td></tr>
+                    <tr><td colspan="8" style="text-align: center; padding: 30px;">Cargando usuarios...</td></tr>
                 </tbody>
             </table>
         </div>
     `;
 
     try {
-        const users = await AdminService.getVipUsers();
-        const tbody = document.getElementById('admin-vip-users-table-body');
-        if (users.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--text-muted);">No se encontraron clientes registrados.</td></tr>`;
-            return;
-        }
-
-        tbody.innerHTML = users.map(user => {
-            const isVip = !!user.is_vip;
-            const lastRenovation = user.vip_last_renovation ? new Date(user.vip_last_renovation).toLocaleString() : 'N/A';
-            return `
-                <tr>
-                    <td>${user.id}</td>
-                    <td style="font-weight: 600;">${user.name}</td>
-                    <td>${user.email}</td>
-                    <td>
-                        <span class="badge ${isVip ? 'badge-featured' : 'badge-sold-out'}" style="${isVip ? 'background: rgba(245, 158, 11, 0.15); color: var(--color-accent); border: 1px solid rgba(245, 158, 11, 0.3);' : ''}">
-                            ${isVip ? 'VIP' : 'Estándar'}
-                        </span>
-                    </td>
-                    <td>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="number" id="vip-coins-input-${user.id}" value="${user.vip_coins || 0}" min="0" class="form-control" style="width: 70px; padding: 4px 8px; font-size: 13px;" ${!isVip ? 'disabled' : ''}>
-                            ${isVip ? `<button class="action-btn" onclick="saveVipCoins(${user.id})" title="Guardar Monedas" style="color: var(--success);"><i class="fas fa-save"></i></button>` : ''}
-                        </div>
-                    </td>
-                    <td style="font-size: 12px; color: var(--text-muted);">${lastRenovation}</td>
-                    <td>
-                        <button class="btn-${isVip ? 'outline' : 'primary'}" onclick="toggleVipStatus(${user.id}, ${isVip ? 0 : 1})" style="padding: 6px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fas ${isVip ? 'fa-user-slash' : 'fa-crown'}"></i> ${isVip ? 'Desactivar VIP' : 'Activar VIP'}
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        const users = await AdminService.getUsers();
+        window._cachedAdminUsers = users || [];
+        renderAdminUsersRows(window._cachedAdminUsers);
     } catch (e) {
-        showToast('Error al cargar clientes VIP: ' + e.message, 'error');
+        showToast('Error al cargar usuarios: ' + e.message, 'error');
     }
 }
+
+function renderAdminUsersRows(users) {
+    const tbody = document.getElementById('admin-vip-users-table-body');
+    const countEl = document.getElementById('admin-users-count');
+    if (!tbody) return;
+
+    if (countEl) countEl.textContent = `${users.length} usuarios encontrados`;
+
+    if (!users || users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px;">No se encontraron usuarios con los filtros seleccionados.</td></tr>`;
+        return;
+    }
+
+    const roleBadges = {
+        admin: '<span class="badge" style="background: rgba(147, 51, 234, 0.15); color: #9333ea; border: 1px solid rgba(147, 51, 234, 0.3); font-weight: 700;">Admin</span>',
+        employee: '<span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-weight: 700;">Empleado</span>',
+        client: '<span class="badge" style="background: rgba(100, 116, 139, 0.15); color: #64748b; font-weight: 600;">Cliente</span>'
+    };
+
+    tbody.innerHTML = users.map(user => {
+        const isVip = !!user.is_vip;
+        const lastRenovation = user.vip_last_renovation ? new Date(user.vip_last_renovation).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '<span style="color: var(--text-muted);">N/A</span>';
+        const roleBadge = roleBadges[user.role] || roleBadges.client;
+        const safeName = (user.name || '').replace(/'/g, "\\'");
+
+        return `
+            <tr>
+                <td style="font-weight: 700; color: var(--text-muted);">${user.id}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 34px; height: 34px; border-radius: 50%; background: var(--color-primary); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px;">
+                            ${(user.name || user.email || 'U').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div style="font-weight: 700; font-size: 14px;">${user.name || 'Sin nombre'}</div>
+                            <div style="font-size: 12px; color: var(--text-secondary);">${user.email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>${roleBadge}</td>
+                <td>
+                    <span class="badge" style="${isVip ? 'background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 700;' : 'background: rgba(148, 163, 184, 0.12); color: var(--text-muted);'}">
+                        ${isVip ? '👑 VIP' : 'Estándar'}
+                    </span>
+                </td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <input type="number" id="vip-coins-input-${user.id}" value="${user.vip_coins || 0}" min="0" class="form-control" style="width: 65px; padding: 4px 6px; font-size: 12.5px; text-align: center;" ${!isVip ? 'disabled' : ''}>
+                        ${isVip ? `<button class="action-btn" onclick="saveVipCoins(${user.id})" title="Guardar Monedas VIP" style="color: var(--success); width: 28px; height: 28px; padding: 0;"><i class="fas fa-save" style="font-size: 12px;"></i></button>` : ''}
+                    </div>
+                </td>
+                <td>
+                    <span style="font-weight: 700; color: var(--color-accent); font-size: 13px; display: inline-flex; align-items: center; gap: 4px;">
+                        <i class="fas fa-coins"></i> ${Number(user.sorti_balance || 0).toFixed(2)}
+                    </span>
+                </td>
+                <td style="font-size: 12px;">${lastRenovation}</td>
+                <td style="text-align: right;">
+                    <div style="display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end;">
+                        <button type="button" class="btn-icon" style="padding: 6px 10px; font-size: 12px; background: rgba(99,102,241,0.1); color: var(--color-primary); border-radius: 6px;" title="Editar usuario" onclick="openUserModal(${user.id})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button type="button" class="btn-icon" style="padding: 6px 10px; font-size: 12px; background: ${isVip ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)'}; color: ${isVip ? '#ef4444' : '#f59e0b'}; border-radius: 6px;" title="${isVip ? 'Desactivar VIP' : 'Activar VIP'}" onclick="toggleVipStatus(${user.id}, ${isVip ? 0 : 1})">
+                            <i class="fas ${isVip ? 'fa-user-slash' : 'fa-crown'}"></i> ${isVip ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button type="button" class="btn-icon" style="padding: 6px 8px; font-size: 12px; color: #ef4444; border-radius: 6px;" title="Eliminar usuario" onclick="deleteUserCall(${user.id}, '${safeName}')">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+window.filterAdminUsersTable = () => {
+    const q = (document.getElementById('admin-user-search')?.value || '').toLowerCase().trim();
+    const role = document.getElementById('admin-user-role-filter')?.value || '';
+    const vip = document.getElementById('admin-user-vip-filter')?.value || '';
+
+    const allUsers = window._cachedAdminUsers || [];
+    const filtered = allUsers.filter(u => {
+        const matchQ = !q || (u.name && u.name.toLowerCase().includes(q)) || (u.email && u.email.toLowerCase().includes(q));
+        const matchRole = !role || u.role === role;
+        const matchVip = !vip || (vip === 'vip' ? !!u.is_vip : !u.is_vip);
+        return matchQ && matchRole && matchVip;
+    });
+
+    renderAdminUsersRows(filtered);
+};
+
+// ==========================================
+// MODAL: CREAR Y EDITAR USUARIO
+// ==========================================
+window.openUserModal = (userId = null) => {
+    const allUsers = window._cachedAdminUsers || [];
+    const user = userId ? allUsers.find(u => u.id === userId) : null;
+
+    const html = `
+        <div style="padding: 24px; max-width: 520px; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <h3 style="font-size: 18px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas ${user ? 'fa-user-edit' : 'fa-user-plus'}" style="color: var(--color-primary);"></i>
+                    ${user ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+                </h3>
+                <button class="btn-icon" onclick="closeAdminModalModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <form onsubmit="handleSaveUser(event, ${user ? user.id : 'null'})">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Nombre Completo *</label>
+                    <input type="text" id="usr-name" class="form-control" required value="${user ? user.name : ''}" placeholder="ej: Juan Pérez">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Correo Electrónico *</label>
+                    <input type="email" id="usr-email" class="form-control" required value="${user ? user.email : ''}" placeholder="correo@ejemplo.com">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">
+                        Contraseña ${user ? '<span style="color: var(--text-muted); font-weight: normal;">(dejar en blanco para no cambiarla)</span>' : '*'}
+                    </label>
+                    <input type="password" id="usr-password" class="form-control" ${user ? '' : 'required'} placeholder="${user ? '••••••••' : 'Mínimo 6 caracteres'}">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Rol del Sistema</label>
+                        <select id="usr-role" class="form-control">
+                            <option value="client" ${user && user.role === 'client' ? 'selected' : ''}>Cliente</option>
+                            <option value="employee" ${user && user.role === 'employee' ? 'selected' : ''}>Empleado / Soporte</option>
+                            <option value="admin" ${user && user.role === 'admin' ? 'selected' : ''}>Administrador</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px;">Saldo Monedas Sorti</label>
+                        <input type="number" step="any" min="0" id="usr-sorti-balance" class="form-control" value="${user ? (Number(user.sorti_balance) || 0) : 50}">
+                    </div>
+                </div>
+                <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <label style="font-size: 13px; font-weight: 700; color: var(--color-accent); cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0;">
+                            <input type="checkbox" id="usr-is-vip" ${user && user.is_vip ? 'checked' : ''} onchange="document.getElementById('usr-vip-coins-container').style.display = this.checked ? 'block' : 'none'">
+                            <i class="fas fa-crown"></i> Membresía VIP Activa
+                        </label>
+                    </div>
+                    <div id="usr-vip-coins-container" style="display: ${user && user.is_vip ? 'block' : 'none'}; margin-top: 10px;">
+                        <label style="font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px;">Monedas VIP Asignadas</label>
+                        <input type="number" min="0" id="usr-vip-coins" class="form-control" value="${user ? (user.vip_coins || 0) : 5}" style="max-width: 140px;">
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" class="btn-outline" onclick="closeAdminModalModal()">Cancelar</button>
+                    <button type="submit" class="btn-primary"><i class="fas fa-save"></i> ${user ? 'Guardar Cambios' : 'Crear Usuario'}</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    openAdminModalModal(html);
+};
+
+window.handleSaveUser = async (e, userId) => {
+    e.preventDefault();
+    const name = document.getElementById('usr-name').value.trim();
+    const email = document.getElementById('usr-email').value.trim();
+    const password = document.getElementById('usr-password').value;
+    const role = document.getElementById('usr-role').value;
+    const sorti_balance = Number(document.getElementById('usr-sorti-balance').value) || 0;
+    const is_vip = document.getElementById('usr-is-vip').checked ? 1 : 0;
+    const vip_coins = is_vip ? (Number(document.getElementById('usr-vip-coins').value) || 0) : 0;
+
+    const payload = {
+        name,
+        email,
+        role,
+        sorti_balance,
+        is_vip,
+        vip_coins
+    };
+
+    if (password && password.trim().length > 0) {
+        payload.password = password.trim();
+    }
+
+    try {
+        if (userId) {
+            await AdminService.updateUser(userId, payload);
+            showToast('Usuario actualizado con éxito.', 'success');
+        } else {
+            if (!password || password.trim().length === 0) {
+                showToast('La contraseña es obligatoria para nuevos usuarios.', 'error');
+                return;
+            }
+            await AdminService.createUser(payload);
+            showToast('Usuario creado con éxito.', 'success');
+        }
+        closeAdminModalModal();
+        switchTab('vip_users');
+    } catch (err) {
+        showToast(err.message || 'Error al guardar usuario.', 'error');
+    }
+};
+
+window.deleteUserCall = async (userId, userName) => {
+    if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente al usuario "${userName}" (ID: ${userId})?\n\nEsta acción eliminará su cuenta, billetera y accesos.`)) {
+        return;
+    }
+    try {
+        const res = await AdminService.deleteUser(userId);
+        showToast(res.message || 'Usuario eliminado con éxito.', 'success');
+        switchTab('vip_users');
+    } catch (e) {
+        showToast(e.message || 'Error al eliminar usuario.', 'error');
+    }
+};
 
 window.toggleVipStatus = async (userId, newStatus) => {
     try {

@@ -323,7 +323,36 @@ const AdminService = {
     },
 
     async getVipUsers() {
-        return await apiCall('/admin/vip/users');
+        return await apiCall('/admin/users');
+    },
+
+    async getUsers(filters = {}) {
+        const params = new URLSearchParams();
+        Object.keys(filters).forEach(k => {
+            if (filters[k] !== undefined && filters[k] !== '') params.append(k, filters[k]);
+        });
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        return await apiCall(`/admin/users${qs}`);
+    },
+
+    async createUser(userData) {
+        return await apiCall('/admin/users', {
+            method: 'POST',
+            body: JSON.stringify(userData)
+        });
+    },
+
+    async updateUser(userId, userData) {
+        return await apiCall(`/admin/users/${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify(userData)
+        });
+    },
+
+    async deleteUser(userId) {
+        return await apiCall(`/admin/users/${userId}`, {
+            method: 'DELETE'
+        });
     },
 
     async toggleVipStatus(userId, isVip) {

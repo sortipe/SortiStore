@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const streaming = require('./streamingController');
+const bcrypt = require('bcryptjs');
 
 // 1. Estadísticas Generales del Dashboard Administrativo
 exports.getDashboardStats = async (req, res) => {
@@ -619,5 +620,207 @@ exports.deleteCategory = async (req, res) => {
     } catch (error) {
         console.error('Error al eliminar categoría:', error);
         return res.status(500).json({ error: error.message || 'Error interno del servidor.' });
+    }
+};
+
+// ==========================================
+// GESTIÓN DE USUARIOS (CRUD COMPLETO)
+// ==========================================
+
+// 15. Listar usuarios con filtros (Rol, VIP, Búsqueda)
+exports.getUsers = async (req, res) => {
+    try {
+        const { role, is_vip, q } = req.query;
+        let sql = `
+            SELECT u.id, u.name, u.email, u.role, u.is_vip, u.vip_coins, u.vip_last_renovation, u.created_at,
+                   COALESCE(w.sorti_balance, 0) as sorti_balance
+            FROM users u
+            LEFT JOIN user_wallets w ON u.id = w.user_id
+            WHERE 1=1
+        `;
+        const params = [];
+
+        if (role) {
+            sql += ' AND u.role = ?';
+            params.push(role);
+        }
+
+        if (is_vip !== undefined && is_vip !== '') {
+            sql += ' AND u.is_vip = ?';
+            params.push(is_vip === '1' || is_vip === 'true' || is_vip === 1);
+        }
+
+        if (q) {
+            sql += ' AND (LOWER(u.name) LIKE ? OR LOWER(u.email) LIKE ?)';
+            const term = `%${q.toLowerCase()}%`;
+            params.push(term, term);
+        }
+
+        sql += ' ORDER BY u.created_at DESC';
+
+        const users = await db.query(sql, params);
+        return res.json(users);
+    } catch (error) {
+        console.error('Error al listar usuarios:', error);
+        return res.status(500).json({ error: 'Error al listar usuarios.' });
+    }
+};
+
+// 16. Crear nuevo usuario
+exports.createUser = async (req, res) => {
+    try {
+        const { name, email, password, role = 'client', is_vip = 0, vip_coins = 0, sorti_balance = 0 } = req.body;
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ error: 'Nombre, correo y contraseña son obligatorios.' });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const existing = await db.querySingle('SELECT id FROM users WHERE LOWER(email) = ?', [cleanEmail]);
+        if (existing) {
+            return res.status(400).json({ error: 'Ya existe un usuario con este correo electrónico.' });
+        }
+
+        const passwordHash = bcrypt.hashSync(password, 10);
+        const vipFlag = is_vip === 1 || is_vip === true || is_vip === '1';
+        const now = vipFlag ? new Date().toISOString() : null;
+
+        const result = await db.execute(`
+            INSERT INTO users (name, email, password_hash, role, is_vip, vip_coins, vip_last_renovation)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
+        `, [
+            name.trim(),
+            cleanEmail,
+            passwordHash,
+            ['admin', 'employee', 'client'].includes(role) ? role : 'client',
+            vipFlag,
+            Number(vip_coins) || 0,
+            now
+        ]);
+
+        const newUserId = result.lastInsertRowid;
+
+        // Billetera virtual
+        const initialSorti = Number(sorti_balance) || 0;
+        await db.execute('INSERT INTO user_wallets (user_id, sorti_balance) VALUES (?, ?)', [newUserId, initialSorti]);
+
+        if (initialSorti > 0) {
+            await db.execute(`
+                INSERT INTO sorti_transactions (user_id, amount, type, description)
+                VALUES (?, ?, 'admin_adjust', 'Saldo inicial asignado por administración')
+            `, [newUserId, initialSorti]);
+        }
+
+        return res.status(201).json({
+            message: 'Usuario creado con éxito.',
+            user: { id: newUserId, name: name.trim(), email: cleanEmail, role, is_vip: vipFlag, vip_coins, sorti_balance: initialSorti }
+        });
+    } catch (error) {
+        console.error('Error al crear usuario:', error);
+        return res.status(500).json({ error: error.message || 'Error interno al crear usuario.' });
+    }
+};
+
+// 17. Actualizar usuario existente
+exports.updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const targetId = Number(id);
+        const { name, email, password, role, is_vip, vip_coins, sorti_balance } = req.body;
+
+        const user = await db.querySingle('SELECT * FROM users WHERE id = ?', [targetId]);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado.' });
+        }
+
+        // Si se cambia el email, verificar unicidad
+        if (email) {
+            const cleanEmail = email.trim().toLowerCase();
+            const duplicate = await db.querySingle('SELECT id FROM users WHERE LOWER(email) = ? AND id != ?', [cleanEmail, targetId]);
+            if (duplicate) {
+                return res.status(400).json({ error: 'El correo electrónico ya pertenece a otro usuario.' });
+            }
+        }
+
+        let newPasswordHash = user.password_hash;
+        if (password && password.trim().length > 0) {
+            newPasswordHash = bcrypt.hashSync(password.trim(), 10);
+        }
+
+        const newName = name !== undefined ? name.trim() : user.name;
+        const newEmail = email !== undefined ? email.trim().toLowerCase() : user.email;
+        const newRole = role !== undefined && ['admin', 'employee', 'client'].includes(role) ? role : user.role;
+        const newIsVip = is_vip !== undefined ? (is_vip === 1 || is_vip === true || is_vip === '1') : user.is_vip;
+        const newVipCoins = vip_coins !== undefined ? Number(vip_coins) : (user.vip_coins || 0);
+
+        let vipRenovation = user.vip_last_renovation;
+        if (newIsVip && !user.is_vip) {
+            vipRenovation = new Date().toISOString();
+        } else if (!newIsVip) {
+            vipRenovation = null;
+        }
+
+        await db.execute(`
+            UPDATE users 
+            SET name = ?, email = ?, password_hash = ?, role = ?, is_vip = ?, vip_coins = ?, vip_last_renovation = ?
+            WHERE id = ?
+        `, [
+            newName,
+            newEmail,
+            newPasswordHash,
+            newRole,
+            newIsVip,
+            newVipCoins,
+            vipRenovation,
+            targetId
+        ]);
+
+        // Ajustar saldo de monedas Sorti si se especifica
+        if (sorti_balance !== undefined) {
+            const newSorti = Number(sorti_balance) || 0;
+            const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [targetId]);
+            if (!wallet) {
+                await db.execute('INSERT INTO user_wallets (user_id, sorti_balance) VALUES (?, ?)', [targetId, newSorti]);
+            } else {
+                await db.execute('UPDATE user_wallets SET sorti_balance = ? WHERE user_id = ?', [newSorti, targetId]);
+            }
+        }
+
+        return res.json({ message: 'Usuario actualizado con éxito.' });
+    } catch (error) {
+        console.error('Error al actualizar usuario:', error);
+        return res.status(500).json({ error: error.message || 'Error interno al actualizar usuario.' });
+    }
+};
+
+// 18. Eliminar usuario
+exports.deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const targetId = Number(id);
+
+        if (req.user && req.user.id === targetId) {
+            return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta de administrador en sesión.' });
+        }
+
+        const user = await db.querySingle('SELECT id, name, email FROM users WHERE id = ?', [targetId]);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado.' });
+        }
+
+        // Limpieza de referencias
+        await db.execute('UPDATE orders SET user_id = NULL WHERE user_id = ?', [targetId]);
+        await db.execute('UPDATE streaming_assignments SET user_id = NULL WHERE user_id = ?', [targetId]);
+        await db.execute('DELETE FROM user_wallets WHERE user_id = ?', [targetId]);
+        await db.execute('DELETE FROM sorti_transactions WHERE user_id = ?', [targetId]);
+        await db.execute('DELETE FROM user_coupons WHERE user_id = ?', [targetId]);
+        await db.execute('DELETE FROM vip_raffle_entries WHERE user_id = ?', [targetId]);
+        await db.execute('DELETE FROM users WHERE id = ?', [targetId]);
+
+        return res.json({ message: `Usuario ${user.name} (${user.email}) eliminado correctamente.` });
+    } catch (error) {
+        console.error('Error al eliminar usuario:', error);
+        return res.status(500).json({ error: error.message || 'Error interno al eliminar usuario.' });
     }
 };
