@@ -947,7 +947,7 @@ window.openOrderDetailsModal = (orderId) => {
                                                     <div><strong>Perfil:</strong> <span style="color: var(--color-secondary); font-weight: 700;">${d.profile_name || 'N/A'}</span></div>
                                                     <div><strong>PIN:</strong> <span style="color: #f59e0b; font-weight: 800; letter-spacing: 1px;">${d.profile_pin || 'Sin PIN'}</span></div>
                                                 </div>
-                                            `}
+                                            `)}
 
                                             ${d.usage_instructions ? `
                                                 <div style="font-size: 11.5px; color: var(--text-secondary); background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; padding: 6px 10px; border-radius: 4px; white-space: pre-line;">
