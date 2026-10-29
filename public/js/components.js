@@ -226,3 +226,75 @@ function toggleTheme() {
 
 // Inicializar tema al cargar el script
 initTheme();
+
+// 6. CONTROLADOR DE MARCA DINÁMICA (BRANDING & COLORES PERSONALIZADOS)
+function hexToHoverColor(hex, percent = -12) {
+    try {
+        let col = hex.replace('#', '');
+        if (col.length === 3) col = col.split('').map(c => c + c).join('');
+        const num = parseInt(col, 16);
+        let r = Math.min(255, Math.max(0, (num >> 16) + Math.round(255 * (percent / 100))));
+        let g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + Math.round(255 * (percent / 100))));
+        let bVal = Math.min(255, Math.max(0, (num & 0x0000FF) + Math.round(255 * (percent / 100))));
+        return `#${(r << 16 | g << 8 | bVal).toString(16).padStart(6, '0')}`;
+    } catch (e) {
+        return hex;
+    }
+}
+
+window.applyDynamicBranding = function(branding) {
+    if (!branding) return;
+    const b = typeof branding === 'string' ? JSON.parse(branding) : branding;
+
+    if (b.site_name) {
+        document.title = b.site_name;
+        const logoBtn = document.getElementById('logo-btn');
+        if (logoBtn) {
+            logoBtn.innerHTML = `<i class="fas fa-shopping-bag"></i> ${b.site_name.replace(/(store|tienda)/i, '<span>$1</span>')}`;
+        }
+        const adminLogo = document.querySelector('.admin-logo');
+        if (adminLogo) {
+            adminLogo.innerHTML = `<i class="fas fa-tools"></i> ${b.site_name}<span>admin</span>`;
+        }
+    }
+
+    const primaryColor = b.primary_color;
+    const accentColor = b.accent_color;
+
+    if (primaryColor || accentColor) {
+        let styleTag = document.getElementById('sortistore-custom-branding-style');
+        if (!styleTag) {
+            styleTag = document.createElement('style');
+            styleTag.id = 'sortistore-custom-branding-style';
+            document.head.appendChild(styleTag);
+        }
+
+        let css = ':root, html, body, body.light-mode, body.dark-mode, .admin-layout, .admin-sidebar, header {\n';
+        if (primaryColor) {
+            const primaryHover = hexToHoverColor(primaryColor, -12);
+            css += `    --color-primary: ${primaryColor} !important;\n`;
+            css += `    --color-primary-hover: ${primaryHover} !important;\n`;
+            css += `    --border-focus: ${primaryColor} !important;\n`;
+        }
+        if (accentColor) {
+            const accentHover = hexToHoverColor(accentColor, -12);
+            css += `    --color-accent: ${accentColor} !important;\n`;
+            css += `    --color-accent-hover: ${accentHover} !important;\n`;
+        }
+        css += '}\n';
+
+        styleTag.innerHTML = css;
+
+        try {
+            localStorage.setItem('sortistore_cached_branding', JSON.stringify(b));
+        } catch (e) {}
+    }
+};
+
+// Cargar branding previo en caché para aplicar inmediatamente sin parpadeos visuales
+try {
+    const cachedBranding = localStorage.getItem('sortistore_cached_branding');
+    if (cachedBranding) {
+        window.applyDynamicBranding(cachedBranding);
+    }
+} catch (e) {}

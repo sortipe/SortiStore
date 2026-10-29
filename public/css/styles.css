@@ -54,18 +54,14 @@ body.light-mode {
     --bg-card-hover: #f1f3f7;
     --bg-header: rgba(255, 255, 255, 0.92);
     --border-color: #e4e7ee;
-    --border-focus: #4f46e5;
+    --border-focus: var(--color-primary);
 
     --text-primary: #0f172a;
     --text-secondary: #475569;
     --text-muted: #8492a6;
 
-    --color-primary: #4338ca;
-    --color-primary-hover: #3730a3;
     --color-secondary: #047857;
     --color-secondary-hover: #065f46;
-    --color-accent: #b45309;
-    --color-accent-hover: #92400e;
 
     --danger: #dc2626;
     --success: #047857;

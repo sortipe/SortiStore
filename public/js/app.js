@@ -102,22 +102,8 @@ window.addEventListener('hashchange', router);
 window.addEventListener('DOMContentLoaded', async () => {
     try {
         const settings = await ShopService.getSettings();
-        if (settings.site_branding) {
-            const branding = typeof settings.site_branding === 'string' ? JSON.parse(settings.site_branding) : settings.site_branding;
-            
-            if (branding.site_name) {
-                document.title = branding.site_name;
-                const logoBtn = document.getElementById('logo-btn');
-                if (logoBtn) {
-                    logoBtn.innerHTML = `<i class="fas fa-shopping-bag"></i> ${branding.site_name.replace(/(store|tienda)/i, '<span>$1</span>')}`;
-                }
-            }
-            if (branding.primary_color) {
-                document.documentElement.style.setProperty('--color-primary', branding.primary_color);
-            }
-            if (branding.accent_color) {
-                document.documentElement.style.setProperty('--color-accent', branding.accent_color);
-            }
+        if (settings && settings.site_branding && window.applyDynamicBranding) {
+            window.applyDynamicBranding(settings.site_branding);
         }
     } catch (e) {
         console.error('Error al aplicar marca personalizada:', e);

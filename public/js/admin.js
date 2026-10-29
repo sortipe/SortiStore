@@ -13,6 +13,14 @@ let AdminState = {
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme(); // Inicializar tema oscuro/claro
     
+    // Cargar branding dinámico del sistema
+    try {
+        const settings = await AdminService.getSettings();
+        if (settings && settings.site_branding && window.applyDynamicBranding) {
+            window.applyDynamicBranding(settings.site_branding);
+        }
+    } catch (e) {}
+
     try {
         const data = await AuthService.getMe();
         if (!data || !data.user || data.user.role === 'client') {
@@ -1271,15 +1279,15 @@ async function renderSettingsTab(container, reloadFromApi = true) {
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Color Principal</label>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="color" id="set-primary-color" value="${branding.primary_color || '#6366f1'}" style="width: 44px; height: 44px; border: none; border-radius: 8px; cursor: pointer; background: none;">
-                            <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">${branding.primary_color || '#6366f1'}</span>
+                            <input type="color" id="set-primary-color" value="${branding.primary_color || '#6366f1'}" style="width: 44px; height: 44px; border: none; border-radius: 8px; cursor: pointer; background: none;" oninput="updateBrandingLivePreview()">
+                            <span id="set-primary-color-text" style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">${branding.primary_color || '#6366f1'}</span>
                         </div>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Color de Acento</label>
                         <div style="display: flex; gap: 8px; align-items: center;">
-                            <input type="color" id="set-accent-color" value="${branding.accent_color || '#f59e0b'}" style="width: 44px; height: 44px; border: none; border-radius: 8px; cursor: pointer; background: none;">
-                            <span style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">${branding.accent_color || '#f59e0b'}</span>
+                            <input type="color" id="set-accent-color" value="${branding.accent_color || '#f59e0b'}" style="width: 44px; height: 44px; border: none; border-radius: 8px; cursor: pointer; background: none;" oninput="updateBrandingLivePreview()">
+                            <span id="set-accent-color-text" style="font-size: 12px; font-weight: 700; color: var(--text-secondary);">${branding.accent_color || '#f59e0b'}</span>
                         </div>
                     </div>
                 </div>
@@ -1499,9 +1507,9 @@ async function renderSettingsTab(container, reloadFromApi = true) {
             await AdminService.updateSettings(payload);
             showToast('Configuraciones generales actualizadas con éxito.', 'success');
             // Aplicar cambios en tiempo real en la UI del administrador
-            document.title = payload.site_branding.site_name;
-            document.documentElement.style.setProperty('--color-primary', payload.site_branding.primary_color);
-            document.documentElement.style.setProperty('--color-accent', payload.site_branding.accent_color);
+            if (window.applyDynamicBranding) {
+                window.applyDynamicBranding(payload.site_branding);
+            }
             switchTab('settings');
         } catch (error) {
             showToast(error.message, 'error');
@@ -1512,6 +1520,30 @@ async function renderSettingsTab(container, reloadFromApi = true) {
         window.updateSortiConfigLivePreview();
     }
 }
+
+// Helper para vista previa en vivo del Branding y Colores
+window.updateBrandingLivePreview = function() {
+    const primaryInput = document.getElementById('set-primary-color');
+    const accentInput = document.getElementById('set-accent-color');
+    const siteNameInput = document.getElementById('set-site-name');
+
+    if (primaryInput) {
+        const textSpan = document.getElementById('set-primary-color-text');
+        if (textSpan) textSpan.textContent = primaryInput.value;
+    }
+    if (accentInput) {
+        const textSpan = document.getElementById('set-accent-color-text');
+        if (textSpan) textSpan.textContent = accentInput.value;
+    }
+
+    if (window.applyDynamicBranding) {
+        window.applyDynamicBranding({
+            site_name: siteNameInput ? siteNameInput.value : undefined,
+            primary_color: primaryInput ? primaryInput.value : undefined,
+            accent_color: accentInput ? accentInput.value : undefined
+        });
+    }
+};
 
 // Helper para vista previa en vivo de la configuración de Moneda Sorti
 window.updateSortiConfigLivePreview = function() {
