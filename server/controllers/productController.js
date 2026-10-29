@@ -8,14 +8,19 @@ exports.getProducts = async (req, res) => {
         const params = [];
 
         if (q) {
-            query += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.sku LIKE ? OR p.brand LIKE ?)';
+            query += ' AND (p.name LIKE ? OR p.description LIKE ? OR p.sku LIKE ? OR p.brand LIKE ? OR p.streaming_platform LIKE ?)';
             const likeParam = `%${q}%`;
-            params.push(likeParam, likeParam, likeParam, likeParam);
+            params.push(likeParam, likeParam, likeParam, likeParam, likeParam);
         }
 
         if (category) {
-            query += ' AND (c.slug = ? OR c.parent_id IN (SELECT id FROM categories WHERE slug = ?))';
-            params.push(category, category);
+            if (category === 'streaming' || category === 'cuentas-streaming') {
+                query += ' AND (p.streaming_platform IS NOT NULL OR c.slug = ? OR c.parent_id IN (SELECT id FROM categories WHERE slug = ?))';
+                params.push(category, category);
+            } else {
+                query += ' AND (c.slug = ? OR c.parent_id IN (SELECT id FROM categories WHERE slug = ?))';
+                params.push(category, category);
+            }
         }
 
         if (type) {

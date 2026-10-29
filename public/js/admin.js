@@ -370,6 +370,17 @@ window.openProductFormModal = async (productId = null) => {
         console.error('Error al cargar categorías para el formulario:', e);
     }
 
+    // Cargar plataformas de streaming para el selector
+    let streamingPlatforms = window._cachedStreamingPlatforms || [];
+    if (!streamingPlatforms || streamingPlatforms.length === 0) {
+        try {
+            streamingPlatforms = await AdminService.getStreamingPlatforms();
+            window._cachedStreamingPlatforms = streamingPlatforms;
+        } catch (e) {
+            console.error('Error al cargar plataformas para el formulario:', e);
+        }
+    }
+
     // Inicializar medios (Portada y Galería)
     let initialCover = '';
     let initialGallery = [];
@@ -485,8 +496,16 @@ window.openProductFormModal = async (productId = null) => {
                         <input type="text" id="prod-download-version" class="form-control" value="${product.download_version || ''}" placeholder="ej: v1.0.4">
                     </div>
                     <div class="form-group">
-                        <label>Plataforma Streaming Asociada</label>
-                        <input type="text" id="prod-streaming-platform" class="form-control" value="${product.streaming_platform || ''}" placeholder="ej: Netflix, Disney+, Spotify, Gemini AI">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Plataforma Streaming Asociada</span>
+                            <small style="color: var(--color-primary); font-weight: 600;">(Entrega automática)</small>
+                        </label>
+                        <select id="prod-streaming-platform-select" class="form-control" onchange="handleStreamingPlatformSelectChange(this)">
+                            <option value="">-- Ninguna (Producto normal) --</option>
+                            ${(streamingPlatforms || []).map(sp => `<option value="${sp.name}" ${product.streaming_platform === sp.name ? 'selected' : ''}>${sp.name} (${sp.account_type === 'activation_link' ? 'Link de activación' : 'Perfiles/Clave'})</option>`).join('')}
+                            <option value="__custom__" ${product.streaming_platform && !(streamingPlatforms || []).some(sp => sp.name === product.streaming_platform) ? 'selected' : ''}>➕ Otra plataforma (Escribir manualmente)...</option>
+                        </select>
+                        <input type="text" id="prod-streaming-platform" class="form-control" value="${product.streaming_platform || ''}" placeholder="ej: Netflix, Disney+, Spotify, Gemini AI" style="margin-top: 8px; display: ${product.streaming_platform && !(streamingPlatforms || []).some(sp => sp.name === product.streaming_platform) ? 'block' : 'none'};">
                     </div>
                 </div>
 
@@ -707,6 +726,19 @@ window.openProductFormModal = async (productId = null) => {
 window.toggleProductTypeForm = (val) => {
     document.getElementById('group-stock').style.display = val === 'physical' ? 'block' : 'none';
     document.getElementById('digital-download-fields').style.display = ['digital', 'software'].includes(val) ? 'grid' : 'none';
+};
+
+window.handleStreamingPlatformSelectChange = (selectEl) => {
+    const input = document.getElementById('prod-streaming-platform');
+    if (!input) return;
+    if (selectEl.value === '__custom__') {
+        input.style.display = 'block';
+        input.value = '';
+        input.focus();
+    } else {
+        input.style.display = 'none';
+        input.value = selectEl.value;
+    }
 };
 
 window.closeAdminModal = () => {
@@ -2931,11 +2963,16 @@ let _cachedStreamingPlatforms = [];
 async function renderStreamingTab(container) {
     let accounts = [];
     let platforms = [];
+    let products = [];
     try {
-        [accounts, platforms] = await Promise.all([
+        [accounts, platforms, products] = await Promise.all([
             AdminService.getStreamingAccounts(),
-            AdminService.getStreamingPlatforms()
+            AdminService.getStreamingPlatforms(),
+            AdminService.getProducts().catch(() => [])
         ]);
+        if (products && products.length > 0) {
+            globalProductList = products;
+        }
     } catch (err) {
         showToast('Error al cargar datos de streaming.', 'error');
     }
@@ -2976,6 +3013,26 @@ async function renderStreamingTab(container) {
                     <i class="fas fa-key"></i> Nueva Cuenta / Perfil
                 </button>
             </div>
+        </div>
+
+        <!-- Banner Explicativo de Integración con la Tienda -->
+        <div style="background: linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(236,72,153,0.06) 100%); border: 1px solid rgba(99,102,241,0.2); border-radius: var(--radius-md); padding: 16px 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+            <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 280px;">
+                <div style="width: 44px; height: 44px; border-radius: 12px; background: var(--color-primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                    <i class="fas fa-store"></i>
+                </div>
+                <div>
+                    <h4 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-primary);">
+                        ¿Dónde compran los clientes estas cuentas en la tienda?
+                    </h4>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-secondary); line-height: 1.4;">
+                        Los clientes compran los productos desde la sección <strong>Streaming & Cuentas</strong> en la tienda. Al confirmar su pago, el sistema toma automáticamente una cuenta disponible o link de activación de este inventario y se la entrega de inmediato en pantalla y a su correo.
+                    </p>
+                </div>
+            </div>
+            <a href="#/category/streaming" target="_blank" class="btn-primary" style="padding: 10px 18px; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; white-space: nowrap;">
+                <i class="fas fa-play-circle"></i> Ver Catálogo en la Tienda <i class="fas fa-external-link-alt" style="font-size: 11px;"></i>
+            </a>
         </div>
 
         <!-- Métricas Rápidas de Streaming -->
@@ -3048,8 +3105,13 @@ async function renderStreamingTab(container) {
 
                     const isLinkType = p.account_type === 'activation_link';
 
+                    const storeProduct = (products || []).find(prod => 
+                        (prod.streaming_platform && prod.streaming_platform.toLowerCase() === p.name.toLowerCase()) ||
+                        (prod.name && prod.name.toLowerCase().includes(p.name.toLowerCase()))
+                    );
+
                     return `
-                        <div class="streaming-platform-card" onclick="selectStreamingPlatformFilter('${p.name}', this)" style="cursor: pointer; border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 12px; padding: 14px; display: flex; align-items: center; gap: 12px; transition: all 0.2s ease;">
+                        <div class="streaming-platform-card" onclick="selectStreamingPlatformFilter('${p.name}', this)" style="cursor: pointer; border: 1px solid var(--border-color); background: var(--bg-card); border-radius: 12px; padding: 14px; display: flex; align-items: flex-start; gap: 12px; transition: all 0.2s ease;">
                             ${logo}
                             <div style="flex: 1; min-width: 0;">
                                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -3061,8 +3123,25 @@ async function renderStreamingTab(container) {
                                 <div style="font-size: 11.5px; color: var(--text-secondary); margin-top: 2px;">
                                     ${p.accounts_count || 0} cuentas · <span style="color: ${p.available_slots > 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">${p.available_slots || 0} libres</span>
                                 </div>
-                                <div style="font-size: 10.5px; margin-top: 4px;">
+                                <div style="font-size: 10.5px; margin-top: 4px; display: flex; gap: 4px; flex-wrap: wrap;">
                                     ${isLinkType ? '<span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 9.5px; padding: 1px 6px;">Link Activación</span>' : '<span class="badge" style="background: rgba(99,102,241,0.15); color: var(--color-primary); font-size: 9.5px; padding: 1px 6px;">Perfiles / Clave</span>'}
+                                </div>
+                                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 4px;">
+                                    ${storeProduct ? `
+                                        <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;" title="Producto publicado en la tienda">
+                                            <i class="fas fa-check-circle"></i> S/. ${(storeProduct.price_offer || storeProduct.price_normal || 0).toFixed(2)}
+                                        </span>
+                                        <button type="button" class="btn-icon" style="padding: 2px 6px; font-size: 10.5px; color: var(--color-primary); background: rgba(99,102,241,0.08); border-radius: 4px;" title="Editar precio o detalles del producto en la tienda" onclick="event.stopPropagation(); openProductFormModal(${storeProduct.id})">
+                                            <i class="fas fa-pencil-alt"></i> Editar
+                                        </button>
+                                    ` : `
+                                        <span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px;" title="Aún no tiene producto creado en la tienda">
+                                            <i class="fas fa-exclamation-triangle"></i> Sin publicar
+                                        </span>
+                                        <button type="button" class="btn-outline" style="padding: 2px 8px; font-size: 10px; border-radius: 4px; font-weight: 600;" title="Crear producto en la tienda para esta plataforma" onclick="event.stopPropagation(); createProductForPlatform('${p.name.replace(/'/g, "\\'")}', '${p.image_url ? p.image_url.replace(/'/g, "\\'") : ''}')">
+                                            <i class="fas fa-plus"></i> Publicar
+                                        </button>
+                                    `}
                                 </div>
                             </div>
                         </div>
@@ -3310,6 +3389,55 @@ window.filterStreamingAccounts = () => {
     const tbody = document.getElementById('streaming-accounts-tbody');
     if (tbody) {
         tbody.innerHTML = renderStreamingAccountsRows(filtered);
+    }
+};
+
+window.createProductForPlatform = async (platformName, imageUrl) => {
+    await openProductFormModal(null);
+    const nameInput = document.getElementById('prod-name');
+    if (nameInput) {
+        nameInput.value = `Pantalla / Cuenta ${platformName}`;
+        nameInput.dispatchEvent(new Event('input'));
+    }
+    const typeSelect = document.getElementById('prod-type');
+    if (typeSelect) {
+        typeSelect.value = 'digital';
+        toggleProductTypeForm('digital');
+    }
+    const catSelect = document.getElementById('prod-category');
+    if (catSelect) {
+        for (let i = 0; i < catSelect.options.length; i++) {
+            const txt = catSelect.options[i].text.toLowerCase();
+            if (txt.includes('streaming') || txt.includes('digital')) {
+                catSelect.selectedIndex = i;
+                break;
+            }
+        }
+    }
+    const platformSelect = document.getElementById('prod-streaming-platform-select');
+    if (platformSelect) {
+        platformSelect.value = platformName;
+        handleStreamingPlatformSelectChange(platformSelect);
+    }
+    const platformInput = document.getElementById('prod-streaming-platform');
+    if (platformInput) {
+        platformInput.value = platformName;
+    }
+    const priceNormal = document.getElementById('prod-price-normal');
+    if (priceNormal) priceNormal.value = '15.00';
+    const priceOffer = document.getElementById('prod-price-offer');
+    if (priceOffer) priceOffer.value = '12.00';
+    if (imageUrl) {
+        window.currentProductCover = imageUrl;
+        const preview = document.getElementById('cover-img-preview');
+        if (preview) {
+            preview.src = imageUrl;
+            preview.style.display = 'block';
+        }
+        const ph = document.getElementById('cover-img-placeholder');
+        if (ph) ph.style.display = 'none';
+        const urlInput = document.getElementById('prod-cover-url');
+        if (urlInput) urlInput.value = imageUrl;
     }
 };
 

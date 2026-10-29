@@ -163,6 +163,7 @@ async function renderHome() {
         const featuredProducts = products.filter(p => p.is_featured);
         const offerProducts = products.filter(p => p.price_offer !== null);
         const presaleProducts = products.filter(p => p.is_presale);
+        const streamingProducts = products.filter(p => p.streaming_platform || (p.category_name && p.category_name.toLowerCase().includes('streaming')));
 
         let banners = [];
         if (settings.home_banners) {
@@ -240,11 +241,22 @@ async function renderHome() {
                 <!-- Destacados Generales -->
                 <div class="section-header" style="margin-top: 48px;">
                     <h2><i class="fas fa-star" style="color: var(--color-accent);"></i> Productos Destacados</h2>
-                    <a href="#/category/tecnologia" class="btn-outline" style="padding: 8px 16px; font-size: 13px;">Ver todos</a>
+                    <a href="#/shop" class="btn-outline" style="padding: 8px 16px; font-size: 13px;">Ver todos</a>
                 </div>
                 <div class="product-grid">
                     ${featuredProducts.map(p => getProductCardHtml(p)).join('')}
                 </div>
+
+                <!-- Cuentas Streaming y Suscripciones Digitales -->
+                ${streamingProducts.length > 0 ? `
+                    <div class="section-header" style="margin-top: 48px;">
+                        <h2><i class="fas fa-play-circle" style="color: var(--color-primary);"></i> Cuentas Streaming y Suscripciones</h2>
+                        <a href="#/category/streaming" class="btn-outline" style="padding: 8px 16px; font-size: 13px;">Ver catálogo completo (${streamingProducts.length})</a>
+                    </div>
+                    <div class="product-grid">
+                        ${streamingProducts.slice(0, 8).map(p => getProductCardHtml(p)).join('')}
+                    </div>
+                ` : ''}
             </div>
         `;
 
@@ -524,12 +536,22 @@ async function renderCategoryPage(catSlug) {
 
     try {
         const products = await ShopService.getProducts({ category: catSlug });
+        const isStreaming = catSlug === 'streaming' || catSlug === 'cuentas-streaming';
+        const pageTitle = isStreaming 
+            ? `<i class="fas fa-play-circle" style="color: var(--color-primary);"></i> Cuentas Streaming & Suscripciones`
+            : `<i class="fas fa-tags" style="color: var(--color-primary);"></i> Categoría: ${catSlug.replace('-', ' ')}`;
+        const pageSubtitle = isStreaming
+            ? `<p style="color: var(--text-muted); font-size: 13.5px; margin: 4px 0 0 0;">Entrega automática de perfiles con PIN, cuentas completas y links de activación.</p>`
+            : '';
         
         container.innerHTML = `
             <div class="main-storefront animate-fade-in" style="margin-top: 40px;">
-                <div class="section-header">
-                    <h2 style="text-transform: capitalize;"><i class="fas fa-tags" style="color: var(--color-primary);"></i> Categoría: ${catSlug.replace('-', ' ')}</h2>
-                    <span style="color: var(--text-muted); font-weight: 600;">${products.length} productos encontrados</span>
+                <div class="section-header" style="flex-wrap: wrap; gap: 10px;">
+                    <div>
+                        <h2 style="text-transform: capitalize; margin: 0;">${pageTitle}</h2>
+                        ${pageSubtitle}
+                    </div>
+                    <span style="color: var(--text-muted); font-weight: 600;">${products.length} productos disponibles</span>
                 </div>
                 
                 ${products.length === 0 ? `
@@ -698,7 +720,12 @@ function getProductCardHtml(product) {
     if (product.is_presale) badgeHtml = '<span class="badge badge-presale card-badge">PREVENTA</span>';
     else if (product.is_new) badgeHtml = '<span class="badge badge-new card-badge">NUEVO</span>';
     else if (product.is_sold_out || product.stock <= 0) badgeHtml = '<span class="badge badge-soldout card-badge">AGOTADO</span>';
+    else if (product.streaming_platform) badgeHtml = '<span class="badge card-badge" style="background: var(--color-primary); color: white;"><i class="fas fa-bolt"></i> DIGITAL</span>';
     else if (product.is_featured) badgeHtml = '<span class="badge badge-featured card-badge">RECOMENDADO</span>';
+
+    const catBadge = product.streaming_platform 
+        ? `<span style="color: var(--color-primary); font-weight: 700;"><i class="fas fa-play-circle"></i> ${product.streaming_platform}</span>`
+        : `${product.type.toUpperCase()} | ${product.brand || 'Original'}`;
 
     return `
         <div class="product-card animate-fade-in">
@@ -707,7 +734,7 @@ function getProductCardHtml(product) {
                 <img src="${mainImage}" alt="${product.name}">
             </div>
             <div class="card-details">
-                <div class="card-category">${product.type.toUpperCase()} | ${product.brand || 'Original'}</div>
+                <div class="card-category">${catBadge}</div>
                 <h3 class="card-title" onclick="window.location.hash='#/product/${product.slug}'" style="cursor: pointer;">${product.name}</h3>
                 
                 <!-- Si es preventa, mostrar cuenta regresiva en miniatura -->
