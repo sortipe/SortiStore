@@ -1225,8 +1225,10 @@ window.openCouponFormModal = () => {
 // ==========================================
 let currentSettings = {};
 
-async function renderSettingsTab(container) {
-    currentSettings = await AdminService.getSettings();
+async function renderSettingsTab(container, reloadFromApi = true) {
+    if (reloadFromApi || !currentSettings || !currentSettings.bank_accounts) {
+        currentSettings = await AdminService.getSettings();
+    }
 
     // Cargar site_branding por defecto
     const branding = currentSettings.site_branding ? (typeof currentSettings.site_branding === 'string' ? JSON.parse(currentSettings.site_branding) : currentSettings.site_branding) : {
@@ -1446,15 +1448,6 @@ async function renderSettingsTab(container) {
                 
                 <h4 style="margin-bottom: 12px;">Cuentas Bancarias para Transferencias</h4>
                 <div id="settings-bank-accounts-rows" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
-                    ${(currentSettings.bank_accounts || []).map((b, idx) => `
-                        <div class="glass-panel" style="padding: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: center;" data-bank-row-idx="${idx}">
-                            <input type="text" class="form-control" value="${b.bank}" placeholder="Banco (ej: BCP)" oninput="updateSettingBankValue(${idx}, 'bank', this.value)">
-                            <input type="text" class="form-control" value="${b.account}" placeholder="Nro Cuenta" oninput="updateSettingBankValue(${idx}, 'account', this.value)">
-                            <input type="text" class="form-control" value="${b.CCI}" placeholder="Nro CCI" oninput="updateSettingBankValue(${idx}, 'CCI', this.value)">
-                            <input type="text" class="form-control" value="${b.owner}" placeholder="Titular" oninput="updateSettingBankValue(${idx}, 'owner', this.value)">
-                            <button type="button" style="color: var(--danger); border:none; background:none;" onclick="removeSettingBankRow(${idx})"><i class="fas fa-trash"></i></button>
-                        </div>
-                    `).join('')}
                 </div>
                 <button type="button" class="btn-outline" onclick="addSettingBankRow()"><i class="fas fa-plus"></i> Añadir Cuenta</button>
             </div>
@@ -1463,14 +1456,6 @@ async function renderSettingsTab(container) {
             <div class="checkout-section" style="width: 100%;">
                 <h3><i class="fas fa-truck" style="color: var(--color-primary);"></i> Cobertura de Delivery por Distritos</h3>
                 <div id="settings-districts-rows" style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
-                    ${(currentSettings.delivery_districts || []).map((d, idx) => `
-                        <div class="glass-panel" style="padding: 16px; display: grid; grid-template-columns: 2fr 1fr 1.5fr auto; gap: 10px; align-items: center;" data-district-row-idx="${idx}">
-                            <input type="text" class="form-control" value="${d.name}" placeholder="Distrito (ej: Miraflores)" oninput="updateSettingDistrictValue(${idx}, 'name', this.value)">
-                            <input type="number" step="0.01" class="form-control" value="${d.cost}" placeholder="Costo Envío (S/.)" oninput="updateSettingDistrictValue(${idx}, 'cost', this.value)">
-                            <input type="text" class="form-control" value="${d.time}" placeholder="Tiempo Estimado (ej: 24-48 horas)" oninput="updateSettingDistrictValue(${idx}, 'time', this.value)">
-                            <button type="button" style="color: var(--danger); border:none; background:none;" onclick="removeSettingDistrictRow(${idx})"><i class="fas fa-trash"></i></button>
-                        </div>
-                    `).join('')}
                 </div>
                 <button type="button" class="btn-outline" onclick="addSettingDistrictRow()"><i class="fas fa-plus"></i> Añadir Distrito</button>
             </div>
@@ -1481,9 +1466,16 @@ async function renderSettingsTab(container) {
         </form>
     `;
 
+    // Renderizar filas de cuentas bancarias y distritos en el DOM
+    if (window.renderSettingBankRowsUI) window.renderSettingBankRowsUI();
+    if (window.renderSettingDistrictRowsUI) window.renderSettingDistrictRowsUI();
+
     document.getElementById('settings-admin-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        if (window.syncBankAccountsFromDOM) window.syncBankAccountsFromDOM();
+        if (window.syncDistrictsFromDOM) window.syncDistrictsFromDOM();
+
         const coinsPerSol = Number(document.getElementById('set-sorti-coins-per-sol').value) || 0.20;
         const coinVal = Number(document.getElementById('set-sorti-coin-value').value) || 0.50;
         const equivalentRate = coinVal > 0 ? Number((1 / coinVal).toFixed(2)) : 2;
@@ -1493,9 +1485,9 @@ async function renderSettingsTab(container) {
             sorti_coin_value: coinVal,
             sorti_rate: equivalentRate,
             yape_qr: document.getElementById('set-yape-qr').value.trim(),
-            bank_accounts: currentSettings.bank_accounts,
-            delivery_districts: currentSettings.delivery_districts,
-            home_banners: currentSettings.home_banners,
+            bank_accounts: currentSettings.bank_accounts || [],
+            delivery_districts: currentSettings.delivery_districts || [],
+            home_banners: currentSettings.home_banners || [],
             site_branding: {
                 site_name: document.getElementById('set-site-name').value.trim(),
                 primary_color: document.getElementById('set-primary-color').value,
@@ -1573,12 +1565,12 @@ window.addBannerSlideRow = () => {
         link: '#/',
         bg_y: 50
     });
-    renderSettingsTab(document.getElementById('admin-tab-content'));
+    renderSettingsTab(document.getElementById('admin-tab-content'), false);
 };
 
 window.removeBannerSlideRow = (idx) => {
     currentSettings.home_banners.splice(idx, 1);
-    renderSettingsTab(document.getElementById('admin-tab-content'));
+    renderSettingsTab(document.getElementById('admin-tab-content'), false);
 };
 
 window.moveBannerSlide = (idx, direction) => {
@@ -1590,7 +1582,7 @@ window.moveBannerSlide = (idx, direction) => {
     currentSettings.home_banners[idx] = currentSettings.home_banners[targetIdx];
     currentSettings.home_banners[targetIdx] = temp;
     
-    renderSettingsTab(document.getElementById('admin-tab-content'));
+    renderSettingsTab(document.getElementById('admin-tab-content'), false);
 };
 
 window.handleBannerFileUpload = (event, idx) => {
@@ -1630,39 +1622,135 @@ window.handleBannerFileUpload = (event, idx) => {
     reader.readAsDataURL(file);
 };
 
-// Helpers para edición reactiva de filas en settings
+// ==========================================
+// HELPERS PARA EDICIÓN REACTIVA DE CUENTAS BANCARIAS Y DISTRITOS
+// ==========================================
+window.syncBankAccountsFromDOM = () => {
+    const bankContainer = document.getElementById('settings-bank-accounts-rows');
+    if (!bankContainer) return;
+    const rowEls = bankContainer.querySelectorAll('[data-bank-row-idx]');
+    const banks = [];
+    rowEls.forEach((row) => {
+        const inputs = row.querySelectorAll('input');
+        if (inputs.length >= 4) {
+            banks.push({
+                bank: inputs[0].value.trim(),
+                account: inputs[1].value.trim(),
+                CCI: inputs[2].value.trim(),
+                owner: inputs[3].value.trim()
+            });
+        }
+    });
+    currentSettings.bank_accounts = banks;
+};
+
+window.renderSettingBankRowsUI = () => {
+    const container = document.getElementById('settings-bank-accounts-rows');
+    if (!container) return;
+    const accounts = currentSettings.bank_accounts || [];
+    if (accounts.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px; border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+                <i class="fas fa-info-circle"></i> No hay cuentas bancarias registradas. Haz clic en "Añadir Cuenta" para agregar una.
+            </div>
+        `;
+        return;
+    }
+    container.innerHTML = accounts.map((b, idx) => `
+        <div class="glass-panel" style="padding: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: center;" data-bank-row-idx="${idx}">
+            <input type="text" class="form-control" value="${(b.bank || '').replace(/"/g, '&quot;')}" placeholder="Banco (ej: BCP)" oninput="updateSettingBankValue(${idx}, 'bank', this.value)">
+            <input type="text" class="form-control" value="${(b.account || '').replace(/"/g, '&quot;')}" placeholder="Nro Cuenta" oninput="updateSettingBankValue(${idx}, 'account', this.value)">
+            <input type="text" class="form-control" value="${(b.CCI || '').replace(/"/g, '&quot;')}" placeholder="Nro CCI" oninput="updateSettingBankValue(${idx}, 'CCI', this.value)">
+            <input type="text" class="form-control" value="${(b.owner || '').replace(/"/g, '&quot;')}" placeholder="Titular" oninput="updateSettingBankValue(${idx}, 'owner', this.value)">
+            <button type="button" style="color: var(--danger); border:none; background:none; cursor: pointer; padding: 8px 12px; font-size: 16px;" title="Eliminar cuenta bancaria" onclick="removeSettingBankRow(${idx})"><i class="fas fa-trash"></i></button>
+        </div>
+    `).join('');
+};
+
 window.updateSettingBankValue = (idx, field, value) => {
-    currentSettings.bank_accounts[idx][field] = value;
+    if (currentSettings.bank_accounts && currentSettings.bank_accounts[idx]) {
+        currentSettings.bank_accounts[idx][field] = value;
+    }
 };
 
 window.addSettingBankRow = () => {
+    window.syncBankAccountsFromDOM();
     if (!currentSettings.bank_accounts) currentSettings.bank_accounts = [];
     currentSettings.bank_accounts.push({ bank: '', account: '', CCI: '', owner: '' });
-    renderSettingsTab(document.getElementById('admin-tab-content'));
+    window.renderSettingBankRowsUI();
 };
 
 window.removeSettingBankRow = (idx) => {
-    currentSettings.bank_accounts.splice(idx, 1);
-    renderSettingsTab(document.getElementById('admin-tab-content'));
+    window.syncBankAccountsFromDOM();
+    if (currentSettings.bank_accounts && currentSettings.bank_accounts.length > idx) {
+        currentSettings.bank_accounts.splice(idx, 1);
+    }
+    window.renderSettingBankRowsUI();
+};
+
+window.syncDistrictsFromDOM = () => {
+    const distContainer = document.getElementById('settings-districts-rows');
+    if (!distContainer) return;
+    const rowEls = distContainer.querySelectorAll('[data-district-row-idx]');
+    const dists = [];
+    rowEls.forEach((row) => {
+        const inputs = row.querySelectorAll('input');
+        if (inputs.length >= 3) {
+            dists.push({
+                name: inputs[0].value.trim(),
+                cost: parseFloat(inputs[1].value) || 0,
+                time: inputs[2].value.trim()
+            });
+        }
+    });
+    currentSettings.delivery_districts = dists;
+};
+
+window.renderSettingDistrictRowsUI = () => {
+    const container = document.getElementById('settings-districts-rows');
+    if (!container) return;
+    const districts = currentSettings.delivery_districts || [];
+    if (districts.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px; border: 1px dashed var(--border-color); border-radius: var(--radius-md);">
+                <i class="fas fa-info-circle"></i> No hay distritos de cobertura registrados. Haz clic en "Añadir Distrito" para agregar uno.
+            </div>
+        `;
+        return;
+    }
+    container.innerHTML = districts.map((d, idx) => `
+        <div class="glass-panel" style="padding: 16px; display: grid; grid-template-columns: 2fr 1fr 1.5fr auto; gap: 10px; align-items: center;" data-district-row-idx="${idx}">
+            <input type="text" class="form-control" value="${(d.name || '').replace(/"/g, '&quot;')}" placeholder="Distrito (ej: Miraflores)" oninput="updateSettingDistrictValue(${idx}, 'name', this.value)">
+            <input type="number" step="0.01" class="form-control" value="${d.cost !== undefined ? d.cost : ''}" placeholder="Costo Envío (S/.)" oninput="updateSettingDistrictValue(${idx}, 'cost', this.value)">
+            <input type="text" class="form-control" value="${(d.time || '').replace(/"/g, '&quot;')}" placeholder="Tiempo Estimado (ej: 24-48 horas)" oninput="updateSettingDistrictValue(${idx}, 'time', this.value)">
+            <button type="button" style="color: var(--danger); border:none; background:none; cursor: pointer; padding: 8px 12px; font-size: 16px;" title="Eliminar distrito" onclick="removeSettingDistrictRow(${idx})"><i class="fas fa-trash"></i></button>
+        </div>
+    `).join('');
 };
 
 window.updateSettingDistrictValue = (idx, field, value) => {
-    if (field === 'cost') {
-        currentSettings.delivery_districts[idx][field] = Number(value);
-    } else {
-        currentSettings.delivery_districts[idx][field] = value;
+    if (currentSettings.delivery_districts && currentSettings.delivery_districts[idx]) {
+        if (field === 'cost') {
+            currentSettings.delivery_districts[idx][field] = Number(value);
+        } else {
+            currentSettings.delivery_districts[idx][field] = value;
+        }
     }
 };
 
 window.addSettingDistrictRow = () => {
+    window.syncDistrictsFromDOM();
     if (!currentSettings.delivery_districts) currentSettings.delivery_districts = [];
     currentSettings.delivery_districts.push({ name: '', cost: 0.00, time: '' });
-    renderSettingsTab(document.getElementById('admin-tab-content'));
+    window.renderSettingDistrictRowsUI();
 };
 
 window.removeSettingDistrictRow = (idx) => {
-    currentSettings.delivery_districts.splice(idx, 1);
-    renderSettingsTab(document.getElementById('admin-tab-content'));
+    window.syncDistrictsFromDOM();
+    if (currentSettings.delivery_districts && currentSettings.delivery_districts.length > idx) {
+        currentSettings.delivery_districts.splice(idx, 1);
+    }
+    window.renderSettingDistrictRowsUI();
 };
 
 // ==========================================
