@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const streaming = require('./streamingController');
 
 // 1. Estadísticas Generales del Dashboard Administrativo
 exports.getDashboardStats = async (req, res) => {
@@ -261,12 +262,27 @@ exports.getOrders = async (req, res) => {
                 WHERE oi.order_id = ?
             `, [order.id]);
 
+            const streamingDeliveries = await db.query(`
+                SELECT a.id as assignment_id, a.assigned_at, a.expires_at,
+                       s.id as account_id, s.platform, s.email, s.password, s.profile_name, s.profile_pin,
+                       s.activation_link, s.account_type, s.max_devices, s.notes,
+                       COALESCE(s.platform_image, sp.image_url) as platform_image,
+                       COALESCE(s.usage_instructions, sp.default_instructions) as usage_instructions,
+                       (SELECT COUNT(*) FROM streaming_assignments WHERE account_id = s.id) as current_users_count
+                FROM streaming_assignments a
+                JOIN streaming_accounts s ON a.account_id = s.id
+                LEFT JOIN streaming_platforms sp ON s.platform_id = sp.id OR LOWER(s.platform) = LOWER(sp.name)
+                WHERE a.order_id = ?
+                ORDER BY a.assigned_at ASC
+            `, [order.id]);
+
             return {
                 ...order,
                 items: items.map(item => ({
                     ...item,
                     variant_info: item.variant_info ? JSON.parse(item.variant_info) : null
-                }))
+                })),
+                streaming_deliveries: streamingDeliveries
             };
         }));
 
@@ -314,7 +330,22 @@ exports.updateOrderStatus = async (req, res) => {
             }
         }
 
-        return res.json({ message: 'Estado del pedido actualizado con éxito.', orderId: id, newStatus: status });
+        // ENTREGA AUTOMÁTICA DE STREAMING AL CONFIRMAR PAGO
+        let streamingDelivery = null;
+        if (status === 'paid' || status === 'completed') {
+            try {
+                streamingDelivery = await streaming.autoAssignStreamingToOrder(Number(id));
+            } catch (err) {
+                console.error('Error al auto-asignar streaming al pedido:', err);
+            }
+        }
+
+        return res.json({
+            message: 'Estado del pedido actualizado con éxito.',
+            orderId: id,
+            newStatus: status,
+            streamingDelivery
+        });
     } catch (error) {
         console.error('Error al actualizar estado del pedido:', error);
         return res.status(500).json({ error: 'Error interno del servidor.' });

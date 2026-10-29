@@ -129,6 +129,10 @@ const CustomerService = {
         return await apiCall('/customer/downloads');
     },
 
+    async getOrderStreaming(orderId) {
+        return await apiCall(`/customer/orders/${orderId}/streaming`);
+    },
+
     async getWallet() {
         return await apiCall('/customer/wallet');
     },
@@ -180,6 +184,41 @@ const AdminService = {
     async deleteProduct(id) {
         return await apiCall(`/admin/products/${id}`, {
             method: 'DELETE'
+        });
+    },
+
+    // Plataformas y Cuentas Streaming
+    async getStreamingPlatforms() {
+        return await apiCall('/admin/streaming/platforms');
+    },
+
+    async createStreamingPlatform(data) {
+        return await apiCall('/admin/streaming/platforms', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async updateStreamingPlatform(id, data) {
+        return await apiCall(`/admin/streaming/platforms/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async deleteStreamingPlatform(id) {
+        return await apiCall(`/admin/streaming/platforms/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    async getOrderStreaming(orderId) {
+        return await apiCall(`/admin/orders/${orderId}/streaming`);
+    },
+
+    async autoAssignOrderStreaming(orderId) {
+        return await apiCall(`/admin/orders/${orderId}/auto-assign-streaming`, {
+            method: 'POST'
         });
     },
 

@@ -1473,6 +1473,51 @@ async function renderPurchasesTab(container) {
                         `).join('')}
                     </div>
 
+                    <!-- Accesos y Cuentas de Streaming Entregados si existen -->
+                    ${order.streaming_deliveries && order.streaming_deliveries.length > 0 ? `
+                        <div style="margin: 12px 16px; padding: 12px 14px; background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <span style="font-weight: 700; color: var(--color-primary); font-size: 13px;">
+                                    <i class="fas fa-tv"></i> Accesos y Cuentas Entregadas (${order.streaming_deliveries.length})
+                                </span>
+                                <button type="button" class="btn-secondary" style="font-size: 11px; padding: 3px 8px; cursor: pointer;" onclick="document.querySelector('[data-tab=downloads]').click()">
+                                    Ver en Mis Cuentas <i class="fas fa-arrow-right"></i>
+                                </button>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                ${order.streaming_deliveries.map(sd => `
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 6px; font-size: 12px; flex-wrap: wrap; gap: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            ${sd.platform_image ? `<img src="${sd.platform_image}" alt="${sd.platform}" style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">` : '<i class="fas fa-tv" style="color: var(--color-primary);"></i>'}
+                                            <strong style="color: var(--text-primary); font-weight: 700;">${sd.platform}</strong>
+                                            ${sd.account_type === 'activation_link' ? `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-size: 10px;">Link de Activación</span>` : ''}
+                                            ${sd.profile_name ? `<span style="color: var(--color-secondary);">• Perfil: <strong>${sd.profile_name}</strong></span>` : ''}
+                                            ${sd.profile_pin ? `<span style="color: #f59e0b; font-weight: 700;">• PIN: ${sd.profile_pin}</span>` : ''}
+                                            ${sd.email ? `<span style="color: var(--text-muted); font-size: 11px;">(${sd.email})</span>` : ''}
+                                        </div>
+                                        <div style="display: flex; gap: 6px;">
+                                            ${sd.account_type === 'activation_link' || (sd.activation_link && !sd.email) ? `
+                                                <a href="${sd.activation_link}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="font-size: 11px; padding: 4px 10px; text-decoration: none;">
+                                                    <i class="fas fa-bolt"></i> Activar
+                                                </a>
+                                                <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="copyStreamingText('${sd.activation_link}', 'Enlace de Activación')">
+                                                    <i class="fas fa-copy"></i>
+                                                </button>
+                                            ` : `
+                                                <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="copyStreamingText('${sd.email}', 'Correo')">
+                                                    <i class="fas fa-envelope"></i> Correo
+                                                </button>
+                                                <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="copyStreamingText('${sd.password}', 'Contraseña')">
+                                                    <i class="fas fa-key"></i> Clave
+                                                </button>
+                                            `}
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+
                     <!-- Si el pedido está cancelado, ocultar timeline de tracking -->
                     ${order.status !== 'cancelled' ? `
                         <div class="order-tracking-steps">
@@ -1527,95 +1572,140 @@ async function renderDownloadsTab(container) {
                             'Disney+': '<i class="fas fa-film" style="color: #113ccf;"></i>',
                             'HBO Max / Max': '<i class="fas fa-tv" style="color: #9933ff;"></i>',
                             'Spotify': '<i class="fab fa-spotify" style="color: #1db954;"></i>',
+                            'Spotify Familiar': '<i class="fab fa-spotify" style="color: #1db954;"></i>',
                             'YouTube Premium': '<i class="fab fa-youtube" style="color: #ff0000;"></i>',
-                            'Gemini AI / ChatGPT': '<i class="fas fa-robot" style="color: #6366f1;"></i>'
+                            'Gemini AI / ChatGPT': '<i class="fas fa-robot" style="color: #6366f1;"></i>',
+                            'Canva Pro': '<i class="fas fa-palette" style="color: #00c4cc;"></i>',
+                            'Prime Video': '<i class="fas fa-video" style="color: #00a8e1;"></i>'
                         };
-                        const icon = platformIcons[acc.platform] || '<i class="fas fa-tv" style="color: var(--color-primary);"></i>';
+                        const fallbackIcon = platformIcons[acc.platform] || '<i class="fas fa-tv" style="color: var(--color-primary);"></i>';
+                        const platformLogo = acc.platform_image 
+                            ? `<img src="${acc.platform_image}" alt="${acc.platform}" style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px; vertical-align: middle; margin-right: 6px;">`
+                            : fallbackIcon;
 
-                        let expText = 'Sin límite';
+                        let expText = 'Sin límite / Permanente';
                         if (acc.expiration_date) {
                             const expDate = new Date(acc.expiration_date);
                             const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
                             expText = `${expDate.toLocaleDateString()} (${daysLeft > 0 ? `${daysLeft} días restantes` : 'Expirado'})`;
                         }
 
+                        const isActivationLinkOnly = acc.account_type === 'activation_link' || (acc.activation_link && !acc.email);
+
                         return `
                             <div class="streaming-access-card animate-fade-in">
                                 <div class="streaming-card-header">
                                     <div>
-                                        <span class="streaming-platform-pill">${icon} ${acc.platform}</span>
+                                        <span class="streaming-platform-pill">${platformLogo} ${acc.platform}</span>
                                         <h4 style="font-size: 15px; font-weight: 700; margin: 10px 0 4px 0;">${d.name}</h4>
                                         <span style="font-size: 11px; color: var(--text-muted);"><i class="fas fa-shopping-bag"></i> Pedido #${d.order_id}</span>
                                     </div>
                                     <span class="badge badge-new" style="font-size: 11px;"><i class="fas fa-check-circle"></i> Activo</span>
                                 </div>
 
-                                <div class="streaming-cred-grid">
-                                    <div class="cred-box">
-                                        <span class="cred-label">Correo / Usuario</span>
-                                        <div class="cred-value-row">
-                                            <span class="cred-val">${acc.email}</span>
-                                            <button type="button" class="btn-cred-copy" title="Copiar Correo" onclick="copyStreamingText('${acc.email}', 'Correo')">
-                                                <i class="fas fa-copy"></i> Copiar
+                                ${isActivationLinkOnly ? `
+                                    <!-- Modalidad Solo Link de Activación (Spotify, Gemini, etc.) -->
+                                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 14px; margin: 12px 0;">
+                                        <div style="font-weight: 700; color: #10b981; font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                            <i class="fas fa-bolt"></i> Enlace de Activación Directa
+                                        </div>
+                                        <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0; line-height: 1.4;">
+                                            Esta suscripción se activa directamente en tu propia cuenta mediante el siguiente enlace oficial de invitación.
+                                        </p>
+                                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                            <a href="${acc.activation_link}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; min-width: 150px; text-align: center; text-decoration: none; padding: 10px 14px; font-size: 13px; font-weight: 700;">
+                                                <i class="fas fa-external-link-alt"></i> Activar en ${acc.platform}
+                                            </a>
+                                            <button type="button" class="btn-secondary" style="padding: 10px 14px; font-size: 13px;" onclick="copyStreamingText('${acc.activation_link}', 'Enlace de Activación')">
+                                                <i class="fas fa-copy"></i> Copiar Link
                                             </button>
                                         </div>
                                     </div>
+                                ` : ''}
 
-                                    <div class="cred-box">
-                                        <span class="cred-label">Contraseña</span>
-                                        <div class="cred-value-row">
-                                            <input type="password" id="${pwdId}" class="cred-val" value="${acc.password}" readonly style="background: transparent; border: none; outline: none; width: 100px; color: inherit;">
-                                            <div style="display: flex; gap: 4px;">
-                                                <button type="button" class="btn-cred-copy" title="Mostrar/Ocultar" onclick="toggleStreamingPassword('${pwdId}')">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button type="button" class="btn-cred-copy" title="Copiar Contraseña" onclick="copyStreamingText('${acc.password}', 'Contraseña')">
-                                                    <i class="fas fa-copy"></i>
-                                                </button>
+                                <!-- Grid de credenciales (si tiene correo o contraseña) -->
+                                ${acc.email || acc.password ? `
+                                    <div class="streaming-cred-grid">
+                                        ${acc.email ? `
+                                            <div class="cred-box">
+                                                <span class="cred-label">Correo / Usuario</span>
+                                                <div class="cred-value-row">
+                                                    <span class="cred-val">${acc.email}</span>
+                                                    <button type="button" class="btn-cred-copy" title="Copiar Correo" onclick="copyStreamingText('${acc.email}', 'Correo')">
+                                                        <i class="fas fa-copy"></i> Copiar
+                                                    </button>
+                                                </div>
                                             </div>
-                                        </div>
+                                        ` : ''}
+
+                                        ${acc.password ? `
+                                            <div class="cred-box">
+                                                <span class="cred-label">Contraseña</span>
+                                                <div class="cred-value-row">
+                                                    <input type="password" id="${pwdId}" class="cred-val" value="${acc.password}" readonly style="background: transparent; border: none; outline: none; width: 100px; color: inherit;">
+                                                    <div style="display: flex; gap: 4px;">
+                                                        <button type="button" class="btn-cred-copy" title="Mostrar/Ocultar" onclick="toggleStreamingPassword('${pwdId}')">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                        <button type="button" class="btn-cred-copy" title="Copiar Contraseña" onclick="copyStreamingText('${acc.password}', 'Contraseña')">
+                                                            <i class="fas fa-copy"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ` : ''}
+
+                                        ${acc.profile_name ? `
+                                            <div class="cred-box">
+                                                <span class="cred-label">Perfil Asignado</span>
+                                                <div class="cred-value-row">
+                                                    <span class="cred-val" style="color: var(--color-secondary); font-weight: 700;">${acc.profile_name}</span>
+                                                    <button type="button" class="btn-cred-copy" title="Copiar Perfil" onclick="copyStreamingText('${acc.profile_name}', 'Nombre de Perfil')">
+                                                        <i class="fas fa-copy"></i> Copiar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ` : ''}
+
+                                        ${acc.profile_pin ? `
+                                            <div class="cred-box">
+                                                <span class="cred-label">PIN de Seguridad</span>
+                                                <div class="cred-value-row">
+                                                    <span class="cred-val" style="color: #f59e0b; font-weight: 800; letter-spacing: 2px;">${acc.profile_pin}</span>
+                                                    <button type="button" class="btn-cred-copy" title="Copiar PIN" onclick="copyStreamingText('${acc.profile_pin}', 'PIN')">
+                                                        <i class="fas fa-copy"></i> Copiar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ` : ''}
                                     </div>
+                                ` : ''}
 
-                                    ${acc.profile_name ? `
-                                        <div class="cred-box">
-                                            <span class="cred-label">Perfil Asignado</span>
-                                            <div class="cred-value-row">
-                                                <span class="cred-val" style="color: var(--color-secondary); font-weight: 700;">${acc.profile_name}</span>
-                                                <button type="button" class="btn-cred-copy" title="Copiar Perfil" onclick="copyStreamingText('${acc.profile_name}', 'Nombre de Perfil')">
-                                                    <i class="fas fa-copy"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ` : ''}
+                                <!-- Instrucciones de uso y advertencias si existen -->
+                                ${acc.usage_instructions ? `
+                                    <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #f59e0b; border-radius: 6px; padding: 10px 12px; margin: 12px 0; font-size: 12px; line-height: 1.5; color: var(--text-primary);">
+                                        <strong style="color: #f59e0b; display: block; margin-bottom: 4px;">
+                                            <i class="fas fa-exclamation-triangle"></i> Instrucciones de uso & Advertencias:
+                                        </strong>
+                                        <div>${acc.usage_instructions.replace(/\n/g, '<br>')}</div>
+                                    </div>
+                                ` : ''}
 
-                                    ${acc.profile_pin ? `
-                                        <div class="cred-box">
-                                            <span class="cred-label">PIN de Seguridad</span>
-                                            <div class="cred-value-row">
-                                                <span class="cred-val" style="color: #f59e0b; font-weight: 800; letter-spacing: 2px;">${acc.profile_pin}</span>
-                                                <button type="button" class="btn-cred-copy" title="Copiar PIN" onclick="copyStreamingText('${acc.profile_pin}', 'PIN')">
-                                                    <i class="fas fa-copy"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ` : ''}
-                                </div>
-
-                                <div class="streaming-expiry-bar">
+                                <div class="streaming-expiry-bar" style="margin-top: 8px;">
                                     <span><i class="fas fa-calendar-check" style="color: var(--color-primary); margin-right: 6px;"></i> Vigencia:</span>
                                     <strong style="color: var(--text-primary);">${expText}</strong>
                                 </div>
 
-                                <div style="display: flex; gap: 8px; margin-top: auto;">
-                                    ${acc.activation_link ? `
+                                ${!isActivationLinkOnly && acc.activation_link ? `
+                                    <div style="display: flex; gap: 8px; margin-top: 10px;">
                                         <a href="${acc.activation_link}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="flex: 1; text-align: center; text-decoration: none; padding: 10px 16px; font-size: 13px;">
-                                            <i class="fas fa-external-link-alt"></i> Abrir Plataforma
+                                            <i class="fas fa-external-link-alt"></i> Ir a ${acc.platform}
                                         </a>
-                                    ` : ''}
-                                </div>
+                                    </div>
+                                ` : ''}
 
-                                <div class="streaming-security-note">
-                                    <i class="fas fa-shield-alt" style="color: var(--color-primary);"></i> <em>Garantía SortiStore: No modificar el correo o la contraseña de la cuenta para mantener tu soporte activo.</em>
+                                <div class="streaming-security-note" style="margin-top: 10px;">
+                                    <i class="fas fa-shield-alt" style="color: var(--color-primary);"></i> <em>Garantía SortiStore: No modificar los datos de la cuenta ni crear perfiles extras para mantener tu garantía y soporte activo.</em>
                                 </div>
                             </div>
                         `;

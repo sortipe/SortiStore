@@ -100,12 +100,23 @@ router.put('/admin/vip/raffles/:id', requireAuth, adminOrEmployee, vip.adminUpda
 router.delete('/admin/vip/raffles/:id', requireAuth, adminOrEmployee, vip.adminDeleteRaffle);
 router.post('/admin/vip/raffles/:id/draw', requireAuth, adminOrEmployee, vip.adminDrawRaffle);
 
-// Cuentas y Perfiles de Streaming
+// Cuentas, Plataformas y Perfiles de Streaming
+router.get('/streaming/platforms', streaming.getPlatforms);
+router.get('/admin/streaming/platforms', requireAuth, adminOrEmployee, streaming.getPlatforms);
+router.post('/admin/streaming/platforms', requireAuth, adminOrEmployee, streaming.createPlatform);
+router.put('/admin/streaming/platforms/:id', requireAuth, adminOrEmployee, streaming.updatePlatform);
+router.delete('/admin/streaming/platforms/:id', requireAuth, adminOrEmployee, streaming.deletePlatform);
+
 router.get('/admin/streaming', requireAuth, adminOrEmployee, streaming.getAccounts);
 router.post('/admin/streaming', requireAuth, adminOrEmployee, streaming.createAccount);
 router.put('/admin/streaming/:id', requireAuth, adminOrEmployee, streaming.updateAccount);
 router.delete('/admin/streaming/:id', requireAuth, adminOrEmployee, streaming.deleteAccount);
 router.post('/admin/streaming/assign', requireAuth, adminOrEmployee, streaming.assignUser);
 router.delete('/admin/streaming/assign/:assignment_id', requireAuth, adminOrEmployee, streaming.unassignUser);
+
+// Entregas de Streaming por Pedido
+router.get('/admin/orders/:id/streaming', requireAuth, adminOrEmployee, streaming.getOrderStreaming);
+router.post('/admin/orders/:id/auto-assign-streaming', requireAuth, adminOrEmployee, streaming.autoAssignOrderStreaming);
+router.get('/customer/orders/:id/streaming', requireAuth, streaming.getOrderStreaming);
 
 module.exports = router;

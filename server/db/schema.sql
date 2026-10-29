@@ -211,20 +211,35 @@ CREATE TABLE IF NOT EXISTS vip_raffle_entries (
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Plataformas de Streaming
+CREATE TABLE IF NOT EXISTS streaming_platforms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    image_url TEXT,
+    account_type TEXT DEFAULT 'credentials',
+    default_instructions TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Cuentas y Perfiles de Streaming
 CREATE TABLE IF NOT EXISTS streaming_accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     platform TEXT NOT NULL,
-    email TEXT NOT NULL,
-    password TEXT NOT NULL,
+    platform_id INTEGER,
+    platform_image TEXT,
+    account_type TEXT DEFAULT 'credentials',
+    email TEXT,
+    password TEXT,
     profile_name TEXT,
     profile_pin TEXT,
     activation_link TEXT,
+    usage_instructions TEXT,
     max_devices INTEGER DEFAULT 1,
     expiration_date DATETIME,
     product_id INTEGER,
     notes TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(platform_id) REFERENCES streaming_platforms(id) ON DELETE SET NULL,
     FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE SET NULL
 );
 
@@ -233,7 +248,7 @@ CREATE TABLE IF NOT EXISTS streaming_assignments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id INTEGER NOT NULL,
     order_id INTEGER,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER,
     assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     expires_at DATETIME,
     FOREIGN KEY(account_id) REFERENCES streaming_accounts(id) ON DELETE CASCADE,

@@ -209,7 +209,7 @@ exports.getMyOrders = async (req, res) => {
         const userId = req.user.id;
         const orders = await db.query('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
         
-        // Cargar ítems de cada pedido
+        // Cargar ítems y cuentas streaming entregadas de cada pedido
         const enrichedOrders = await Promise.all(orders.map(async (order) => {
             const items = await db.query(`
                 SELECT oi.*, COALESCE(p.name, 'Producto Eliminado') as name, COALESCE(p.slug, '') as slug, COALESCE(p.type, 'physical') as type, 
@@ -219,12 +219,26 @@ exports.getMyOrders = async (req, res) => {
                 WHERE oi.order_id = ?
             `, [order.id]);
 
+            const streamingDeliveries = await db.query(`
+                SELECT a.id as assignment_id, a.assigned_at, a.expires_at,
+                       s.id as account_id, s.platform, s.email, s.password, s.profile_name, s.profile_pin,
+                       s.activation_link, s.account_type, s.max_devices,
+                       COALESCE(s.platform_image, sp.image_url) as platform_image,
+                       COALESCE(s.usage_instructions, sp.default_instructions) as usage_instructions
+                FROM streaming_assignments a
+                JOIN streaming_accounts s ON a.account_id = s.id
+                LEFT JOIN streaming_platforms sp ON s.platform_id = sp.id OR LOWER(s.platform) = LOWER(sp.name)
+                WHERE a.order_id = ?
+                ORDER BY a.assigned_at ASC
+            `, [order.id]);
+
             return {
                 ...order,
                 items: items.map(item => ({
                     ...item,
                     variant_info: item.variant_info ? JSON.parse(item.variant_info) : null
-                }))
+                })),
+                streaming_deliveries: streamingDeliveries
             };
         }));
 
@@ -257,12 +271,26 @@ exports.getOrderDetails = async (req, res) => {
             WHERE oi.order_id = ?
         `, [order.id]);
 
+        const streamingDeliveries = await db.query(`
+            SELECT a.id as assignment_id, a.assigned_at, a.expires_at,
+                   s.id as account_id, s.platform, s.email, s.password, s.profile_name, s.profile_pin,
+                   s.activation_link, s.account_type, s.max_devices,
+                   COALESCE(s.platform_image, sp.image_url) as platform_image,
+                   COALESCE(s.usage_instructions, sp.default_instructions) as usage_instructions
+            FROM streaming_assignments a
+            JOIN streaming_accounts s ON a.account_id = s.id
+            LEFT JOIN streaming_platforms sp ON s.platform_id = sp.id OR LOWER(s.platform) = LOWER(sp.name)
+            WHERE a.order_id = ?
+            ORDER BY a.assigned_at ASC
+        `, [order.id]);
+
         const enrichedOrder = {
             ...order,
             items: items.map(item => ({
                 ...item,
                 variant_info: item.variant_info ? JSON.parse(item.variant_info) : null
-            }))
+            })),
+            streaming_deliveries: streamingDeliveries
         };
 
         return res.json(enrichedOrder);

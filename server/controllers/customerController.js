@@ -17,10 +17,14 @@ exports.getDownloads = async (req, res) => {
 
         const enriched = await Promise.all(downloads.map(async (d) => {
             const streamingAss = await db.querySingle(`
-                SELECT s.platform, s.email, s.password, s.profile_name, s.profile_pin, s.activation_link, 
+                SELECT s.platform, s.email, s.password, s.profile_name, s.profile_pin, s.activation_link,
+                       s.account_type, s.max_devices,
+                       COALESCE(s.platform_image, sp.image_url) as platform_image,
+                       COALESCE(s.usage_instructions, sp.default_instructions) as usage_instructions,
                        COALESCE(a.expires_at, s.expiration_date) as expiration_date
                 FROM streaming_assignments a
                 JOIN streaming_accounts s ON a.account_id = s.id
+                LEFT JOIN streaming_platforms sp ON s.platform_id = sp.id OR LOWER(s.platform) = LOWER(sp.name)
                 WHERE a.user_id = ? AND (a.order_id = ? OR s.product_id = ?)
                 ORDER BY a.assigned_at DESC
                 LIMIT 1
@@ -29,9 +33,13 @@ exports.getDownloads = async (req, res) => {
             let streamingAccount = streamingAss;
             if (!streamingAccount) {
                 streamingAccount = await db.querySingle(`
-                    SELECT platform, email, password, profile_name, profile_pin, activation_link, expiration_date
-                    FROM streaming_accounts
-                    WHERE product_id = ?
+                    SELECT s.platform, s.email, s.password, s.profile_name, s.profile_pin, s.activation_link,
+                           s.account_type, s.max_devices, s.expiration_date,
+                           COALESCE(s.platform_image, sp.image_url) as platform_image,
+                           COALESCE(s.usage_instructions, sp.default_instructions) as usage_instructions
+                    FROM streaming_accounts s
+                    LEFT JOIN streaming_platforms sp ON s.platform_id = sp.id OR LOWER(s.platform) = LOWER(sp.name)
+                    WHERE s.product_id = ?
                     LIMIT 1
                 `, [d.id]);
             }

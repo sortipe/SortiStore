@@ -97,14 +97,27 @@ if (isPostgres) {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
 
+                CREATE TABLE IF NOT EXISTS streaming_platforms (
+                    id SERIAL PRIMARY KEY,
+                    name TEXT UNIQUE NOT NULL,
+                    image_url TEXT,
+                    account_type VARCHAR(50) DEFAULT 'credentials',
+                    default_instructions TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
                 CREATE TABLE IF NOT EXISTS streaming_accounts (
                     id SERIAL PRIMARY KEY,
                     platform TEXT NOT NULL,
-                    email TEXT NOT NULL,
-                    password TEXT NOT NULL,
+                    platform_id INTEGER REFERENCES streaming_platforms(id) ON DELETE SET NULL,
+                    platform_image TEXT,
+                    account_type VARCHAR(50) DEFAULT 'credentials',
+                    email TEXT,
+                    password TEXT,
                     profile_name TEXT,
                     profile_pin TEXT,
                     activation_link TEXT,
+                    usage_instructions TEXT,
                     max_devices INTEGER DEFAULT 1,
                     expiration_date TIMESTAMP,
                     product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
@@ -116,17 +129,99 @@ if (isPostgres) {
                     id SERIAL PRIMARY KEY,
                     account_id INTEGER NOT NULL REFERENCES streaming_accounts(id) ON DELETE CASCADE,
                     order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                     assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     expires_at TIMESTAMP
                 );
             `);
+
+            // Verificar nuevas columnas en streaming_accounts (Postgres)
+            const streamCols = await pgPool.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'streaming_accounts'");
+            const existingStreamCols = streamCols.rows.map(r => r.column_name);
+            if (!existingStreamCols.includes('platform_id')) {
+                await pgPool.query("ALTER TABLE streaming_accounts ADD COLUMN platform_id INTEGER REFERENCES streaming_platforms(id) ON DELETE SET NULL;");
+            }
+            if (!existingStreamCols.includes('platform_image')) {
+                await pgPool.query("ALTER TABLE streaming_accounts ADD COLUMN platform_image TEXT;");
+            }
+            if (!existingStreamCols.includes('usage_instructions')) {
+                await pgPool.query("ALTER TABLE streaming_accounts ADD COLUMN usage_instructions TEXT;");
+            }
+            if (!existingStreamCols.includes('account_type')) {
+                await pgPool.query("ALTER TABLE streaming_accounts ADD COLUMN account_type VARCHAR(50) DEFAULT 'credentials';");
+            }
+            // Permitir que email y password sean nulos para cuentas basadas solo en link de activación
+            await pgPool.query("ALTER TABLE streaming_accounts ALTER COLUMN email DROP NOT NULL;").catch(() => {});
+            await pgPool.query("ALTER TABLE streaming_accounts ALTER COLUMN password DROP NOT NULL;").catch(() => {});
+            await pgPool.query("ALTER TABLE streaming_assignments ALTER COLUMN user_id DROP NOT NULL;").catch(() => {});
 
             // Verificar columnas de streaming en products (Postgres)
             const prodPlatRes = await pgPool.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'streaming_platform'");
             if (prodPlatRes.rowCount === 0) {
                 await pgPool.query("ALTER TABLE products ADD COLUMN streaming_platform TEXT;");
                 await pgPool.query("ALTER TABLE products ADD COLUMN streaming_account_id INTEGER;");
+            }
+
+            // Sembrar plataformas por defecto si no existen
+            const countPlatforms = await pgPool.query("SELECT COUNT(*) as count FROM streaming_platforms");
+            if (parseInt(countPlatforms.rows[0].count, 10) === 0) {
+                console.log('Sembrando plataformas de streaming por defecto en Postgres...');
+                const defaultPlatforms = [
+                    {
+                        name: 'Netflix',
+                        image_url: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=300',
+                        account_type: 'credentials',
+                        default_instructions: '⚠️ REGLAS DEL PERFIL:\n1. Ingresar únicamente al perfil indicado con su PIN de seguridad.\n2. No modificar correo, contraseña ni el idioma general de la cuenta.\n3. Máximo 1 dispositivo simultáneo para evitar bloqueos del sistema.'
+                    },
+                    {
+                        name: 'Disney+',
+                        image_url: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300',
+                        account_type: 'credentials',
+                        default_instructions: '⚠️ REGLAS DEL SERVICIO:\n1. Accede solo al perfil asignado con tu PIN.\n2. Prohibido renombrar o crear perfiles adicionales.\n3. Uso personal e individual en 1 pantalla.'
+                    },
+                    {
+                        name: 'HBO Max / Max',
+                        image_url: 'https://images.unsplash.com/photo-1585951237318-9ea5e175b891?w=300',
+                        account_type: 'credentials',
+                        default_instructions: '⚠️ REGLAS:\n1. Ingresa exclusivamente a tu perfil asignado.\n2. No compartir las credenciales con terceros.\n3. Disfruta de todo el catálogo en calidad máxima.'
+                    },
+                    {
+                        name: 'Spotify Familiar',
+                        image_url: 'https://images.unsplash.com/photo-1614680376593-902f749f7ffc?w=300',
+                        account_type: 'activation_link',
+                        default_instructions: '🎵 PASOS DE ACTIVACIÓN:\n1. Haz clic en el Link de Activación proporcionado.\n2. Inicia sesión con tu cuenta personal de Spotify.\n3. Acepta la invitación confirmando la dirección del plan familiar indicada en las notas.\n4. ¡Listo! Tu cuenta ahora es Spotify Premium sin anuncios.'
+                    },
+                    {
+                        name: 'Gemini AI / ChatGPT',
+                        image_url: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=300',
+                        account_type: 'activation_link',
+                        default_instructions: '🤖 ACTIVACIÓN DE ACCESO IA:\n1. Abre el enlace de invitación enviado.\n2. Acepta el acceso con tu cuenta de Google / Gmail.\n3. Disfruta de modelos avanzados y herramientas Pro.'
+                    },
+                    {
+                        name: 'Prime Video',
+                        image_url: 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?w=300',
+                        account_type: 'credentials',
+                        default_instructions: '⚠️ REGLAS:\n1. Usar solo el perfil indicado.\n2. Prohibido realizar compras o alquilar películas con cargo a la tarjeta asociada.'
+                    },
+                    {
+                        name: 'YouTube Premium',
+                        image_url: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300',
+                        account_type: 'activation_link',
+                        default_instructions: '📺 ACTIVACIÓN:\n1. Abre el enlace de invitación al grupo familiar de Google.\n2. Únete con tu correo de Gmail personal y disfruta de YouTube sin anuncios.'
+                    },
+                    {
+                        name: 'Canva Pro',
+                        image_url: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=300',
+                        account_type: 'activation_link',
+                        default_instructions: '🎨 ACTIVACIÓN:\n1. Abre el link de invitación al equipo Canva Pro.\n2. Inicia sesión con tu cuenta gratuita de Canva y se convertirá en Pro al instante.'
+                    }
+                ];
+                for (const plat of defaultPlatforms) {
+                    await pgPool.query(`
+                        INSERT INTO streaming_platforms (name, image_url, account_type, default_instructions)
+                        VALUES ($1, $2, $3, $4) ON CONFLICT (name) DO NOTHING
+                    `, [plat.name, plat.image_url, plat.account_type, plat.default_instructions]);
+                }
             }
             console.log('Migraciones VIP y Streaming ejecutadas con éxito en Postgres.');
         } catch (err) {
@@ -218,26 +313,39 @@ if (isPostgres) {
                 FOREIGN KEY(raffle_id) REFERENCES vip_raffles(id) ON DELETE CASCADE,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+            CREATE TABLE IF NOT EXISTS streaming_platforms (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                image_url TEXT,
+                account_type TEXT DEFAULT 'credentials',
+                default_instructions TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
             CREATE TABLE IF NOT EXISTS streaming_accounts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 platform TEXT NOT NULL,
-                email TEXT NOT NULL,
-                password TEXT NOT NULL,
+                platform_id INTEGER,
+                platform_image TEXT,
+                account_type TEXT DEFAULT 'credentials',
+                email TEXT,
+                password TEXT,
                 profile_name TEXT,
                 profile_pin TEXT,
                 activation_link TEXT,
+                usage_instructions TEXT,
                 max_devices INTEGER DEFAULT 1,
                 expiration_date DATETIME,
                 product_id INTEGER,
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(platform_id) REFERENCES streaming_platforms(id) ON DELETE SET NULL,
                 FOREIGN KEY(product_id) REFERENCES products(id) ON DELETE SET NULL
             );
             CREATE TABLE IF NOT EXISTS streaming_assignments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 account_id INTEGER NOT NULL,
                 order_id INTEGER,
-                user_id INTEGER NOT NULL,
+                user_id INTEGER,
                 assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 expires_at DATETIME,
                 FOREIGN KEY(account_id) REFERENCES streaming_accounts(id) ON DELETE CASCADE,
@@ -245,6 +353,82 @@ if (isPostgres) {
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
             );
         `);
+
+        // Comprobar nuevas columnas en SQLite para streaming_accounts
+        const streamTableInfo = sqliteDb.prepare("PRAGMA table_info(streaming_accounts)").all();
+        const streamColNames = streamTableInfo.map(c => c.name);
+        if (!streamColNames.includes('platform_id')) {
+            sqliteDb.exec("ALTER TABLE streaming_accounts ADD COLUMN platform_id INTEGER;");
+        }
+        if (!streamColNames.includes('platform_image')) {
+            sqliteDb.exec("ALTER TABLE streaming_accounts ADD COLUMN platform_image TEXT;");
+        }
+        if (!streamColNames.includes('usage_instructions')) {
+            sqliteDb.exec("ALTER TABLE streaming_accounts ADD COLUMN usage_instructions TEXT;");
+        }
+        if (!streamColNames.includes('account_type')) {
+            sqliteDb.exec("ALTER TABLE streaming_accounts ADD COLUMN account_type TEXT DEFAULT 'credentials';");
+        }
+
+        // Sembrar plataformas en SQLite si no existen
+        const countPlatformsSqlite = sqliteDb.prepare("SELECT COUNT(*) as count FROM streaming_platforms").get();
+        if (countPlatformsSqlite && countPlatformsSqlite.count === 0) {
+            console.log('Sembrando plataformas de streaming por defecto en SQLite...');
+            const defaultPlatforms = [
+                {
+                    name: 'Netflix',
+                    image_url: 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?w=300',
+                    account_type: 'credentials',
+                    default_instructions: '⚠️ REGLAS DEL PERFIL:\n1. Ingresar únicamente al perfil indicado con su PIN de seguridad.\n2. No modificar correo, contraseña ni el idioma general de la cuenta.\n3. Máximo 1 dispositivo simultáneo para evitar bloqueos del sistema.'
+                },
+                {
+                    name: 'Disney+',
+                    image_url: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=300',
+                    account_type: 'credentials',
+                    default_instructions: '⚠️ REGLAS DEL SERVICIO:\n1. Accede solo al perfil asignado con tu PIN.\n2. Prohibido renombrar o crear perfiles adicionales.\n3. Uso personal e individual en 1 pantalla.'
+                },
+                {
+                    name: 'HBO Max / Max',
+                    image_url: 'https://images.unsplash.com/photo-1585951237318-9ea5e175b891?w=300',
+                    account_type: 'credentials',
+                    default_instructions: '⚠️ REGLAS:\n1. Ingresa exclusivamente a tu perfil asignado.\n2. No compartir las credenciales con terceros.\n3. Disfruta de todo el catálogo en calidad máxima.'
+                },
+                {
+                    name: 'Spotify Familiar',
+                    image_url: 'https://images.unsplash.com/photo-1614680376593-902f749f7ffc?w=300',
+                    account_type: 'activation_link',
+                    default_instructions: '🎵 PASOS DE ACTIVACIÓN:\n1. Haz clic en el Link de Activación proporcionado.\n2. Inicia sesión con tu cuenta personal de Spotify.\n3. Acepta la invitación confirmando la dirección del plan familiar indicada en las notas.\n4. ¡Listo! Tu cuenta ahora es Spotify Premium sin anuncios.'
+                },
+                {
+                    name: 'Gemini AI / ChatGPT',
+                    image_url: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=300',
+                    account_type: 'activation_link',
+                    default_instructions: '🤖 ACTIVACIÓN DE ACCESO IA:\n1. Abre el enlace de invitación enviado.\n2. Acepta el acceso con tu cuenta de Google / Gmail.\n3. Disfruta de modelos avanzados y herramientas Pro.'
+                },
+                {
+                    name: 'Prime Video',
+                    image_url: 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?w=300',
+                    account_type: 'credentials',
+                    default_instructions: '⚠️ REGLAS:\n1. Usar solo el perfil indicado.\n2. Prohibido realizar compras o alquilar películas con cargo a la tarjeta asociada.'
+                },
+                {
+                    name: 'YouTube Premium',
+                    image_url: 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=300',
+                    account_type: 'activation_link',
+                    default_instructions: '📺 ACTIVACIÓN:\n1. Abre el enlace de invitación al grupo familiar de Google.\n2. Únete con tu correo de Gmail personal y disfruta de YouTube sin anuncios.'
+                },
+                {
+                    name: 'Canva Pro',
+                    image_url: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=300',
+                    account_type: 'activation_link',
+                    default_instructions: '🎨 ACTIVACIÓN:\n1. Abre el link de invitación al equipo Canva Pro.\n2. Inicia sesión con tu cuenta gratuita de Canva y se convertirá en Pro al instante.'
+                }
+            ];
+            const insertStmt = sqliteDb.prepare("INSERT INTO streaming_platforms (name, image_url, account_type, default_instructions) VALUES (?, ?, ?, ?)");
+            for (const p of defaultPlatforms) {
+                try { insertStmt.run(p.name, p.image_url, p.account_type, p.default_instructions); } catch (e) {}
+            }
+        }
     } catch (err) {
         console.error("Error al aplicar migración SQLite local:", err);
     }
@@ -253,7 +437,7 @@ if (isPostgres) {
 // Traducir los placeholders "?" de SQLite/MySQL a "$1, $2..." de Postgres
 function sqlToPostgres(sql) {
     let index = 1;
-    return sql.replace(/\?/g, () => `$${index++}`);
+    return sql.replace(/\?/g, () => '$' + (index++));
 }
 
 const dbAdapter = {
