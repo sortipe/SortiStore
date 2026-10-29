@@ -3014,7 +3014,7 @@ function renderStreamingAccountsRows(accounts) {
                     <div><strong>Perfil:</strong> <span style="color: var(--color-secondary); font-weight: 700;">${acc.profile_name || 'N/A'}</span></div>
                     ${acc.profile_pin ? `<div style="margin-top: 2px;"><strong>PIN:</strong> <span style="color: #f59e0b; font-weight: 800; letter-spacing: 1px;">${acc.profile_pin}</span></div>` : '<span style="font-size: 11px; color: var(--text-muted);">Sin PIN</span>'}
                 </td>
-                <td style="padding: 14px 16px; min-width: 170px;">
+                <td style="padding: 14px 16px; min-width: 185px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                         ${statusBadge}
                         <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">${percent}%</span>
@@ -3022,8 +3022,15 @@ function renderStreamingAccountsRows(accounts) {
                     <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden;">
                         <div style="width: ${percent}%; height: 100%; background: ${progressColor}; border-radius: 4px;"></div>
                     </div>
-                    <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-                        Límite: <strong>${max}</strong> dispositivo(s)
+                    <div style="display: flex; justify-content: space-between; font-size: 11.5px; margin-top: 5px;">
+                        <span>Libres: <strong style="color: #10b981;">${acc.available_slots}</strong></span>
+                        <span>Ocupados: <strong style="color: #f59e0b;">${used}</strong></span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.08);">
+                        <span>Límite: <strong style="color: var(--text-primary); font-size: 12px;">${max} cupo(s)</strong></span>
+                        <button type="button" class="btn-outline" style="padding: 2px 7px; font-size: 10.5px; border-radius: 4px;" title="Modificar cupos de esta cuenta" onclick="quickEditStreamingAccountLimit(${acc.id}, ${max}, '${acc.platform}')">
+                            <i class="fas fa-edit"></i> Cambiar
+                        </button>
                     </div>
                 </td>
                 <td style="padding: 14px 16px; max-width: 180px;">
@@ -3177,6 +3184,23 @@ window.handleDeleteStreamingPlatform = async (platformId) => {
 // ==========================================
 // MODAL DE GESTIÓN DE CUENTAS / PERFILES (Crear / Editar)
 // ==========================================
+window.quickEditStreamingAccountLimit = async (accountId, currentLimit, platformName) => {
+    const newLimitStr = prompt(`Modificar cupos de "${platformName}" (ID #${accountId}):\n\nIngresa la cantidad máxima de usuarios/perfiles permitidos para esta cuenta:`, currentLimit);
+    if (newLimitStr === null) return;
+    const newLimit = parseInt(newLimitStr.trim(), 10);
+    if (isNaN(newLimit) || newLimit < 1) {
+        showToast('Por favor ingresa un número válido (mínimo 1).', 'error');
+        return;
+    }
+    try {
+        await AdminService.updateStreamingAccount(accountId, { max_devices: newLimit });
+        showToast(`Límite de "${platformName}" actualizado a ${newLimit} cupo(s).`, 'success');
+        switchTab('streaming');
+    } catch (err) {
+        showToast(err.message || 'Error al actualizar cupo.', 'error');
+    }
+};
+
 window.openStreamingAccountModal = async (accountId = null) => {
     let acc = null;
     if (accountId && window._cachedStreamingAccounts) {
@@ -3277,8 +3301,14 @@ window.openStreamingAccountModal = async (accountId = null) => {
                         </label>
                         <input type="number" id="stream-max-devices" class="form-control" required value="${acc ? acc.max_devices : 1}" min="1" max="50">
                         <small style="color: var(--text-muted); font-size: 11px; display: block; margin-top: 4px;">
-                            Cantidad máxima de clientes o dispositivos que pueden usar esta cuenta. (Ej: 1 para perfil único, 4 para cuenta completa, 5 o 6 para familiar).
+                            Cantidad máxima de clientes o dispositivos que pueden usar esta cuenta de manera independiente. (Ej: 1 para perfil único, 4 para cuenta completa, 5 o 6 para familiar).
                         </small>
+                        ${acc ? `
+                            <div style="margin-top: 8px; font-size: 11.5px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 6px; display: flex; justify-content: space-between;">
+                                <span>Cupos ocupados actualmente: <strong style="color: #f59e0b;">${acc.current_users_count || 0}</strong></span>
+                                <span>Cupos libres: <strong style="color: #10b981;">${acc.available_slots || 0}</strong></span>
+                            </div>
+                        ` : ''}
                     </div>
 
                     <!-- Logo / Imagen específica -->

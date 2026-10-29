@@ -317,13 +317,25 @@ exports.updateAccount = async (req, res) => {
             expiration_date, product_id, notes
         } = req.body;
 
-        const acc = await db.querySingle('SELECT id FROM streaming_accounts WHERE id = ?', [id]);
-        if (!acc) {
+        const existing = await db.querySingle('SELECT * FROM streaming_accounts WHERE id = ?', [id]);
+        if (!existing) {
             return res.status(404).json({ error: 'Cuenta de streaming no encontrada.' });
         }
 
-        const type = account_type || 'credentials';
-        const limitDevices = Number(max_devices) > 0 ? Number(max_devices) : 1;
+        const type = account_type !== undefined ? account_type : (existing.account_type || 'credentials');
+        const limitDevices = max_devices !== undefined ? (Number(max_devices) > 0 ? Number(max_devices) : 1) : existing.max_devices;
+        const targetPlatform = platform !== undefined ? (platform ? platform.trim() : existing.platform) : existing.platform;
+        const targetPlatformId = platform_id !== undefined ? (platform_id ? Number(platform_id) : null) : existing.platform_id;
+        const targetPlatformImage = platform_image !== undefined ? (platform_image ? platform_image.trim() : null) : existing.platform_image;
+        const targetEmail = email !== undefined ? (email ? email.trim() : null) : existing.email;
+        const targetPassword = password !== undefined ? (password ? password.trim() : null) : existing.password;
+        const targetProfileName = profile_name !== undefined ? (profile_name ? profile_name.trim() : null) : existing.profile_name;
+        const targetProfilePin = profile_pin !== undefined ? (profile_pin ? profile_pin.trim() : null) : existing.profile_pin;
+        const targetActivationLink = activation_link !== undefined ? (activation_link ? activation_link.trim() : null) : existing.activation_link;
+        const targetUsageInstructions = usage_instructions !== undefined ? (usage_instructions ? usage_instructions.trim() : null) : existing.usage_instructions;
+        const targetExpirationDate = expiration_date !== undefined ? (expiration_date || null) : existing.expiration_date;
+        const targetProductId = product_id !== undefined ? (product_id ? Number(product_id) : null) : existing.product_id;
+        const targetNotes = notes !== undefined ? (notes ? notes.trim() : null) : existing.notes;
 
         await db.execute(`
             UPDATE streaming_accounts SET
@@ -343,20 +355,20 @@ exports.updateAccount = async (req, res) => {
                 notes = ?
             WHERE id = ?
         `, [
-            platform ? platform.trim() : '',
-            platform_id ? Number(platform_id) : null,
-            platform_image ? platform_image.trim() : null,
+            targetPlatform,
+            targetPlatformId,
+            targetPlatformImage,
             type,
-            email ? email.trim() : null,
-            password ? password.trim() : null,
-            profile_name ? profile_name.trim() : null,
-            profile_pin ? profile_pin.trim() : null,
-            activation_link ? activation_link.trim() : null,
-            usage_instructions ? usage_instructions.trim() : null,
+            targetEmail,
+            targetPassword,
+            targetProfileName,
+            targetProfilePin,
+            targetActivationLink,
+            targetUsageInstructions,
             limitDevices,
-            expiration_date || null,
-            product_id ? Number(product_id) : null,
-            notes ? notes.trim() : null,
+            targetExpirationDate,
+            targetProductId,
+            targetNotes,
             id
         ]);
 
