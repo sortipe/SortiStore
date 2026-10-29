@@ -66,8 +66,8 @@ exports.getWallet = async (req, res) => {
         const transactions = await db.query('SELECT * FROM sorti_transactions WHERE user_id = ? ORDER BY created_at DESC', [userId]);
 
         return res.json({
-            balance: wallet ? wallet.sorti_balance : 0,
-            transactions
+            balance: wallet && wallet.sorti_balance !== null ? Number(wallet.sorti_balance) : 0,
+            transactions: transactions.map(t => ({ ...t, amount: Number(t.amount) }))
         });
     } catch (error) {
         console.error('Error al obtener billetera de monedas:', error);

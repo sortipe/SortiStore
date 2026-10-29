@@ -161,6 +161,15 @@ if (isPostgres) {
             await pgPool.query("ALTER TABLE streaming_assignments ADD COLUMN IF NOT EXISTS link_status VARCHAR(50) DEFAULT 'active';").catch(() => {});
             await pgPool.query("ALTER TABLE streaming_assignments ADD COLUMN IF NOT EXISTS linked_at TIMESTAMP;").catch(() => {});
 
+            // Migración para monedas Sorti: precisión decimal NUMERIC(12,2)
+            await pgPool.query("ALTER TABLE user_wallets ALTER COLUMN sorti_balance TYPE NUMERIC(12,2) USING sorti_balance::numeric;").catch(() => {});
+            await pgPool.query("ALTER TABLE sorti_transactions ALTER COLUMN amount TYPE NUMERIC(12,2) USING amount::numeric;").catch(() => {});
+            await pgPool.query("ALTER TABLE orders ALTER COLUMN sorti_coins_used TYPE NUMERIC(12,2) USING sorti_coins_used::numeric;").catch(() => {});
+
+            // Sembrar configuraciones de moneda Sorti por defecto si no existen
+            await pgPool.query("INSERT INTO system_settings (key, value) VALUES ('sorti_coins_per_sol', '0.20') ON CONFLICT (key) DO NOTHING;").catch(() => {});
+            await pgPool.query("INSERT INTO system_settings (key, value) VALUES ('sorti_coin_value', '0.50') ON CONFLICT (key) DO NOTHING;").catch(() => {});
+
             // Verificar columnas de streaming en products (Postgres)
             const prodPlatRes = await pgPool.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'streaming_platform'");
             if (prodPlatRes.rowCount === 0) {

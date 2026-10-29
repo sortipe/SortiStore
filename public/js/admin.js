@@ -1378,11 +1378,61 @@ async function renderSettingsTab(container) {
 
             <!-- Moneda Sorti -->
             <div class="checkout-section" style="width: 100%;">
-                <h3><i class="fas fa-coins" style="color: var(--color-accent);"></i> Configuración de Moneda Sorti</h3>
-                <div class="form-group">
-                    <label>Equivalencia de Moneda (Sorti Coins = S/. 1.00)</label>
-                    <input type="number" id="set-sorti-rate" class="form-control" value="${currentSettings.sorti_rate || 100}" required>
-                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">Por defecto 100. Significa que 100 monedas equivalen a S/. 1.00 de descuento en el checkout.</p>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                    <h3 style="margin: 0;"><i class="fas fa-coins" style="color: var(--color-accent);"></i> Configuración de Moneda Sorti</h3>
+                    <span style="background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25); font-weight: 700; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                        <i class="fas fa-gem"></i> Fidelización y Recompensas
+                    </span>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                    <!-- 1. Ganancia por Compra -->
+                    <div class="glass-panel" style="padding: 18px; border-left: 4px solid var(--color-accent);">
+                        <label style="font-weight: 700; font-size: 13px; display: block; margin-bottom: 6px;">
+                            <i class="fas fa-shopping-cart" style="color: var(--color-accent); margin-right: 6px;"></i>
+                            Monedas ganadas por cada S/. 1.00 al comprar
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" step="0.01" min="0" id="set-sorti-coins-per-sol" class="form-control" value="${currentSettings.sorti_coins_per_sol !== undefined ? currentSettings.sorti_coins_per_sol : '0.20'}" required style="font-size: 16px; font-weight: 700; text-align: center;" oninput="updateSortiConfigLivePreview()">
+                            <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap;">monedas / S/. 1.00</span>
+                        </div>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+                            <strong>Ejemplo:</strong> Si colocas <code>0.20</code>, por cada S/. 1.00 comprado el cliente gana 0.20 monedas (en una compra de S/. 100.00 gana 20.00 monedas).
+                        </p>
+                    </div>
+
+                    <!-- 2. Valor de Canje -->
+                    <div class="glass-panel" style="padding: 18px; border-left: 4px solid #10b981;">
+                        <label style="font-weight: 700; font-size: 13px; display: block; margin-bottom: 6px;">
+                            <i class="fas fa-tags" style="color: #10b981; margin-right: 6px;"></i>
+                            Valor de 1 moneda al canjear (en Soles)
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 14px; font-weight: 700; color: var(--text-secondary);">S/.</span>
+                            <input type="number" step="0.01" min="0.001" id="set-sorti-coin-value" class="form-control" value="${currentSettings.sorti_coin_value !== undefined ? currentSettings.sorti_coin_value : '0.50'}" required style="font-size: 16px; font-weight: 700; text-align: center;" oninput="updateSortiConfigLivePreview()">
+                            <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap;">descuento / 1 moneda</span>
+                        </div>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+                            <strong>Ejemplo:</strong> Si colocas <code>0.50</code>, cada 1 moneda Sorti vale S/. 0.50 céntimos de descuento (canjear 20 monedas descontará S/. 10.00 en el checkout).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Simulación Dinámica en Vivo -->
+                <div class="glass-panel" style="margin-top: 14px; padding: 14px 18px; background: rgba(99, 102, 241, 0.05); border: 1px dashed rgba(99, 102, 241, 0.3); border-radius: var(--radius-md); font-size: 12px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-around;">
+                    <div>
+                        <span style="color: var(--text-muted);">Simulación Compra:</span>
+                        <strong style="color: var(--text-primary); margin-left: 6px;">S/. 100.00</strong>
+                        <span style="margin: 0 6px;">➔</span>
+                        <span style="color: var(--color-accent); font-weight: 800;"><i class="fas fa-coins"></i> <span id="preview-sorti-earned">20.00</span> Monedas ganadas</span>
+                    </div>
+                    <div style="border-left: 1px solid var(--border-color); height: 20px; display: inline-block;"></div>
+                    <div>
+                        <span style="color: var(--text-muted);">Simulación Canje:</span>
+                        <strong style="color: var(--color-accent); margin-left: 6px;"><i class="fas fa-coins"></i> 20 Monedas</strong>
+                        <span style="margin: 0 6px;">➔</span>
+                        <span style="color: #10b981; font-weight: 800;">- S/. <span id="preview-sorti-discount">10.00</span> de descuento</span>
+                    </div>
                 </div>
             </div>
 
@@ -1434,8 +1484,14 @@ async function renderSettingsTab(container) {
     document.getElementById('settings-admin-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        const coinsPerSol = Number(document.getElementById('set-sorti-coins-per-sol').value) || 0.20;
+        const coinVal = Number(document.getElementById('set-sorti-coin-value').value) || 0.50;
+        const equivalentRate = coinVal > 0 ? Number((1 / coinVal).toFixed(2)) : 2;
+
         const payload = {
-            sorti_rate: Number(document.getElementById('set-sorti-rate').value),
+            sorti_coins_per_sol: coinsPerSol,
+            sorti_coin_value: coinVal,
+            sorti_rate: equivalentRate,
             yape_qr: document.getElementById('set-yape-qr').value.trim(),
             bank_accounts: currentSettings.bank_accounts,
             delivery_districts: currentSettings.delivery_districts,
@@ -1459,7 +1515,24 @@ async function renderSettingsTab(container) {
             showToast(error.message, 'error');
         }
     });
+
+    if (window.updateSortiConfigLivePreview) {
+        window.updateSortiConfigLivePreview();
+    }
 }
+
+// Helper para vista previa en vivo de la configuración de Moneda Sorti
+window.updateSortiConfigLivePreview = function() {
+    const coinsPerSolInput = document.getElementById('set-sorti-coins-per-sol');
+    const coinValInput = document.getElementById('set-sorti-coin-value');
+    if (!coinsPerSolInput || !coinValInput) return;
+    const coinsPerSol = parseFloat(coinsPerSolInput.value) || 0;
+    const coinValue = parseFloat(coinValInput.value) || 0;
+    const pEarned = document.getElementById('preview-sorti-earned');
+    const pDiscount = document.getElementById('preview-sorti-discount');
+    if (pEarned) pEarned.textContent = (100 * coinsPerSol).toFixed(2);
+    if (pDiscount) pDiscount.textContent = (20 * coinValue).toFixed(2);
+};
 
 // Helpers para la edición reactiva de banners
 window.updateBannerSlideField = (idx, field, value) => {

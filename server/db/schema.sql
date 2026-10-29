@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Billetera Virtual para Monedas Sorti
 CREATE TABLE IF NOT EXISTS user_wallets (
     user_id INTEGER PRIMARY KEY,
-    sorti_balance INTEGER DEFAULT 0 CHECK(sorti_balance >= 0),
+    sorti_balance REAL DEFAULT 0.0 CHECK(sorti_balance >= 0),
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS user_wallets (
 CREATE TABLE IF NOT EXISTS sorti_transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
-    amount INTEGER NOT NULL, -- Positivo (acumulado) o Negativo (canjeado)
+    amount REAL NOT NULL, -- Positivo (acumulado) o Negativo (canjeado)
     type TEXT CHECK(type IN ('earn', 'redeem', 'admin_adjust')) NOT NULL,
     description TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS orders (
     delivery_address TEXT,
     delivery_cost REAL DEFAULT 0.0,
     coupon_id INTEGER,
-    sorti_coins_used INTEGER DEFAULT 0,
+    sorti_coins_used REAL DEFAULT 0.0,
     total_amount REAL NOT NULL,
     payment_method TEXT CHECK(payment_method IN ('yape', 'bank_transfer')) NOT NULL,
     payment_proof_url TEXT, -- Comprobante de pago subido por el cliente

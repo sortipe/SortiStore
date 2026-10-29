@@ -80,7 +80,7 @@ exports.login = async (req, res) => {
         let sortiBalance = 0;
         if (user.role === 'client') {
             const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [user.id]);
-            sortiBalance = wallet ? wallet.sorti_balance : 0;
+            sortiBalance = wallet && wallet.sorti_balance !== null ? Number(wallet.sorti_balance) : 0;
         }
 
         // Generar Token
@@ -137,7 +137,7 @@ exports.getMe = async (req, res) => {
         let sortiBalance = 0;
         if (user.role === 'client') {
             const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [req.user.id]);
-            sortiBalance = wallet ? wallet.sorti_balance : 0;
+            sortiBalance = wallet && wallet.sorti_balance !== null ? Number(wallet.sorti_balance) : 0;
         }
 
         return res.json({

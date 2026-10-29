@@ -319,7 +319,11 @@ exports.updateOrderStatus = async (req, res) => {
             const rewardCheck = await db.querySingle("SELECT 1 as rew FROM sorti_transactions WHERE user_id = ? AND description = ? LIMIT 1", [order.user_id, rewardDescription]);
 
             if (!rewardCheck) {
-                const coinsEarned = Math.round(order.total_amount * 10);
+                // Consultar tasa configurada de monedas ganadas por sol gastado
+                const coinsPerSolRow = await db.querySingle("SELECT value FROM system_settings WHERE key = 'sorti_coins_per_sol'");
+                const coinsPerSol = coinsPerSolRow && !isNaN(Number(coinsPerSolRow.value)) ? Number(coinsPerSolRow.value) : 0.20;
+
+                const coinsEarned = Number((order.total_amount * coinsPerSol).toFixed(2));
                 
                 if (coinsEarned > 0) {
                     await db.execute('UPDATE user_wallets SET sorti_balance = sorti_balance + ? WHERE user_id = ?', [coinsEarned, order.user_id]);
@@ -442,6 +446,16 @@ exports.getSettings = async (req, res) => {
                 settingsMap[s.key] = s.value;
             }
         });
+
+        // Asegurar valores por defecto y consistencia para Moneda Sorti
+        settingsMap.sorti_coins_per_sol = settingsMap.sorti_coins_per_sol !== undefined ? Number(settingsMap.sorti_coins_per_sol) : 0.20;
+        settingsMap.sorti_coin_value = settingsMap.sorti_coin_value !== undefined 
+            ? Number(settingsMap.sorti_coin_value) 
+            : (settingsMap.sorti_rate ? Number((1 / Number(settingsMap.sorti_rate)).toFixed(4)) : 0.50);
+        settingsMap.sorti_rate = settingsMap.sorti_coin_value > 0 
+            ? Number((1 / settingsMap.sorti_coin_value).toFixed(2)) 
+            : (settingsMap.sorti_rate ? Number(settingsMap.sorti_rate) : 2);
+
         return res.json(settingsMap);
     } catch (error) {
         console.error('Error al obtener configuraciones:', error);
@@ -451,11 +465,41 @@ exports.getSettings = async (req, res) => {
 
 exports.updateSettings = async (req, res) => {
     try {
-        const { sorti_rate, bank_accounts, yape_qr, delivery_districts, home_banner, home_banners, site_branding } = req.body;
+        const {
+            sorti_rate,
+            sorti_coins_per_sol,
+            sorti_coin_value,
+            bank_accounts,
+            yape_qr,
+            delivery_districts,
+            home_banner,
+            home_banners,
+            site_branding
+        } = req.body;
 
-        if (sorti_rate !== undefined) {
+        if (sorti_coins_per_sol !== undefined) {
+            const coinsPerSol = Number(sorti_coins_per_sol);
+            await db.execute('DELETE FROM system_settings WHERE key = ?', ['sorti_coins_per_sol']);
+            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['sorti_coins_per_sol', String(coinsPerSol)]);
+        }
+
+        if (sorti_coin_value !== undefined) {
+            const coinVal = Number(sorti_coin_value);
+            await db.execute('DELETE FROM system_settings WHERE key = ?', ['sorti_coin_value']);
+            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['sorti_coin_value', String(coinVal)]);
+
+            // Sincronizar sorti_rate para compatibilidad
+            const equivRate = coinVal > 0 ? Number((1 / coinVal).toFixed(2)) : 2;
             await db.execute('DELETE FROM system_settings WHERE key = ?', ['sorti_rate']);
-            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['sorti_rate', String(sorti_rate)]);
+            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['sorti_rate', String(equivRate)]);
+        } else if (sorti_rate !== undefined) {
+            const rate = Number(sorti_rate);
+            await db.execute('DELETE FROM system_settings WHERE key = ?', ['sorti_rate']);
+            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['sorti_rate', String(rate)]);
+
+            const coinVal = rate > 0 ? Number((1 / rate).toFixed(4)) : 0.50;
+            await db.execute('DELETE FROM system_settings WHERE key = ?', ['sorti_coin_value']);
+            await db.execute('INSERT INTO system_settings (key, value) VALUES (?, ?)', ['sorti_coin_value', String(coinVal)]);
         }
 
         if (bank_accounts !== undefined) {

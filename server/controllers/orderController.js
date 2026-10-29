@@ -86,15 +86,29 @@ exports.createOrder = async (req, res) => {
 
         if (userId && coinsToDeduct > 0) {
             const wallet = await db.querySingle('SELECT sorti_balance FROM user_wallets WHERE user_id = ?', [userId]);
-            if (!wallet || wallet.sorti_balance < coinsToDeduct) {
+            const currentBalance = wallet && wallet.sorti_balance !== null ? Number(wallet.sorti_balance) : 0;
+            if (currentBalance < coinsToDeduct) {
                 return res.status(400).json({ error: 'Saldo de monedas Sorti insuficiente.' });
             }
 
-            // Tasa de cambio: 100 Sorti = S/. 1.00
-            const rateRow = await db.querySingle("SELECT value FROM system_settings WHERE key = 'sorti_rate'");
-            const rate = rateRow ? Number(rateRow.value) : 100;
+            // Tasa de cambio: valor en Soles de 1 moneda al canjear
+            const coinValRow = await db.querySingle("SELECT value FROM system_settings WHERE key = 'sorti_coin_value'");
+            let coinValue = coinValRow && !isNaN(Number(coinValRow.value)) ? Number(coinValRow.value) : null;
+            if (coinValue === null || coinValue <= 0) {
+                const rateRow = await db.querySingle("SELECT value FROM system_settings WHERE key = 'sorti_rate'");
+                const rate = rateRow ? Number(rateRow.value) : 100;
+                coinValue = rate > 0 ? (1 / rate) : 0.01;
+            }
 
-            discountSorti = coinsToDeduct / rate;
+            discountSorti = Number((coinsToDeduct * coinValue).toFixed(2));
+
+            // Si el descuento supera el monto a pagar, limitar el descuento y ajustar monedas requeridas
+            const payableAmount = Math.max(0, subtotal + finalDeliveryCost - discountCoupon);
+            if (discountSorti > payableAmount) {
+                discountSorti = payableAmount;
+                // Deducir solo las monedas necesarias para cubrir el monto a pagar
+                coinsToDeduct = coinValue > 0 ? Number((discountSorti / coinValue).toFixed(2)) : 0;
+            }
         } else {
             coinsToDeduct = 0;
         }

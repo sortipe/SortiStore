@@ -805,15 +805,23 @@ async function renderCheckout() {
         { name: 'San Borja', cost: 8.00, time: '24-48 horas' }
     ];
 
+    let sortiCoinsPerSol = 0.20;
+    let sortiCoinValue = 0.50;
+
     try {
         // Traer ajustes reales del endpoint público (aplica tanto a logueados como a invitados)
         const settings = await ShopService.getSettings();
         if (settings.bank_accounts) bankAccounts = settings.bank_accounts;
         if (settings.yape_qr) yapeQrImage = settings.yape_qr;
         if (settings.delivery_districts) districts = settings.delivery_districts;
+        if (settings.sorti_coins_per_sol !== undefined) sortiCoinsPerSol = Number(settings.sorti_coins_per_sol);
+        if (settings.sorti_coin_value !== undefined) sortiCoinValue = Number(settings.sorti_coin_value);
+        else if (settings.sorti_rate) sortiCoinValue = Number((1 / Number(settings.sorti_rate)).toFixed(4));
     } catch (e) {
         console.warn('Usando datos de entrega / pago por defecto.');
     }
+
+    const userSortiBalance = AppState.user && AppState.user.sortiBalance !== undefined ? Number(AppState.user.sortiBalance) : 0;
 
     container.innerHTML = `
         <div class="checkout-layout">
@@ -966,21 +974,63 @@ async function renderCheckout() {
                         <div id="coupon-feedback" style="font-size: 11px; margin-top: 4px;"></div>
                     </div>
 
-                    <!-- Monedas Sorti Slider (Si está logueado) -->
-                    ${AppState.user && AppState.user.role === 'client' && AppState.user.sortiBalance > 0 ? `
-                        <div class="glass-panel" style="padding: 16px; margin-bottom: 24px;">
-                            <h4 style="font-size: 13px; color: var(--color-accent); margin-bottom: 8px;"><i class="fas fa-coins"></i> Canjear Monedas Sorti</h4>
-                            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px;">Saldo disponible: <strong>${AppState.user.sortiBalance}</strong> monedas.</p>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <input type="range" id="sorti-slider" min="0" max="${AppState.user.sortiBalance}" value="0" step="50" style="width: 100%; accent-color: var(--color-accent);">
-                                <div style="display: flex; justify-content: space-between; font-size: 12px; font-weight: 700;">
-                                    <span>Canjear: <span id="sorti-val-text">0</span> monedas</span>
-                                    <span>Ahorro: S/. <span id="sorti-discount-text">0.00</span></span>
-                                </div>
+                    <!-- Monedas Sorti: Opción Mis Monedas (Si está registrado) -->
+                    ${AppState.user && AppState.user.role === 'client' ? `
+                        <div class="glass-panel" style="padding: 16px; margin-bottom: 20px; border-radius: var(--radius-md); border: 1px solid rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.04);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <h4 style="font-size: 14px; font-weight: 700; color: var(--color-accent); margin: 0; display: flex; align-items: center; gap: 6px;">
+                                    <i class="fas fa-coins"></i> Mis Monedas Sorti
+                                </h4>
+                                <span style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(245, 158, 11, 0.15); color: #d97706; font-weight: 700;">
+                                    1 moneda = S/. ${sortiCoinValue.toFixed(2)}
+                                </span>
                             </div>
+                            
+                            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+                                Saldo disponible: <strong style="color: var(--text-primary); font-size: 13px;">${userSortiBalance.toFixed(2)}</strong> monedas 
+                                <span style="color: #10b981; font-weight: 600;">(equivale a S/. ${(userSortiBalance * sortiCoinValue).toFixed(2)} de descuento)</span>
+                            </p>
+
+                            ${userSortiBalance > 0 ? `
+                                <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin: 0; user-select: none;">
+                                        <input type="checkbox" id="chk-use-sorti" style="width: 18px; height: 18px; accent-color: var(--color-accent); cursor: pointer;">
+                                        <span style="font-weight: 700; font-size: 13px; color: var(--text-primary);">
+                                            Usar mis monedas para descontar al pago total
+                                        </span>
+                                    </label>
+
+                                    <!-- Panel expandible cuando activa 'Usar mis monedas' -->
+                                    <div id="sorti-use-details" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-color);">
+                                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+                                            <span style="font-size: 12px; color: var(--text-muted);">Monedas a canjear:</span>
+                                            <div style="display: flex; align-items: center; gap: 6px;">
+                                                <input type="number" id="sorti-input-coins" min="0" max="${userSortiBalance}" step="any" value="0" class="form-control" style="width: 110px; padding: 6px 10px; font-weight: 700; text-align: right;">
+                                                <button type="button" id="btn-use-max-sorti" class="btn-outline" style="padding: 5px 10px; font-size: 11px; white-space: nowrap;">Todo</button>
+                                            </div>
+                                        </div>
+                                        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: #10b981; margin-top: 6px;">
+                                            <span>Descuento aplicado:</span>
+                                            <span>- S/. <span id="sorti-discount-text">0.00</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <p style="font-size: 11px; color: var(--text-muted); font-style: italic; margin: 0;">
+                                    <i class="fas fa-info-circle"></i> Aún no tienes monedas acumuladas. ¡Con esta compra acumularás tus primeras monedas!
+                                </p>
+                            `}
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div class="glass-panel" style="padding: 12px 14px; margin-bottom: 20px; border-radius: var(--radius-md); border-left: 3px solid var(--color-accent); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <div>
+                                <i class="fas fa-coins" style="color: var(--color-accent); margin-right: 6px;"></i>
+                                <strong>¿Tienes Monedas Sorti?</strong>
+                                <span style="color: var(--text-muted); display: block; font-size: 11px;">Inicia sesión para usarlas y acumular monedas en este pedido.</span>
+                            </div>
+                            <a href="#/auth" class="btn-outline" style="padding: 6px 12px; font-size: 11px; white-space: nowrap;">Iniciar Sesión</a>
+                        </div>
+                    `}
 
                     <!-- Desglose de totales -->
                     <div style="margin-bottom: 20px;">
@@ -997,12 +1047,21 @@ async function renderCheckout() {
                             <span>- S/. 0.00</span>
                         </div>
                         <div class="checkout-summary-item" id="row-sorti-discount" style="color: var(--color-accent); display: none;">
-                            <span>Ahorro Monedas Sorti:</span>
+                            <span>Ahorro Mis Monedas:</span>
                             <span>- S/. 0.00</span>
                         </div>
                         <div class="checkout-summary-item grand-total" style="font-size: 24px; font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 12px;">
                             <span>Total a pagar:</span>
                             <span id="checkout-grand-total-text" style="color: var(--text-primary);">S/. ${(cartSubtotal + currentDeliveryCost).toFixed(2)}</span>
+                        </div>
+
+                        <!-- Recompensa estimada de monedas -->
+                        <div id="sorti-earn-badge" style="margin-top: 12px; padding: 10px 14px; background: rgba(245, 158, 11, 0.1); border: 1px dashed rgba(245, 158, 11, 0.4); border-radius: 8px; font-size: 12px; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-gift" style="color: var(--color-accent); font-size: 18px;"></i>
+                            <div>
+                                <strong style="color: var(--color-accent);">¡Ganarás +<span id="sorti-estimated-earn">0.00</span> Monedas Sorti!</strong>
+                                <span style="display: block; font-size: 11px; color: var(--text-muted);">Por cada S/. 1.00 ganas ${sortiCoinsPerSol.toFixed(2)} monedas al confirmar tu pago.</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1151,6 +1210,7 @@ async function renderCheckout() {
                     currentDeliveryCost = 0;
                 }
 
+                if (typeof recheckSortiLimit === 'function') recheckSortiLimit();
                 updateTotalsDisplay();
                 showToast('Cupón aplicado con éxito', 'success');
             } else {
@@ -1162,22 +1222,66 @@ async function renderCheckout() {
         }
     });
 
-    // Lógica del Slider de monedas Sorti
-    const sortiSlider = document.getElementById('sorti-slider');
-    const sortiValText = document.getElementById('sorti-val-text');
+    // Lógica para Selección de 'Mis Monedas'
+    const chkUseSorti = document.getElementById('chk-use-sorti');
+    const sortiUseDetails = document.getElementById('sorti-use-details');
+    const sortiInputCoins = document.getElementById('sorti-input-coins');
+    const btnUseMaxSorti = document.getElementById('btn-use-max-sorti');
     const sortiDiscountText = document.getElementById('sorti-discount-text');
 
-    if (sortiSlider) {
-        sortiSlider.addEventListener('input', (e) => {
-            const coins = Number(e.target.value);
-            sortiCoinsApplied = coins;
-            sortiValText.textContent = coins;
-            
-            // 100 Sorti = S/. 1.00
-            discountSorti = coins / 100;
-            sortiDiscountText.textContent = discountSorti.toFixed(2);
+    function calculateMaxSortiCoinsAllowed() {
+        const remainingToPay = Math.max(0, cartSubtotal + currentDeliveryCost - discountCoupon);
+        if (sortiCoinValue <= 0) return 0;
+        const coinsNeeded = remainingToPay / sortiCoinValue;
+        return Math.min(userSortiBalance, coinsNeeded);
+    }
 
-            updateTotalsDisplay();
+    function applySortiCoins(coins) {
+        const maxAllowed = calculateMaxSortiCoinsAllowed();
+        let targetCoins = Number(coins);
+        if (isNaN(targetCoins) || targetCoins < 0) targetCoins = 0;
+        if (targetCoins > userSortiBalance) targetCoins = userSortiBalance;
+        if (targetCoins > maxAllowed) targetCoins = maxAllowed;
+
+        sortiCoinsApplied = Number(targetCoins.toFixed(2));
+        discountSorti = Number((sortiCoinsApplied * sortiCoinValue).toFixed(2));
+
+        if (sortiInputCoins) sortiInputCoins.value = sortiCoinsApplied > 0 ? sortiCoinsApplied : 0;
+        if (sortiDiscountText) sortiDiscountText.textContent = discountSorti.toFixed(2);
+
+        updateTotalsDisplay();
+    }
+
+    function recheckSortiLimit() {
+        if (chkUseSorti && chkUseSorti.checked) {
+            applySortiCoins(sortiCoinsApplied);
+        }
+    }
+
+    if (chkUseSorti) {
+        chkUseSorti.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                if (sortiUseDetails) sortiUseDetails.style.display = 'block';
+                // Al marcar 'Usar mis monedas', canjear el máximo posible de forma inmediata
+                const maxCoins = calculateMaxSortiCoinsAllowed();
+                applySortiCoins(maxCoins);
+            } else {
+                if (sortiUseDetails) sortiUseDetails.style.display = 'none';
+                applySortiCoins(0);
+            }
+        });
+    }
+
+    if (sortiInputCoins) {
+        sortiInputCoins.addEventListener('input', (e) => {
+            applySortiCoins(e.target.value);
+        });
+    }
+
+    if (btnUseMaxSorti) {
+        btnUseMaxSorti.addEventListener('click', () => {
+            const maxCoins = calculateMaxSortiCoinsAllowed();
+            applySortiCoins(maxCoins);
         });
     }
 
@@ -1188,40 +1292,60 @@ async function renderCheckout() {
         const rowSorti = document.getElementById('row-sorti-discount');
         const grandTotalText = document.getElementById('checkout-grand-total-text');
         const totalSavingsBadge = document.getElementById('total-savings-badge');
+        const sortiEstimatedEarn = document.getElementById('sorti-estimated-earn');
 
         // Mostrar / Ocultar costo de envío
-        rowDelivery.querySelector('span:last-child').textContent = `S/. ${currentDeliveryCost.toFixed(2)}`;
+        if (rowDelivery) {
+            rowDelivery.querySelector('span:last-child').textContent = `S/. ${currentDeliveryCost.toFixed(2)}`;
+        }
 
         // Mostrar / Ocultar descuento de cupón
-        if (discountCoupon > 0) {
-            rowCoupon.style.display = 'flex';
-            rowCoupon.querySelector('span:last-child').textContent = `- S/. ${discountCoupon.toFixed(2)}`;
-        } else {
-            rowCoupon.style.display = 'none';
+        if (rowCoupon) {
+            if (discountCoupon > 0) {
+                rowCoupon.style.display = 'flex';
+                rowCoupon.querySelector('span:last-child').textContent = `- S/. ${discountCoupon.toFixed(2)}`;
+            } else {
+                rowCoupon.style.display = 'none';
+            }
         }
 
         // Mostrar / Ocultar ahorro Sorti
-        if (discountSorti > 0) {
-            rowSorti.style.display = 'flex';
-            rowSorti.querySelector('span:last-child').textContent = `- S/. ${discountSorti.toFixed(2)}`;
-        } else {
-            rowSorti.style.display = 'none';
+        if (rowSorti) {
+            if (discountSorti > 0) {
+                rowSorti.style.display = 'flex';
+                rowSorti.querySelector('span:last-child').textContent = `- S/. ${discountSorti.toFixed(2)}`;
+            } else {
+                rowSorti.style.display = 'none';
+            }
         }
 
         // Calcular total final
         let finalGrandTotal = cartSubtotal + currentDeliveryCost - discountCoupon - discountSorti;
         if (finalGrandTotal < 0) finalGrandTotal = 0;
-        grandTotalText.textContent = `S/. ${finalGrandTotal.toFixed(2)}`;
+        if (grandTotalText) {
+            grandTotalText.textContent = `S/. ${finalGrandTotal.toFixed(2)}`;
+        }
+
+        // Actualizar estimación de monedas a ganar con esta compra
+        if (sortiEstimatedEarn) {
+            const estimatedCoins = Number((finalGrandTotal * sortiCoinsPerSol).toFixed(2));
+            sortiEstimatedEarn.textContent = estimatedCoins.toFixed(2);
+        }
 
         // Mostrar ahorro total
         const totalSavings = discountCoupon + discountSorti;
-        if (totalSavings > 0) {
-            totalSavingsBadge.style.display = 'block';
-            totalSavingsBadge.textContent = `¡Ahorraste S/. ${totalSavings.toFixed(2)} en total!`;
-        } else {
-            totalSavingsBadge.style.display = 'none';
+        if (totalSavingsBadge) {
+            if (totalSavings > 0) {
+                totalSavingsBadge.style.display = 'block';
+                totalSavingsBadge.textContent = `¡Ahorraste S/. ${totalSavings.toFixed(2)} en total!`;
+            } else {
+                totalSavingsBadge.style.display = 'none';
+            }
         }
     }
+
+    // Inicializar totales de apertura
+    updateTotalsDisplay();
 
     // Registrar el Pedido Final al hacer click
     document.getElementById('place-order-btn').addEventListener('click', async () => {
@@ -1288,9 +1412,11 @@ async function renderCheckout() {
                 Cart.clear();
                 updateCartCountUI();
 
-                // Limpiar saldo local si está logueado
+                // Actualizar saldo local si está logueado
                 if (AppState.user) {
-                    AppState.user.sortiBalance -= sortiCoinsApplied;
+                    AppState.user.sortiBalance = Math.max(0, Number(((AppState.user.sortiBalance || 0) - sortiCoinsApplied).toFixed(2)));
+                    const walletNav = document.getElementById('user-wallet-balance');
+                    if (walletNav) walletNav.textContent = AppState.user.sortiBalance;
                 }
 
                 // Redirigir
@@ -1816,6 +1942,17 @@ window.simulateFileDownload = (filename, url) => {
 // 3. Pestaña de Billetera Virtual (Monedas Sorti)
 async function renderWalletTab(container) {
     const wallet = await CustomerService.getWallet();
+    let coinVal = 0.50;
+    let coinsPerSol = 0.20;
+    try {
+        const settings = await ShopService.getSettings();
+        if (settings.sorti_coin_value !== undefined) coinVal = Number(settings.sorti_coin_value);
+        else if (settings.sorti_rate) coinVal = Number((1 / Number(settings.sorti_rate)).toFixed(4));
+        if (settings.sorti_coins_per_sol !== undefined) coinsPerSol = Number(settings.sorti_coins_per_sol);
+    } catch (e) {}
+
+    const balanceNum = Number(wallet.balance) || 0;
+    const solesEquivalent = (balanceNum * coinVal).toFixed(2);
 
     container.innerHTML = `
         <h3 class="portal-section-title"><i class="fas fa-wallet" style="color: var(--color-primary);"></i> Mi Billetera Sorti</h3>
@@ -1826,12 +1963,13 @@ async function renderWalletTab(container) {
                 <h3>Saldo Disponible</h3>
                 <div class="balance-value">
                     <i class="fas fa-coins" style="color: gold; text-shadow: 0 0 8px rgba(255,215,0,0.6);"></i>
-                    <span>${wallet.balance}</span>
+                    <span>${balanceNum.toFixed(2)}</span>
                 </div>
             </div>
             <div>
-                <p style="font-size: 12px; color: #334155; font-weight: 600; text-align: right;">100 Sorti Coins = S/. 1.00</p>
-                <p style="font-size: 11px; color: #475569; margin-top: 4px; text-align: right;">¡Úsalas en el checkout para obtener descuentos instantáneos!</p>
+                <p style="font-size: 13px; color: #1e293b; font-weight: 700; text-align: right;">1 Moneda Sorti = S/. ${coinVal.toFixed(2)}</p>
+                <p style="font-size: 12px; color: #10b981; font-weight: 700; text-align: right;">Equivale a S/. ${solesEquivalent} de descuento</p>
+                <p style="font-size: 11px; color: #475569; margin-top: 4px; text-align: right;">¡Ganas ${coinsPerSol.toFixed(2)} monedas por cada S/. 1.00 de compra!</p>
             </div>
         </div>
 
@@ -1850,7 +1988,7 @@ async function renderWalletTab(container) {
                 </thead>
                 <tbody>
                     ${wallet.transactions.map(t => {
-                        const isPositive = t.amount > 0;
+                        const isPositive = Number(t.amount) > 0;
                         const date = new Date(t.created_at).toLocaleDateString('es-ES', {
                             year: 'numeric', month: 'short', day: 'numeric'
                         });
@@ -1860,7 +1998,7 @@ async function renderWalletTab(container) {
                                 <td>${t.description}</td>
                                 <td><span class="badge ${isPositive ? 'badge-new' : 'badge-soldout'}">${t.type.toUpperCase()}</span></td>
                                 <td class="${isPositive ? 'amount-positive' : 'amount-negative'}">
-                                    ${isPositive ? '+' : ''}${t.amount}
+                                    ${isPositive ? '+' : ''}${Number(t.amount).toFixed(2)}
                                 </td>
                             </tr>
                         `;
