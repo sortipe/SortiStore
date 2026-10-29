@@ -889,6 +889,7 @@ window.openOrderDetailsModal = (orderId) => {
                             <div style="display: flex; flex-direction: column; gap: 12px;">
                                 ${deliveries.map(d => {
                                     const isLinkOnly = d.account_type === 'activation_link' || (!d.email && d.activation_link);
+                                    const isPersonalAccount = d.account_type === 'personal_account';
                                     const logoHtml = d.platform_image 
                                         ? `<img src="${d.platform_image}" alt="${d.platform}" style="width: 38px; height: 38px; border-radius: 8px; object-fit: cover;">`
                                         : `<div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(99,102,241,0.15); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 18px;"><i class="fas fa-play"></i></div>`;
@@ -901,7 +902,7 @@ window.openOrderDetailsModal = (orderId) => {
                                                     <div>
                                                         <strong style="font-size: 15px;">${d.platform}</strong>
                                                         <div style="font-size: 11.5px; color: var(--text-secondary);">
-                                                            ${isLinkOnly ? '<span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">Link de Activación</span>' : '<span class="badge" style="background: rgba(99,102,241,0.15); color: var(--color-primary);">Credenciales de Perfil</span>'}
+                                                            ${isPersonalAccount ? '<span class="badge" style="background: rgba(99,102,241,0.15); color: var(--color-primary);"><i class="fas fa-user-check"></i> Cuenta Propia</span>' : (isLinkOnly ? '<span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">Link de Activación</span>' : '<span class="badge" style="background: rgba(99,102,241,0.15); color: var(--color-primary);">Credenciales de Perfil</span>')}
                                                             <span style="margin-left: 6px;">Ocupación cuenta: <strong>${d.current_users_count || 1}/${d.max_devices || 1}</strong> cupos</span>
                                                         </div>
                                                     </div>
@@ -911,7 +912,25 @@ window.openOrderDetailsModal = (orderId) => {
                                                 </button>
                                             </div>
 
-                                            ${isLinkOnly ? `
+                                            ${isPersonalAccount ? `
+                                                <div style="background: var(--bg-card); padding: 12px 14px; border-radius: 6px; margin-bottom: 8px;">
+                                                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                                        <div>
+                                                            <span style="font-size: 11.5px; color: var(--text-muted); display: block;">Correo de vinculación del cliente:</span>
+                                                            <strong style="font-size: 13.5px; color: var(--text-primary);">${d.target_email || '<span style="color: #f59e0b;">⏳ Esperando que el cliente ingrese su correo en su panel</span>'}</strong>
+                                                        </div>
+                                                        <div>
+                                                            ${d.target_email ? (d.link_status === 'active' || d.link_status === 'linked' ? `
+                                                                <span class="badge badge-new" style="font-size: 11px;"><i class="fas fa-check-circle"></i> Vinculada & Activa</span>
+                                                            ` : `
+                                                                <button type="button" class="btn-primary" style="font-size: 11.5px; padding: 5px 10px;" onclick="handleMarkAssignmentLinked(${d.assignment_id}); closeAdminModalModal(); openOrderDetailsModal(${order.id});">
+                                                                    <i class="fas fa-check"></i> Marcar como Vinculada
+                                                                </button>
+                                                            `) : ''}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ` : (isLinkOnly ? `
                                                 <div style="background: var(--bg-card); padding: 10px 14px; border-radius: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                                                     <div style="font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                                         <strong>Link de Invitación / Activación:</strong>
@@ -2963,15 +2982,31 @@ function renderStreamingAccountsRows(accounts) {
 
         const assignmentsList = acc.assignments && acc.assignments.length > 0
             ? acc.assignments.map(as => `
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; margin-bottom: 4px; background: var(--bg-hover); padding: 4px 8px; border-radius: 6px;">
-                    <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        <i class="fas fa-user" style="font-size: 10px; color: var(--color-primary);"></i>
-                        <strong>${as.user_name || 'Cliente'}</strong>
-                        ${as.order_id ? `<span style="color: var(--text-muted); font-size: 11px;">(Ped #${as.order_id})</span>` : ''}
+                <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; margin-bottom: 6px; background: var(--bg-hover); padding: 6px 8px; border-radius: 6px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <i class="fas fa-user" style="font-size: 10px; color: var(--color-primary);"></i>
+                            <strong>${as.user_name || 'Cliente'}</strong>
+                            ${as.order_id ? `<span style="color: var(--text-muted); font-size: 11px;">(Ped #${as.order_id})</span>` : ''}
+                        </div>
+                        <button type="button" class="btn-icon" style="color: var(--danger); font-size: 11px; padding: 2px 4px;" title="Liberar cupo de este usuario" onclick="handleUnassignStreamingUser(${as.assignment_id})">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
-                    <button type="button" class="btn-icon" style="color: var(--danger); font-size: 11px; padding: 2px 4px;" title="Liberar cupo de este usuario" onclick="handleUnassignStreamingUser(${as.assignment_id})">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    ${as.target_email ? `
+                        <div style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; gap: 4px; background: rgba(0,0,0,0.15); padding: 2px 6px; border-radius: 4px;">
+                            <span><i class="fas fa-at"></i> ${as.target_email}</span>
+                            ${as.link_status === 'active' || as.link_status === 'linked' ? `
+                                <span style="color: #10b981; font-weight: 700; font-size: 10.5px;"><i class="fas fa-check-circle"></i> Vinculada</span>
+                            ` : `
+                                <button type="button" class="btn-primary" style="padding: 1px 6px; font-size: 10px; line-height: 1.4;" onclick="handleMarkAssignmentLinked(${as.assignment_id})">
+                                    <i class="fas fa-check"></i> Marcar Vinculada
+                                </button>
+                            `}
+                        </div>
+                    ` : (acc.account_type === 'personal_account' ? `
+                        <span style="font-size: 10.5px; color: #f59e0b;"><i class="fas fa-clock"></i> Esperando correo de cliente</span>
+                    ` : '')}
                 </div>
               `).join('')
             : `<span style="font-size: 12px; color: var(--text-muted);">Sin clientes asignados</span>`;
@@ -3114,12 +3149,28 @@ window.openStreamingPlatformModal = (platformId = null) => {
                 </div>
 
                 <div class="form-group" style="margin-bottom: 16px;">
-                    <label>Tipo de Cuenta Habitual</label>
+                    <label>Tipo de Entrega al Cliente *</label>
                     <select id="plat-account-type" class="form-control">
-                        <option value="credentials" ${!plat || plat.account_type === 'credentials' ? 'selected' : ''}>👤 Credenciales de Perfil (Email / Contraseña / PIN)</option>
-                        <option value="activation_link" ${plat && plat.account_type === 'activation_link' ? 'selected' : ''}>🔗 Solo Link de Activación / Invitación (Spotify / Gemini)</option>
-                        <option value="both" ${plat && plat.account_type === 'both' ? 'selected' : ''}>✨ Ambos (Credenciales + Enlace)</option>
+                        <option value="credentials" ${!plat || plat.account_type === 'credentials' ? 'selected' : ''}>👤 Perfil y Clave (Email / Contraseña / PIN)</option>
+                        <option value="activation_link" ${plat && plat.account_type === 'activation_link' ? 'selected' : ''}>🔗 Link de Activación (Lista de enlaces individuales)</option>
+                        <option value="personal_account" ${plat && plat.account_type === 'personal_account' ? 'selected' : ''}>📧 Agregar a Cuenta Propia (El cliente enviará su correo)</option>
                     </select>
+                </div>
+
+                <!-- Límite de usuarios permitidos -->
+                <div class="form-group" style="margin-bottom: 16px; background: rgba(99,102,241,0.06); padding: 12px; border-radius: 8px; border: 1px dashed var(--color-primary);">
+                    <label style="color: var(--color-primary); font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-users-cog"></i> Límite de Usuarios / Cupos Permitidos *
+                    </label>
+                    <input type="number" id="plat-default-max-devices" class="form-control" required value="${plat && plat.default_max_devices ? plat.default_max_devices : 1}" min="1" max="100">
+                    <small style="color: var(--text-muted); font-size: 11.5px; display: block; margin-top: 4px;">
+                        Cantidad máxima de clientes o dispositivos permitidos para las cuentas de esta plataforma (ej: 1 para individual, 4 para estándar, 6 para familiar).
+                    </small>
+                    ${plat ? `
+                        <label style="font-size: 12px; display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--color-primary); cursor: pointer; font-weight: 600;">
+                            <input type="checkbox" id="plat-sync-accounts"> Actualizar también el límite de todas las cuentas ya creadas en esta plataforma
+                        </label>
+                    ` : ''}
                 </div>
 
                 <div class="form-group" style="margin-bottom: 20px;">
@@ -3151,6 +3202,8 @@ window.handleSaveStreamingPlatform = async (e, platformId) => {
         name: document.getElementById('plat-name').value.trim(),
         image_url: document.getElementById('plat-image-url').value.trim() || null,
         account_type: document.getElementById('plat-account-type').value,
+        default_max_devices: Number(document.getElementById('plat-default-max-devices')?.value) || 1,
+        sync_existing_accounts: document.getElementById('plat-sync-accounts')?.checked || false,
         default_instructions: document.getElementById('plat-default-instructions').value.trim() || null
     };
 
@@ -3250,26 +3303,47 @@ window.openStreamingAccountModal = async (accountId = null) => {
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 4px;">
                             <label style="border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12.5px;">
                                 <input type="radio" name="stream_acc_type" value="credentials" ${currentType === 'credentials' ? 'checked' : ''} onchange="toggleAccountTypeFields(this.value)">
-                                <div><strong>Perfil / Clave</strong><br><small style="color:var(--text-muted);">Netflix, Disney, Max</small></div>
+                                <div><strong>👤 Perfil / Clave</strong><br><small style="color:var(--text-muted);">Netflix, Disney, Max</small></div>
                             </label>
                             <label style="border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12.5px;">
                                 <input type="radio" name="stream_acc_type" value="activation_link" ${currentType === 'activation_link' ? 'checked' : ''} onchange="toggleAccountTypeFields(this.value)">
-                                <div><strong>Link de Activación</strong><br><small style="color:var(--text-muted);">Spotify, Gemini, Canva</small></div>
+                                <div><strong>🔗 Link de Activación</strong><br><small style="color:var(--text-muted);">Spotify, Gemini, Canva</small></div>
                             </label>
                             <label style="border: 1px solid var(--border-color); border-radius: 8px; padding: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 12.5px;">
-                                <input type="radio" name="stream_acc_type" value="both" ${currentType === 'both' ? 'checked' : ''} onchange="toggleAccountTypeFields(this.value)">
-                                <div><strong>Ambos</strong><br><small style="color:var(--text-muted);">Credenciales + Link</small></div>
+                                <input type="radio" name="stream_acc_type" value="personal_account" ${currentType === 'personal_account' ? 'checked' : ''} onchange="toggleAccountTypeFields(this.value)">
+                                <div><strong>📧 Cuenta Propia</strong><br><small style="color:var(--text-muted);">El cliente envía su correo</small></div>
                             </label>
                         </div>
                     </div>
 
                     <!-- Link de Activación (Resaltado si aplica) -->
-                    <div class="form-group" id="field-activation-link" style="grid-column: span 2; ${currentType === 'credentials' ? 'display: none;' : ''}">
-                        <label style="color: #10b981; font-weight: 700;">
-                            <i class="fas fa-link"></i> Link de Activación / Invitación al Plan
-                        </label>
-                        <input type="url" id="stream-activation-link" class="form-control" value="${acc && acc.activation_link ? acc.activation_link : ''}" placeholder="https://spotify.com/family/join/... o link de Gemini">
-                        <small style="color: var(--text-muted); font-size: 11.5px;">Este enlace se le entregará al cliente con un botón directo para activar su cuenta.</small>
+                    <div class="form-group" id="field-activation-link" style="grid-column: span 2; ${currentType === 'activation_link' ? 'display: block;' : 'display: none;'}">
+                        ${acc ? `
+                            <label style="color: #10b981; font-weight: 700;">
+                                <i class="fas fa-link"></i> Enlace de Activación
+                            </label>
+                            <input type="url" id="stream-activation-link" class="form-control" value="${acc && acc.activation_link ? acc.activation_link : ''}" placeholder="https://spotify.com/family/join/...">
+                        ` : `
+                            <label style="color: #10b981; font-weight: 700; display: flex; align-items: center; justify-content: space-between;">
+                                <span><i class="fas fa-list-ol"></i> Lista de Enlaces de Activación (1 por línea) *</span>
+                                <span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">Entrega automática individual</span>
+                            </label>
+                            <textarea id="stream-activation-links-list" class="form-control" rows="4" placeholder="https://spotify.com/family/join/invite/abc1&#10;https://spotify.com/family/join/invite/abc2&#10;https://spotify.com/family/join/invite/abc3"></textarea>
+                            <small style="color: var(--text-muted); font-size: 11.5px; display: block; margin-top: 4px;">
+                                💡 Puedes pegar 1 o una lista de varios links. Cada link se registrará como 1 unidad de stock y al confirmar cada compra se entregará automáticamente 1 link único al cliente.
+                            </small>
+                            <input type="hidden" id="stream-activation-link" value="">
+                        `}
+                    </div>
+
+                    <!-- Aviso de Cuenta Propia -->
+                    <div class="form-group" id="notice-personal-account" style="grid-column: span 2; display: ${currentType === 'personal_account' ? 'block' : 'none'}; background: rgba(99,102,241,0.08); border: 1px dashed var(--color-primary); border-radius: 8px; padding: 12px;">
+                        <div style="font-weight: 700; color: var(--color-primary); font-size: 13px; margin-bottom: 4px;">
+                            <i class="fas fa-user-check"></i> Modalidad: Agregar a Cuenta Propia
+                        </div>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin: 0; line-height: 1.4;">
+                            En esta modalidad <strong>no necesitas ingresar contraseñas</strong>. El cliente recibirá un formulario en su panel para ingresar el correo personal que desea vincular, y tú como Admin podrás ver su correo y confirmar la activación con un solo clic.
+                        </p>
                     </div>
 
                     <!-- Credenciales (Email y Contraseña) -->
@@ -3389,28 +3463,36 @@ window.handlePlatformSelectChange = (platformName) => {
 
 window.toggleAccountTypeFields = (type) => {
     const linkField = document.getElementById('field-activation-link');
+    const personalNotice = document.getElementById('notice-personal-account');
     const emailField = document.getElementById('field-email');
     const passField = document.getElementById('field-password');
+    const profileField = document.getElementById('field-profile-name');
+    const pinField = document.getElementById('field-profile-pin');
     const emailStar = document.getElementById('email-req-star');
     const passStar = document.getElementById('pass-req-star');
 
     if (type === 'activation_link') {
         if (linkField) linkField.style.display = 'block';
-        if (emailField) emailField.style.opacity = '0.7';
-        if (passField) passField.style.opacity = '0.7';
-        if (emailStar) emailStar.innerText = '(Opcional)';
-        if (passStar) passStar.innerText = '(Opcional)';
-    } else if (type === 'credentials') {
+        if (personalNotice) personalNotice.style.display = 'none';
+        if (emailField) emailField.style.display = 'none';
+        if (passField) passField.style.display = 'none';
+        if (profileField) profileField.style.display = 'none';
+        if (pinField) pinField.style.display = 'none';
+    } else if (type === 'personal_account') {
         if (linkField) linkField.style.display = 'none';
-        if (emailField) emailField.style.opacity = '1';
-        if (passField) passField.style.opacity = '1';
-        if (emailStar) emailStar.innerText = '*';
-        if (passStar) passStar.innerText = '*';
+        if (personalNotice) personalNotice.style.display = 'block';
+        if (emailField) emailField.style.display = 'none';
+        if (passField) passField.style.display = 'none';
+        if (profileField) profileField.style.display = 'block';
+        if (pinField) pinField.style.display = 'none';
     } else {
-        // both
-        if (linkField) linkField.style.display = 'block';
-        if (emailField) emailField.style.opacity = '1';
-        if (passField) passField.style.opacity = '1';
+        // credentials
+        if (linkField) linkField.style.display = 'none';
+        if (personalNotice) personalNotice.style.display = 'none';
+        if (emailField) { emailField.style.display = 'block'; emailField.style.opacity = '1'; }
+        if (passField) { passField.style.display = 'block'; passField.style.opacity = '1'; }
+        if (profileField) profileField.style.display = 'block';
+        if (pinField) pinField.style.display = 'block';
         if (emailStar) emailStar.innerText = '*';
         if (passStar) passStar.innerText = '*';
     }
@@ -3435,13 +3517,15 @@ window.handleSaveStreamingAccount = async (e, accountId) => {
     const email = document.getElementById('stream-email')?.value.trim() || null;
     const password = document.getElementById('stream-password')?.value.trim() || null;
 
-    if (accountType === 'activation_link' && !activationLink) {
-        showToast('Para cuentas tipo activación, ingresa el Link de Invitación / Activación', 'error');
+    const linksList = document.getElementById('stream-activation-links-list')?.value.trim() || null;
+
+    if (accountType === 'activation_link' && !activationLink && !linksList) {
+        showToast('Para cuentas tipo activación, ingresa al menos un enlace de activación', 'error');
         return;
     }
 
-    if (accountType === 'credentials' && !email && !activationLink) {
-        showToast('Ingresa el correo o usuario de la cuenta', 'error');
+    if (accountType === 'credentials' && !email && !password) {
+        showToast('Ingresa el correo o contraseña de la cuenta', 'error');
         return;
     }
 
@@ -3458,6 +3542,7 @@ window.handleSaveStreamingAccount = async (e, accountId) => {
         profile_name: document.getElementById('stream-profile-name')?.value.trim() || null,
         profile_pin: document.getElementById('stream-profile-pin')?.value.trim() || null,
         activation_link: activationLink,
+        activation_links_list: linksList,
         usage_instructions: document.getElementById('stream-usage-instructions')?.value.trim() || null,
         max_devices: Number(document.getElementById('stream-max-devices').value) || 1,
         expiration_date: document.getElementById('stream-expiration-date')?.value || null,
@@ -3564,3 +3649,13 @@ window.handleUnassignStreamingUser = async (assignmentId) => {
 };
 
 
+
+window.handleMarkAssignmentLinked = async (assignmentId) => {
+    try {
+        const res = await AdminService.markStreamingAssignmentLinked(assignmentId);
+        showToast(res.message, 'success');
+        switchTab('streaming');
+    } catch (err) {
+        showToast(err.message || 'Error al actualizar vinculación', 'error');
+    }
+};

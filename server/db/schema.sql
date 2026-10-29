@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS streaming_platforms (
     name TEXT UNIQUE NOT NULL,
     image_url TEXT,
     account_type TEXT DEFAULT 'credentials',
+    default_max_devices INTEGER DEFAULT 1,
     default_instructions TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -249,6 +250,9 @@ CREATE TABLE IF NOT EXISTS streaming_assignments (
     account_id INTEGER NOT NULL,
     order_id INTEGER,
     user_id INTEGER,
+    target_email TEXT,
+    link_status TEXT DEFAULT 'active',
+    linked_at DATETIME,
     assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     expires_at DATETIME,
     FOREIGN KEY(account_id) REFERENCES streaming_accounts(id) ON DELETE CASCADE,

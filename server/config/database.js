@@ -155,6 +155,12 @@ if (isPostgres) {
             await pgPool.query("ALTER TABLE streaming_accounts ALTER COLUMN password DROP NOT NULL;").catch(() => {});
             await pgPool.query("ALTER TABLE streaming_assignments ALTER COLUMN user_id DROP NOT NULL;").catch(() => {});
 
+            // Columnas para límites de plataforma y vinculación de cuentas propias (Postgres)
+            await pgPool.query("ALTER TABLE streaming_platforms ADD COLUMN IF NOT EXISTS default_max_devices INTEGER DEFAULT 1;").catch(() => {});
+            await pgPool.query("ALTER TABLE streaming_assignments ADD COLUMN IF NOT EXISTS target_email TEXT;").catch(() => {});
+            await pgPool.query("ALTER TABLE streaming_assignments ADD COLUMN IF NOT EXISTS link_status VARCHAR(50) DEFAULT 'active';").catch(() => {});
+            await pgPool.query("ALTER TABLE streaming_assignments ADD COLUMN IF NOT EXISTS linked_at TIMESTAMP;").catch(() => {});
+
             // Verificar columnas de streaming en products (Postgres)
             const prodPlatRes = await pgPool.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'products' AND column_name = 'streaming_platform'");
             if (prodPlatRes.rowCount === 0) {
@@ -368,6 +374,25 @@ if (isPostgres) {
         }
         if (!streamColNames.includes('account_type')) {
             sqliteDb.exec("ALTER TABLE streaming_accounts ADD COLUMN account_type TEXT DEFAULT 'credentials';");
+        }
+
+        // Comprobar nuevas columnas en SQLite para streaming_platforms y streaming_assignments
+        const platTableInfo = sqliteDb.prepare("PRAGMA table_info(streaming_platforms)").all();
+        const platColNames = platTableInfo.map(c => c.name);
+        if (!platColNames.includes('default_max_devices')) {
+            sqliteDb.exec("ALTER TABLE streaming_platforms ADD COLUMN default_max_devices INTEGER DEFAULT 1;");
+        }
+
+        const assTableInfo = sqliteDb.prepare("PRAGMA table_info(streaming_assignments)").all();
+        const assColNames = assTableInfo.map(c => c.name);
+        if (!assColNames.includes('target_email')) {
+            sqliteDb.exec("ALTER TABLE streaming_assignments ADD COLUMN target_email TEXT;");
+        }
+        if (!assColNames.includes('link_status')) {
+            sqliteDb.exec("ALTER TABLE streaming_assignments ADD COLUMN link_status TEXT DEFAULT 'active';");
+        }
+        if (!assColNames.includes('linked_at')) {
+            sqliteDb.exec("ALTER TABLE streaming_assignments ADD COLUMN linked_at DATETIME;");
         }
 
         // Sembrar plataformas en SQLite si no existen

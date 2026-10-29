@@ -1490,13 +1490,31 @@ async function renderPurchasesTab(container) {
                                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                             ${sd.platform_image ? `<img src="${sd.platform_image}" alt="${sd.platform}" style="width: 20px; height: 20px; object-fit: contain; border-radius: 4px;">` : '<i class="fas fa-tv" style="color: var(--color-primary);"></i>'}
                                             <strong style="color: var(--text-primary); font-weight: 700;">${sd.platform}</strong>
-                                            ${sd.account_type === 'activation_link' ? `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-size: 10px;">Link de Activación</span>` : ''}
+                                            ${sd.account_type === 'personal_account' ? `
+                                                <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: var(--color-primary); font-size: 10px;">Cuenta Propia</span>
+                                                ${sd.target_email ? `
+                                                    <span style="font-size: 11px; color: var(--text-secondary);"><i class="fas fa-at"></i> ${sd.target_email}</span>
+                                                    ${sd.link_status === 'active' || sd.link_status === 'linked' ? `
+                                                        <span style="color: #10b981; font-weight: 700; font-size: 10.5px;"><i class="fas fa-check-circle"></i> Activa</span>
+                                                    ` : `
+                                                        <span style="color: #f59e0b; font-size: 10.5px;"><i class="fas fa-clock"></i> Vinculando</span>
+                                                    `}
+                                                ` : `
+                                                    <span style="color: #f59e0b; font-size: 10.5px; font-weight: 600;"><i class="fas fa-exclamation-circle"></i> Falta enviar tu correo</span>
+                                                `}
+                                            ` : (sd.account_type === 'activation_link' ? `
+                                                <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; font-size: 10px;">Link de Activación</span>
+                                            ` : '')}
                                             ${sd.profile_name ? `<span style="color: var(--color-secondary);">• Perfil: <strong>${sd.profile_name}</strong></span>` : ''}
                                             ${sd.profile_pin ? `<span style="color: #f59e0b; font-weight: 700;">• PIN: ${sd.profile_pin}</span>` : ''}
                                             ${sd.email ? `<span style="color: var(--text-muted); font-size: 11px;">(${sd.email})</span>` : ''}
                                         </div>
                                         <div style="display: flex; gap: 6px;">
-                                            ${sd.account_type === 'activation_link' || (sd.activation_link && !sd.email) ? `
+                                            ${sd.account_type === 'personal_account' ? `
+                                                <button type="button" class="btn-primary" style="font-size: 11px; padding: 4px 10px;" onclick="document.querySelector('[data-tab=downloads]').click()">
+                                                    <i class="fas fa-envelope"></i> ${sd.target_email ? 'Ver Estado' : 'Enviar Correo'}
+                                                </button>
+                                            ` : (sd.account_type === 'activation_link' || (sd.activation_link && !sd.email) ? `
                                                 <a href="${sd.activation_link}" target="_blank" rel="noopener noreferrer" class="btn-primary" style="font-size: 11px; padding: 4px 10px; text-decoration: none;">
                                                     <i class="fas fa-bolt"></i> Activar
                                                 </a>
@@ -1510,7 +1528,7 @@ async function renderPurchasesTab(container) {
                                                 <button type="button" class="btn-secondary" style="font-size: 11px; padding: 4px 8px;" onclick="copyStreamingText('${sd.password}', 'Contraseña')">
                                                     <i class="fas fa-key"></i> Clave
                                                 </button>
-                                            `}
+                                            `)}
                                         </div>
                                     </div>
                                 `).join('')}
@@ -1590,7 +1608,8 @@ async function renderDownloadsTab(container) {
                             expText = `${expDate.toLocaleDateString()} (${daysLeft > 0 ? `${daysLeft} días restantes` : 'Expirado'})`;
                         }
 
-                        const isActivationLinkOnly = acc.account_type === 'activation_link' || (acc.activation_link && !acc.email);
+                        const isPersonalAccount = acc.account_type === 'personal_account';
+                        const isActivationLinkOnly = (acc.account_type === 'activation_link' || (acc.activation_link && !acc.email)) && !isPersonalAccount;
 
                         return `
                             <div class="streaming-access-card animate-fade-in">
@@ -1602,6 +1621,43 @@ async function renderDownloadsTab(container) {
                                     </div>
                                     <span class="badge badge-new" style="font-size: 11px;"><i class="fas fa-check-circle"></i> Activo</span>
                                 </div>
+
+                                ${isPersonalAccount ? `
+                                    <!-- Modalidad Agregar a Cuenta Propia -->
+                                    <div id="personal-bind-box-${d.order_id}" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 10px; padding: 14px; margin: 12px 0;">
+                                        ${!acc.target_email ? `
+                                            <div style="font-weight: 700; color: var(--color-primary); font-size: 13px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+                                                <i class="fas fa-user-plus"></i> Vincular a tu Cuenta Personal
+                                            </div>
+                                            <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0; line-height: 1.4;">
+                                                Esta suscripción se activará directamente en tu propia cuenta de <strong>${acc.platform}</strong>. Ingresa a continuación el correo electrónico asociado a tu cuenta:
+                                            </p>
+                                            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                                <input type="email" id="target-email-input-${d.order_id}" placeholder="tu-correo-personal@gmail.com" class="form-control" style="flex: 1; min-width: 180px;">
+                                                <button type="button" class="btn-primary" style="padding: 10px 16px; font-weight: 700;" onclick="submitTargetEmailHandler(${d.order_id}, ${acc.assignment_id || 'null'})">
+                                                    <i class="fas fa-paper-plane"></i> Enviar Correo
+                                                </button>
+                                            </div>
+                                        ` : (acc.link_status === 'active' || acc.link_status === 'linked' ? `
+                                            <div style="font-weight: 700; color: #10b981; font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                                <i class="fas fa-check-circle"></i> ¡Cuenta Personal Vinculada y Activa!
+                                            </div>
+                                            <p style="font-size: 12.5px; margin: 0; color: var(--text-primary);">
+                                                Membresía vinculada con éxito en tu correo: <strong style="color: var(--color-primary);">${acc.target_email}</strong>.
+                                            </p>
+                                        ` : `
+                                            <div style="font-weight: 700; color: #f59e0b; font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                                                <i class="fas fa-clock"></i> Vinculación en Proceso
+                                            </div>
+                                            <p style="font-size: 12px; margin: 0; color: var(--text-secondary);">
+                                                Correo enviado para vinculación: <strong style="color: var(--text-primary);">${acc.target_email}</strong>. Nuestro equipo de soporte está activando tu suscripción.
+                                            </p>
+                                            <button type="button" class="btn-outline" style="margin-top: 8px; font-size: 11px; padding: 4px 8px;" onclick="enableEditTargetEmail(${d.order_id})">
+                                                <i class="fas fa-edit"></i> Cambiar Correo
+                                            </button>
+                                        `)}
+                                    </div>
+                                ` : ''}
 
                                 ${isActivationLinkOnly ? `
                                     <!-- Modalidad Solo Link de Activación (Spotify, Gemini, etc.) -->
@@ -2747,3 +2803,39 @@ window.copyToClipboard = (text, elementId) => {
     });
 };
 
+
+window.submitTargetEmailHandler = async (orderId, assignmentId = null) => {
+    const input = document.getElementById(`target-email-input-${orderId}`);
+    const email = input?.value?.trim();
+    if (!email || !email.includes('@')) {
+        showToast('Por favor ingresa un correo electrónico válido.', 'error');
+        return;
+    }
+    try {
+        const res = await CustomerService.submitStreamingTargetEmail(orderId, email, assignmentId);
+        showToast(res.message, 'success');
+        const content = document.getElementById('portal-tab-content');
+        if (content && typeof renderDownloadsTab === 'function') {
+            await renderDownloadsTab(content);
+        }
+    } catch (err) {
+        showToast(err.message || 'Error al enviar correo para vinculación.', 'error');
+    }
+};
+
+window.enableEditTargetEmail = (orderId) => {
+    const box = document.getElementById(`personal-bind-box-${orderId}`);
+    if (box) {
+        box.innerHTML = `
+            <div style="font-weight: 700; color: var(--color-primary); font-size: 13px; margin-bottom: 6px;">
+                <i class="fas fa-edit"></i> Cambiar correo personal para vinculación:
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <input type="email" id="target-email-input-${orderId}" placeholder="nuevo-correo@gmail.com" class="form-control" style="flex: 1; min-width: 180px;">
+                <button type="button" class="btn-primary" style="padding: 8px 14px; font-weight: 700;" onclick="submitTargetEmailHandler(${orderId})">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        `;
+    }
+};

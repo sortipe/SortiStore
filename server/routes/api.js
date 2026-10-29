@@ -117,6 +117,8 @@ router.delete('/admin/streaming/assign/:assignment_id', requireAuth, adminOrEmpl
 // Entregas de Streaming por Pedido
 router.get('/admin/orders/:id/streaming', requireAuth, adminOrEmployee, streaming.getOrderStreaming);
 router.post('/admin/orders/:id/auto-assign-streaming', requireAuth, adminOrEmployee, streaming.autoAssignOrderStreaming);
+router.put('/admin/streaming/assignments/:assignment_id/link', requireAuth, adminOrEmployee, streaming.markAssignmentLinked);
 router.get('/customer/orders/:id/streaming', requireAuth, streaming.getOrderStreaming);
+router.post('/customer/orders/:id/streaming-target-email', requireAuth, streaming.submitTargetEmail);
 
 module.exports = router;

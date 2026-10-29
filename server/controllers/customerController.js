@@ -17,7 +17,8 @@ exports.getDownloads = async (req, res) => {
 
         const enriched = await Promise.all(downloads.map(async (d) => {
             const streamingAss = await db.querySingle(`
-                SELECT s.platform, s.email, s.password, s.profile_name, s.profile_pin, s.activation_link,
+                SELECT a.id as assignment_id, a.target_email, a.link_status, a.linked_at,
+                       s.platform, s.email, s.password, s.profile_name, s.profile_pin, s.activation_link,
                        s.account_type, s.max_devices,
                        COALESCE(s.platform_image, sp.image_url) as platform_image,
                        COALESCE(s.usage_instructions, sp.default_instructions) as usage_instructions,

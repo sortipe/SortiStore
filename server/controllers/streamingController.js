@@ -60,7 +60,7 @@ exports.getPlatforms = async (req, res) => {
 // 2. Crear una nueva plataforma de streaming
 exports.createPlatform = async (req, res) => {
     try {
-        const { name, image_url, account_type, default_instructions } = req.body;
+        const { name, image_url, account_type, default_instructions, default_max_devices } = req.body;
 
         if (!name || !name.trim()) {
             return res.status(400).json({ error: 'El nombre de la plataforma es obligatorio.' });
@@ -71,19 +71,22 @@ exports.createPlatform = async (req, res) => {
             return res.status(400).json({ error: 'Ya existe una plataforma con ese nombre.' });
         }
 
+        const maxDev = Number(default_max_devices) > 0 ? Number(default_max_devices) : 1;
+
         const resDb = await db.execute(`
-            INSERT INTO streaming_platforms (name, image_url, account_type, default_instructions)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO streaming_platforms (name, image_url, account_type, default_instructions, default_max_devices)
+            VALUES (?, ?, ?, ?, ?)
         `, [
             name.trim(),
             image_url ? image_url.trim() : null,
             account_type || 'credentials',
-            default_instructions ? default_instructions.trim() : null
+            default_instructions ? default_instructions.trim() : null,
+            maxDev
         ]);
 
         return res.status(201).json({
             message: 'Plataforma creada con éxito.',
-            id: resDb.lastInsertRowid
+            id: resDb.lastInsertRowid || resDb.id
         });
     } catch (error) {
         console.error('Error al crear plataforma:', error);
@@ -95,26 +98,39 @@ exports.createPlatform = async (req, res) => {
 exports.updatePlatform = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, image_url, account_type, default_instructions } = req.body;
+        const { name, image_url, account_type, default_instructions, default_max_devices, sync_existing_accounts } = req.body;
 
-        const plat = await db.querySingle('SELECT id FROM streaming_platforms WHERE id = ?', [id]);
+        const plat = await db.querySingle('SELECT * FROM streaming_platforms WHERE id = ?', [id]);
         if (!plat) {
             return res.status(404).json({ error: 'Plataforma no encontrada.' });
         }
 
+        const maxDev = Number(default_max_devices) > 0 ? Number(default_max_devices) : (plat.default_max_devices || 1);
+        const resolvedName = name ? name.trim() : plat.name;
+
         await db.execute(`
             UPDATE streaming_platforms
-            SET name = ?, image_url = ?, account_type = ?, default_instructions = ?
+            SET name = ?, image_url = ?, account_type = ?, default_instructions = ?, default_max_devices = ?
             WHERE id = ?
         `, [
-            name ? name.trim() : '',
-            image_url ? image_url.trim() : null,
-            account_type || 'credentials',
-            default_instructions ? default_instructions.trim() : null,
+            resolvedName,
+            image_url !== undefined ? (image_url ? image_url.trim() : null) : plat.image_url,
+            account_type || plat.account_type || 'credentials',
+            default_instructions !== undefined ? (default_instructions ? default_instructions.trim() : null) : plat.default_instructions,
+            maxDev,
             id
         ]);
 
-        return res.json({ message: 'Plataforma actualizada con éxito.' });
+        // Si se solicitó sincronizar las cuentas existentes de esta plataforma con el nuevo límite
+        if (sync_existing_accounts) {
+            await db.execute(`
+                UPDATE streaming_accounts
+                SET max_devices = ?
+                WHERE platform_id = ? OR LOWER(platform) = LOWER(?)
+            `, [maxDev, id, resolvedName]);
+        }
+
+        return res.json({ message: 'Plataforma y límites actualizados con éxito.' });
     } catch (error) {
         console.error('Error al actualizar plataforma:', error);
         return res.status(500).json({ error: 'Error interno al actualizar plataforma.' });
@@ -178,6 +194,7 @@ exports.getAccounts = async (req, res) => {
         const enriched = await Promise.all(accounts.map(async (acc) => {
             const assignments = await db.query(`
                 SELECT a.id as assignment_id, a.user_id, a.order_id, a.assigned_at, a.expires_at,
+                       a.target_email, a.link_status, a.linked_at,
                        COALESCE(u.name, o.guest_name, 'Cliente ID: ' || a.user_id) as user_name,
                        COALESCE(u.email, o.guest_email) as user_email
                 FROM streaming_assignments a
@@ -234,7 +251,7 @@ exports.createAccount = async (req, res) => {
         const {
             platform, platform_id, platform_image, account_type,
             email, password, profile_name, profile_pin,
-            activation_link, usage_instructions, max_devices,
+            activation_link, activation_links_list, usage_instructions, max_devices,
             expiration_date, product_id, notes
         } = req.body;
 
@@ -244,23 +261,13 @@ exports.createAccount = async (req, res) => {
             return res.status(400).json({ error: 'La plataforma es obligatoria.' });
         }
 
-        // Si es tipo link de activación, el link es obligatorio
-        if (type === 'activation_link' && (!activation_link || !activation_link.trim())) {
-            return res.status(400).json({ error: 'Para cuentas de tipo activación, el Link de Activación es obligatorio.' });
-        }
-
-        // Si es credenciales, al menos el email o contraseña o link debe venir
-        if (type === 'credentials' && (!email || !email.trim()) && (!activation_link || !activation_link.trim())) {
-            return res.status(400).json({ error: 'Correo/Usuario o Link de Activación es requerido.' });
-        }
-
-        // Si se envió platform_id o nombre de plataforma, buscar datos por defecto de la plataforma si no vienen
+        // Buscar datos por defecto de la plataforma si no vienen
         let resolvedPlatformId = platform_id ? Number(platform_id) : null;
         let resolvedImage = platform_image ? platform_image.trim() : null;
         let resolvedInstructions = usage_instructions ? usage_instructions.trim() : null;
 
         const platObj = await db.querySingle(`
-            SELECT id, image_url, default_instructions FROM streaming_platforms 
+            SELECT id, image_url, default_instructions, default_max_devices FROM streaming_platforms 
             WHERE id = ? OR LOWER(name) = LOWER(?)
         `, [resolvedPlatformId || 0, platform.trim()]);
 
@@ -270,7 +277,93 @@ exports.createAccount = async (req, res) => {
             if (!resolvedInstructions && platObj.default_instructions) resolvedInstructions = platObj.default_instructions;
         }
 
-        const limitDevices = Number(max_devices) > 0 ? Number(max_devices) : 1;
+        const limitDevices = Number(max_devices) > 0 ? Number(max_devices) : (platObj && platObj.default_max_devices ? platObj.default_max_devices : 1);
+
+        // --- CASO 1: MODALIDAD LINK DE ACTIVACIÓN (Soporta múltiples enlaces por lote) ---
+        if (type === 'activation_link') {
+            const rawLinks = activation_links_list || activation_link;
+            if (!rawLinks || !String(rawLinks).trim()) {
+                return res.status(400).json({ error: 'Debes ingresar al menos un enlace de activación.' });
+            }
+
+            const linksList = (typeof rawLinks === 'string' ? rawLinks.split(/[\r\n]+/) : (Array.isArray(rawLinks) ? rawLinks : [rawLinks]))
+                .map(l => String(l).trim())
+                .filter(l => l.length > 0);
+
+            if (linksList.length === 0) {
+                return res.status(400).json({ error: 'No se encontraron enlaces de activación válidos.' });
+            }
+
+            let insertedCount = 0;
+            for (const singleLink of linksList) {
+                await db.execute(`
+                    INSERT INTO streaming_accounts (
+                        platform, platform_id, platform_image, account_type,
+                        email, password, profile_name, profile_pin,
+                        activation_link, usage_instructions, max_devices,
+                        expiration_date, product_id, notes
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    platform.trim(),
+                    resolvedPlatformId,
+                    resolvedImage,
+                    'activation_link',
+                    null,
+                    null,
+                    profile_name ? profile_name.trim() : null,
+                    null,
+                    singleLink,
+                    resolvedInstructions,
+                    1, // Cada enlace de activación es para 1 compra/usuario
+                    expiration_date || null,
+                    product_id ? Number(product_id) : null,
+                    notes ? notes.trim() : null
+                ]);
+                insertedCount++;
+            }
+
+            return res.status(201).json({
+                message: `Se registraron ${insertedCount} enlace(s) de activación exitosamente en el inventario.`,
+                count: insertedCount
+            });
+        }
+
+        // --- CASO 2: MODALIDAD AGREGAR A CUENTA PROPIA (El cliente enviará su correo) ---
+        if (type === 'personal_account') {
+            const resDb = await db.execute(`
+                INSERT INTO streaming_accounts (
+                    platform, platform_id, platform_image, account_type,
+                    email, password, profile_name, profile_pin,
+                    activation_link, usage_instructions, max_devices,
+                    expiration_date, product_id, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+                platform.trim(),
+                resolvedPlatformId,
+                resolvedImage,
+                'personal_account',
+                null,
+                null,
+                profile_name ? profile_name.trim() : 'Vinculación a Cuenta Propia',
+                null,
+                null,
+                resolvedInstructions,
+                limitDevices,
+                expiration_date || null,
+                product_id ? Number(product_id) : null,
+                notes ? notes.trim() : null
+            ]);
+
+            return res.status(201).json({
+                message: `Lote de vinculación a cuenta propia registrado con capacidad para ${limitDevices} usuario(s).`,
+                id: resDb.lastInsertRowid || resDb.id
+            });
+        }
+
+        // --- CASO 3: MODALIDAD CREDENCIALES (Email, Clave, Perfil, PIN) ---
+        if (type === 'credentials' && (!email || !email.trim()) && (!password || !password.trim())) {
+            return res.status(400).json({ error: 'El correo o usuario y la contraseña son requeridos para este tipo de cuenta.' });
+        }
 
         const resDb = await db.execute(`
             INSERT INTO streaming_accounts (
@@ -298,7 +391,7 @@ exports.createAccount = async (req, res) => {
 
         return res.status(201).json({
             message: 'Cuenta / Perfil de streaming registrado con éxito.',
-            id: resDb.lastInsertRowid
+            id: resDb.lastInsertRowid || resDb.id
         });
     } catch (error) {
         console.error('Error al crear cuenta de streaming:', error);
@@ -515,10 +608,11 @@ async function autoAssignStreamingToOrder(orderId) {
 
             if (availableAccount) {
                 const expiresAt = availableAccount.expiration_date || null;
+                const linkStatus = availableAccount.account_type === 'personal_account' ? 'pending' : 'active';
                 const resDb = await db.execute(`
-                    INSERT INTO streaming_assignments (account_id, order_id, user_id, expires_at)
-                    VALUES (?, ?, ?, ?)
-                `, [availableAccount.id, orderId, order.user_id || null, expiresAt]);
+                    INSERT INTO streaming_assignments (account_id, order_id, user_id, expires_at, link_status)
+                    VALUES (?, ?, ?, ?, ?)
+                `, [availableAccount.id, orderId, order.user_id || null, expiresAt, linkStatus]);
 
                 assigned.push({
                     account_id: availableAccount.id,
@@ -576,6 +670,7 @@ exports.getOrderStreaming = async (req, res) => {
 
         const deliveries = await db.query(`
             SELECT a.id as assignment_id, a.assigned_at, a.expires_at,
+                   a.target_email, a.link_status, a.linked_at,
                    s.id as account_id, s.platform, s.email, s.password, s.profile_name, s.profile_pin,
                    s.activation_link, s.account_type, s.max_devices, s.notes,
                    COALESCE(s.platform_image, sp.image_url) as platform_image,
@@ -592,5 +687,66 @@ exports.getOrderStreaming = async (req, res) => {
     } catch (error) {
         console.error('Error al obtener streaming de la orden:', error);
         return res.status(500).json({ error: 'Error al obtener entregas de streaming.' });
+    }
+};
+
+// 13. Marcar una asignación como vinculada por el Administrador
+exports.markAssignmentLinked = async (req, res) => {
+    try {
+        const { assignment_id } = req.params;
+        const ass = await db.querySingle('SELECT id FROM streaming_assignments WHERE id = ?', [assignment_id]);
+        if (!ass) {
+            return res.status(404).json({ error: 'Asignación no encontrada.' });
+        }
+        await db.execute(`
+            UPDATE streaming_assignments 
+            SET link_status = 'active', linked_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        `, [assignment_id]);
+        return res.json({ message: 'Cuenta marcada como vinculada y activa exitosamente.' });
+    } catch (error) {
+        console.error('Error al marcar vinculación:', error);
+        return res.status(500).json({ error: 'Error al actualizar estado de vinculación.' });
+    }
+};
+
+// 14. Enviar correo personal por el cliente para vinculación
+exports.submitTargetEmail = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const orderId = Number(id);
+        const { target_email, assignment_id } = req.body;
+
+        if (!target_email || !target_email.trim() || !target_email.includes('@')) {
+            return res.status(400).json({ error: 'Por favor ingresa un correo electrónico válido.' });
+        }
+
+        const order = await db.querySingle('SELECT user_id FROM orders WHERE id = ?', [orderId]);
+        if (!order) {
+            return res.status(404).json({ error: 'Pedido no encontrado.' });
+        }
+
+        if (req.user && req.user.role === 'client' && order.user_id !== req.user.id) {
+            return res.status(403).json({ error: 'No autorizado para modificar este pedido.' });
+        }
+
+        if (assignment_id) {
+            await db.execute(`
+                UPDATE streaming_assignments 
+                SET target_email = ?, link_status = 'pending' 
+                WHERE id = ? AND order_id = ?
+            `, [target_email.trim(), assignment_id, orderId]);
+        } else {
+            await db.execute(`
+                UPDATE streaming_assignments 
+                SET target_email = ?, link_status = 'pending' 
+                WHERE order_id = ?
+            `, [target_email.trim(), orderId]);
+        }
+
+        return res.json({ message: 'Correo enviado correctamente para la vinculación. Nuestro equipo activará tu cuenta en breve.' });
+    } catch (error) {
+        console.error('Error al enviar correo para vinculación:', error);
+        return res.status(500).json({ error: 'Error al enviar correo para vinculación.' });
     }
 };

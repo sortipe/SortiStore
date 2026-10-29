@@ -264,6 +264,7 @@ exports.getOrders = async (req, res) => {
 
             const streamingDeliveries = await db.query(`
                 SELECT a.id as assignment_id, a.assigned_at, a.expires_at,
+                       a.target_email, a.link_status, a.linked_at,
                        s.id as account_id, s.platform, s.email, s.password, s.profile_name, s.profile_pin,
                        s.activation_link, s.account_type, s.max_devices, s.notes,
                        COALESCE(s.platform_image, sp.image_url) as platform_image,

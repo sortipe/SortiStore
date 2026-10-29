@@ -133,6 +133,13 @@ const CustomerService = {
         return await apiCall(`/customer/orders/${orderId}/streaming`);
     },
 
+    async submitStreamingTargetEmail(orderId, targetEmail, assignmentId = null) {
+        return await apiCall(`/customer/orders/${orderId}/streaming-target-email`, {
+            method: 'POST',
+            body: JSON.stringify({ target_email: targetEmail, assignment_id: assignmentId })
+        });
+    },
+
     async getWallet() {
         return await apiCall('/customer/wallet');
     },
@@ -262,6 +269,12 @@ const AdminService = {
     async unassignStreamingUser(assignmentId) {
         return await apiCall(`/admin/streaming/assign/${assignmentId}`, {
             method: 'DELETE'
+        });
+    },
+
+    async markStreamingAssignmentLinked(assignmentId) {
+        return await apiCall(`/admin/streaming/assignments/${assignmentId}/link`, {
+            method: 'PUT'
         });
     },
 
