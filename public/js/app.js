@@ -10,6 +10,44 @@ const AppState = {
     activeTimer: null
 };
 
+let sliderAutoplayInterval = null;
+
+// Navegación confiable SPA (evita que el hash repetido no dispare router)
+window.navigateTo = (hash) => {
+    if (window.location.hash === hash) {
+        router();
+    } else {
+        window.location.hash = hash;
+        setTimeout(() => {
+            const currentHash = window.location.hash || '#/';
+            const expectedView = hash.replace('#/', '') || 'home';
+            if (AppState.currentView !== expectedView && currentHash === hash) {
+                router();
+            }
+        }, 40);
+    }
+};
+
+window.handleProfileMenuClick = (e) => {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    if (AppState.user) {
+        window.navigateTo('#/dashboard');
+    } else {
+        window.navigateTo('#/auth');
+    }
+};
+
+window.handleDirectLogout = () => {
+    AuthService.logout();
+    AppState.user = null;
+    updateHeaderAuthUI();
+    showToast('Sesión cerrada correctamente.', 'info');
+    window.navigateTo('#/auth');
+};
+
 // ==========================================
 // RUTEADOR DE LA SPA
 // ==========================================
@@ -77,18 +115,14 @@ async function router() {
         case '#/dashboard':
             AppState.currentView = 'dashboard';
             if (!AppState.user) {
-                window.location.hash = '#/auth';
+                window.navigateTo('#/auth');
             } else {
                 renderDashboard();
             }
             break;
         case '#/auth':
             AppState.currentView = 'auth';
-            if (AppState.user) {
-                window.location.hash = '#/';
-            } else {
-                renderAuth();
-            }
+            renderAuth();
             break;
         case '#/vip':
             AppState.currentView = 'vip';
@@ -99,19 +133,31 @@ async function router() {
 
 // Escuchar cambios de ruta y carga inicial
 window.addEventListener('hashchange', router);
-window.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const settings = await ShopService.getSettings();
-        if (settings && settings.site_branding && window.applyDynamicBranding) {
-            window.applyDynamicBranding(settings.site_branding);
-        }
-    } catch (e) {
-        console.error('Error al aplicar marca personalizada:', e);
-    }
 
-    router();
+function initApp() {
+    // Inicializar eventos globales inmediatamente (botones de cabecera, carrito, etc.)
     initGlobalEvents();
-});
+
+    // Ejecutar ruteador inmediatamente
+    router();
+
+    // Cargar configuraciones de marca en segundo plano sin bloquear la UI
+    ShopService.getSettings()
+        .then(settings => {
+            if (settings && settings.site_branding && window.applyDynamicBranding) {
+                window.applyDynamicBranding(settings.site_branding);
+            }
+        })
+        .catch(e => {
+            console.error('Error al aplicar marca personalizada:', e);
+        });
+}
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}
 
 // ==========================================
 // ACTUALIZACIÓN DE CABECERA
@@ -287,7 +333,6 @@ async function renderHome() {
 // CONTROLADOR DEL CAROUSEL DEL HOME BANNER
 // ==========================================
 let currentSlideIndex = 0;
-let sliderAutoplayInterval = null;
 
 window.moveSliderCall = (direction) => {
     const slides = document.querySelectorAll('#hero-carousel-container .slide');
@@ -1459,6 +1504,7 @@ async function renderCheckout() {
 // ==========================================
 async function renderDashboard() {
     const container = document.getElementById('app-view');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     
     // Layout del portal
     container.innerHTML = `
@@ -1489,9 +1535,9 @@ async function renderDashboard() {
 
     // Cargar información del usuario en barra lateral
     if (AppState.user) {
-        document.getElementById('sidebar-user-name').textContent = AppState.user.name;
-        document.getElementById('sidebar-user-email').textContent = AppState.user.email;
-        document.getElementById('avatar-letter').textContent = AppState.user.name.charAt(0).toUpperCase();
+        document.getElementById('sidebar-user-name').textContent = AppState.user.name || 'Usuario';
+        document.getElementById('sidebar-user-email').textContent = AppState.user.email || '';
+        document.getElementById('avatar-letter').textContent = (AppState.user.name || AppState.user.email || 'U').charAt(0).toUpperCase();
     }
 
     // Gestionar clicks en las pestañas laterales
@@ -2152,6 +2198,40 @@ function renderAccountTab(container) {
 // ==========================================
 function renderAuth() {
     const container = document.getElementById('app-view');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Si ya tiene una sesión activa, mostrar tarjeta informativa con opciones claras
+    if (AppState.user) {
+        container.innerHTML = `
+            <div class="checkout-layout" style="max-width: 480px; margin: 60px auto;">
+                <div class="checkout-section animate-fade-in" style="text-align: center; padding: 36px 24px;">
+                    <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(99,102,241,0.12); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px;">
+                        <i class="fas fa-user-check"></i>
+                    </div>
+                    <h3 style="margin-bottom: 6px;">Sesión Activa</h3>
+                    <p style="color: var(--text-muted); font-size: 13.5px; margin-bottom: 24px;">
+                        Actualmente estás conectado como <strong>${AppState.user.name || 'Usuario'}</strong><br>
+                        <small style="opacity: 0.8;">${AppState.user.email}</small>
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <a href="#/dashboard" class="btn-primary" style="padding: 12px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
+                            <i class="fas fa-th-large"></i> Ir a Mi Cuenta / Mis Compras
+                        </a>
+                        ${['admin', 'employee'].includes(AppState.user.role) ? `
+                            <a href="/admin" class="btn-outline" style="padding: 12px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
+                                <i class="fas fa-user-shield"></i> Abrir Panel de Administración
+                            </a>
+                        ` : ''}
+                        <button type="button" class="btn-outline" style="padding: 12px; width: 100%; color: var(--danger); border-color: var(--danger); cursor: pointer;" onclick="handleDirectLogout()">
+                            <i class="fas fa-sign-out-alt"></i> Cerrar Sesión para Iniciar con Otra Cuenta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
     container.innerHTML = `
         <div class="checkout-layout" style="max-width: 480px; margin: 80px auto;">
             <div class="checkout-section animate-fade-in">
@@ -2229,7 +2309,7 @@ function renderAuth() {
             AppState.user = data.user;
             updateHeaderAuthUI();
             showToast('Inicio de sesión exitoso', 'success');
-            window.location.hash = '#/';
+            window.navigateTo('#/');
         } catch (err) {
             showToast(err.message, 'error');
         }
@@ -2247,7 +2327,7 @@ function renderAuth() {
             AppState.user = data.user;
             updateHeaderAuthUI();
             showToast('Cuenta creada con éxito', 'success');
-            window.location.hash = '#/';
+            window.navigateTo('#/');
         } catch (err) {
             showToast(err.message, 'error');
         }
@@ -2387,13 +2467,10 @@ function initGlobalEvents() {
     });
 
     // Botón de Perfil / Dashboard
-    document.getElementById('profile-menu-btn').addEventListener('click', () => {
-        if (AppState.user) {
-            window.location.hash = '#/dashboard';
-        } else {
-            window.location.hash = '#/auth';
-        }
-    });
+    const profileBtn = document.getElementById('profile-menu-btn');
+    if (profileBtn) {
+        profileBtn.onclick = window.handleProfileMenuClick;
+    }
 
     // Switch de Tema
     document.getElementById('theme-toggle-btn').addEventListener('click', () => {
