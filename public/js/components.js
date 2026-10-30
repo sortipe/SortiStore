@@ -1,5 +1,5 @@
 /* ==========================================================================
-   COMPONENTES UI Y DE NEGOCIO EN EL FRONTEND (SORTISTORE)
+   COMPONENTES UI Y DE NEGOCIO EN EL FRONTEND (TREGURU)
    ========================================================================== */
 
 // 1. GESTIONADOR DE NOTIFICACIONES (TOASTS)
@@ -91,12 +91,12 @@ const Skeletons = {
 // 4. CONTROLADOR DE CARRITO DE COMPRAS (LOCAL STORAGE)
 const Cart = {
     getItems() {
-        const cart = localStorage.getItem('sortistore_cart');
+        const cart = localStorage.getItem('treguru_cart') || localStorage.getItem('sortistore_cart');
         return cart ? JSON.parse(cart) : [];
     },
 
     saveItems(items) {
-        localStorage.setItem('sortistore_cart', JSON.stringify(items));
+        localStorage.setItem('treguru_cart', JSON.stringify(items));
         // Disparar evento para que otras partes del app se enteren si es necesario
         window.dispatchEvent(new Event('cartUpdated'));
     },
@@ -222,7 +222,7 @@ const Cart = {
 
 // 5. CONTROLADOR DE TEMA (CLARO / OSCURO)
 function initTheme() {
-    const savedTheme = localStorage.getItem('sortistore_theme') || 'light';
+    const savedTheme = localStorage.getItem('treguru_theme') || localStorage.getItem('sortistore_theme') || 'light';
     const body = document.body;
     
     if (savedTheme === 'light') {
@@ -239,10 +239,10 @@ function toggleTheme() {
     body.classList.toggle('light-mode');
     
     if (body.classList.contains('light-mode')) {
-        localStorage.setItem('sortistore_theme', 'light');
+        localStorage.setItem('treguru_theme', 'light');
         showToast('Modo Claro activado', 'info');
     } else {
-        localStorage.setItem('sortistore_theme', 'dark');
+        localStorage.setItem('treguru_theme', 'dark');
         showToast('Modo Oscuro activado', 'info');
     }
 }
@@ -273,11 +273,11 @@ window.applyDynamicBranding = function(branding) {
         document.title = b.site_name;
         const logoBtn = document.getElementById('logo-btn');
         if (logoBtn) {
-            logoBtn.innerHTML = `<i class="fas fa-shopping-bag"></i> ${b.site_name.replace(/(store|tienda)/i, '<span>$1</span>')}`;
+            logoBtn.innerHTML = `<i class="fas fa-shopping-bag"></i> ${b.site_name.replace(/(store|tienda|guru)/i, '<span>$1</span>')}`;
         }
         const adminLogo = document.querySelector('.admin-logo');
         if (adminLogo) {
-            adminLogo.innerHTML = `<i class="fas fa-tools"></i> ${b.site_name}<span>admin</span>`;
+            adminLogo.innerHTML = `<i class="fas fa-tools"></i> ${b.site_name.replace(/(store|tienda|guru)/i, '<span>$1</span>')} <span>Admin</span>`;
         }
     }
 
@@ -285,10 +285,10 @@ window.applyDynamicBranding = function(branding) {
     const accentColor = b.accent_color;
 
     if (primaryColor || accentColor) {
-        let styleTag = document.getElementById('sortistore-custom-branding-style');
+        let styleTag = document.getElementById('treguru-custom-branding-style') || document.getElementById('sortistore-custom-branding-style');
         if (!styleTag) {
             styleTag = document.createElement('style');
-            styleTag.id = 'sortistore-custom-branding-style';
+            styleTag.id = 'treguru-custom-branding-style';
             document.head.appendChild(styleTag);
         }
 
@@ -309,14 +309,14 @@ window.applyDynamicBranding = function(branding) {
         styleTag.innerHTML = css;
 
         try {
-            localStorage.setItem('sortistore_cached_branding', JSON.stringify(b));
+            localStorage.setItem('treguru_cached_branding', JSON.stringify(b));
         } catch (e) {}
     }
 };
 
 // Cargar branding previo en caché para aplicar inmediatamente sin parpadeos visuales
 try {
-    const cachedBranding = localStorage.getItem('sortistore_cached_branding');
+    const cachedBranding = localStorage.getItem('treguru_cached_branding') || localStorage.getItem('sortistore_cached_branding');
     if (cachedBranding) {
         window.applyDynamicBranding(cachedBranding);
     }

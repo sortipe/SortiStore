@@ -1,5 +1,5 @@
 {
-  "name": "sortistore",
+  "name": "treguru",
   "version": "1.0.0",
   "description": "Plataforma de comercio electrónico premium, modular y escalable",
   "main": "server/index.js",

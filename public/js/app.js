@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LÓGICA PRINCIPAL Y RUTAS DE LA TIENDA CLIENTE (SORTISTORE SPA)
+   LÓGICA PRINCIPAL Y RUTAS DE LA TIENDA CLIENTE (TREGURU SPA)
    ========================================================================== */
 
 // Estado global de la aplicación
@@ -889,7 +889,7 @@ async function renderCheckout() {
 
     // Intentar traer los datos de configuración públicos
     let bankAccounts = [
-        { bank: 'BCP', account: '191-98765432-0-99', CCI: '002-19198765432099-54', owner: 'Sortistore SAC' }
+        { bank: 'BCP', account: '191-98765432-0-99', CCI: '002-19198765432099-54', owner: 'Treguru SAC' }
     ];
     let yapeQrImage = 'https://images.unsplash.com/photo-1595079676339-1534801ad6cf?w=400';
     let districts = [
@@ -953,7 +953,7 @@ async function renderCheckout() {
                         <div id="checkout-user-fields">
                             ${!AppState.user ? `
                                 <div class="glass-panel" style="padding: 16px; margin-bottom: 20px; border-left: 4px solid var(--color-primary);">
-                                    <p style="font-size: 13px;"><i class="fas fa-info-circle"></i> ¿Ya tienes cuenta? <a href="#/auth" style="color: var(--color-primary); font-weight: 700;">Inicia Sesión aquí</a> para acumular monedas Sorti en tu compra.</p>
+                                    <p style="font-size: 13px;"><i class="fas fa-info-circle"></i> ¿Ya tienes cuenta? <a href="#/auth" style="color: var(--color-primary); font-weight: 700;">Inicia Sesión aquí</a> para acumular monedas Treguru en tu compra.</p>
                                 </div>
                                 <div class="form-group">
                                     <label>Nombre Completo</label>
@@ -1014,7 +1014,7 @@ async function renderCheckout() {
                         <div id="checkout-user-fields">
                             ${!AppState.user ? `
                                 <div class="glass-panel" style="padding: 16px; margin-bottom: 20px; border-left: 4px solid var(--color-primary);">
-                                    <p style="font-size: 13px;"><i class="fas fa-info-circle"></i> ¿Ya tienes cuenta? <a href="#/auth" style="color: var(--color-primary); font-weight: 700;">Inicia Sesión aquí</a> para acumular monedas Sorti en tu compra.</p>
+                                    <p style="font-size: 13px;"><i class="fas fa-info-circle"></i> ¿Ya tienes cuenta? <a href="#/auth" style="color: var(--color-primary); font-weight: 700;">Inicia Sesión aquí</a> para acumular monedas Treguru en tu compra.</p>
                                 </div>
                                 <div class="form-group">
                                     <label>Nombre Completo</label>
@@ -1147,12 +1147,12 @@ async function renderCheckout() {
                         <div id="coupon-feedback" style="font-size: 11px; margin-top: 4px;"></div>
                     </div>
 
-                    <!-- Monedas Sorti: Opción Mis Monedas (Si está registrado) -->
+                    <!-- Monedas Treguru: Opción Mis Monedas (Si está registrado) -->
                     ${AppState.user && AppState.user.role === 'client' ? `
                         <div class="glass-panel" style="padding: 16px; margin-bottom: 20px; border-radius: var(--radius-md); border: 1px solid rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.04);">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                 <h4 style="font-size: 14px; font-weight: 700; color: var(--color-accent); margin: 0; display: flex; align-items: center; gap: 6px;">
-                                    <i class="fas fa-coins"></i> Mis Monedas Sorti
+                                    <i class="fas fa-coins"></i> Mis Monedas Treguru
                                 </h4>
                                 <span style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(245, 158, 11, 0.15); color: #d97706; font-weight: 700;">
                                     1 moneda = S/. ${sortiCoinValue.toFixed(2)}
@@ -1198,7 +1198,7 @@ async function renderCheckout() {
                         <div class="glass-panel" style="padding: 12px 14px; margin-bottom: 20px; border-radius: var(--radius-md); border-left: 3px solid var(--color-accent); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                             <div>
                                 <i class="fas fa-coins" style="color: var(--color-accent); margin-right: 6px;"></i>
-                                <strong>¿Tienes Monedas Sorti?</strong>
+                                <strong>¿Tienes Monedas Treguru?</strong>
                                 <span style="color: var(--text-muted); display: block; font-size: 11px;">Inicia sesión para usarlas y acumular monedas en este pedido.</span>
                             </div>
                             <a href="#/auth" class="btn-outline" style="padding: 6px 12px; font-size: 11px; white-space: nowrap;">Iniciar Sesión</a>
@@ -1232,7 +1232,7 @@ async function renderCheckout() {
                         <div id="sorti-earn-badge" style="margin-top: 12px; padding: 10px 14px; background: rgba(245, 158, 11, 0.1); border: 1px dashed rgba(245, 158, 11, 0.4); border-radius: 8px; font-size: 12px; display: flex; align-items: center; gap: 10px;">
                             <i class="fas fa-gift" style="color: var(--color-accent); font-size: 18px;"></i>
                             <div>
-                                <strong style="color: var(--color-accent);">¡Ganarás +<span id="sorti-estimated-earn">0.00</span> Monedas Sorti!</strong>
+                                <strong style="color: var(--color-accent);">¡Ganarás +<span id="sorti-estimated-earn">0.00</span> Monedas Treguru!</strong>
                                 <span style="display: block; font-size: 11px; color: var(--text-muted);">Por cada S/. 1.00 ganas ${sortiCoinsPerSol.toFixed(2)} monedas al confirmar tu pago.</span>
                             </div>
                         </div>
@@ -1669,7 +1669,7 @@ async function renderDashboard() {
                 <div class="portal-user-info">
                     <div class="portal-user-avatar" id="avatar-letter">U</div>
                     <h3 id="sidebar-user-name">Cargando...</h3>
-                    <p style="font-size: 12px; color: var(--text-muted);" id="sidebar-user-email">email@sortistore.com</p>
+                    <p style="font-size: 12px; color: var(--text-muted);" id="sidebar-user-email">email@treguru.com</p>
                 </div>
                 <div class="portal-nav-links">
                     <div class="portal-nav-link active" data-tab="purchases"><i class="fas fa-shopping-bag"></i> Mis Compras</div>
@@ -2101,7 +2101,7 @@ async function renderDownloadsTab(container) {
                                 ` : ''}
 
                                 <div class="streaming-security-note" style="margin-top: 10px;">
-                                    <i class="fas fa-shield-alt" style="color: var(--color-primary);"></i> <em>Garantía SortiStore: No modificar los datos de la cuenta ni crear perfiles extras para mantener tu garantía y soporte activo.</em>
+                                    <i class="fas fa-shield-alt" style="color: var(--color-primary);"></i> <em>Garantía Treguru: No modificar los datos de la cuenta ni crear perfiles extras para mantener tu garantía y soporte activo.</em>
                                 </div>
                             </div>
                         `;
@@ -2169,7 +2169,7 @@ async function renderWalletTab(container) {
     const solesEquivalent = (balanceNum * coinVal).toFixed(2);
 
     container.innerHTML = `
-        <h3 class="portal-section-title"><i class="fas fa-wallet" style="color: var(--color-primary);"></i> Mi Billetera Sorti</h3>
+        <h3 class="portal-section-title"><i class="fas fa-wallet" style="color: var(--color-primary);"></i> Mi Billetera Treguru</h3>
         
         <!-- Tarjeta de Saldo Principal -->
         <div class="wallet-balance-card">
@@ -2181,7 +2181,7 @@ async function renderWalletTab(container) {
                 </div>
             </div>
             <div>
-                <p style="font-size: 13px; color: #1e293b; font-weight: 700; text-align: right;">1 Moneda Sorti = S/. ${coinVal.toFixed(2)}</p>
+                <p style="font-size: 13px; color: #1e293b; font-weight: 700; text-align: right;">1 Moneda Treguru = S/. ${coinVal.toFixed(2)}</p>
                 <p style="font-size: 12px; color: #10b981; font-weight: 700; text-align: right;">Equivale a S/. ${solesEquivalent} de descuento</p>
                 <p style="font-size: 11px; color: #475569; margin-top: 4px; text-align: right;">¡Ganas ${coinsPerSol.toFixed(2)} monedas por cada S/. 1.00 de compra!</p>
             </div>
@@ -2407,7 +2407,7 @@ function renderAuth() {
                         <input type="password" id="log-pass" class="form-control" placeholder="••••••••" required>
                     </div>
                     <button type="submit" class="btn-primary" style="width: 100%; padding: 12px;">Ingresar</button>
-                    <p style="text-align: center; margin-top: 16px; font-size: 12px; color: var(--text-muted);">Prueba con: cliente@sortistore.com / cliente123</p>
+                    <p style="text-align: center; margin-top: 16px; font-size: 12px; color: var(--text-muted);">Prueba con: cliente@treguru.com / cliente123</p>
                 </form>
 
                 <!-- Formulario de Registro (Oculto) -->
@@ -2801,7 +2801,7 @@ async function renderVipPage() {
             <div class="vip-header-title">
                 <i class="fas fa-crown"></i>
                 <div>
-                    <h1 style="margin: 0; font-size: 28px;">Zona VIP SortiStore</h1>
+                    <h1 style="margin: 0; font-size: 28px;">Zona VIP Treguru</h1>
                     <p style="color: var(--text-secondary); font-size: 12px; margin: 4px 0 0 0;">
                         <span class="badge badge-featured" style="background: rgba(245, 158, 11, 0.15); color: var(--color-accent); border: 1px solid rgba(245, 158, 11, 0.3); padding: 2px 8px; border-radius: 12px;">Suscripción Activa</span> 
                         • Próxima renovación de monedas: <strong>${renovationDate}</strong>

@@ -2,7 +2,7 @@ const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sortistore_super_secret_key_2026_2027';
+const JWT_SECRET = process.env.JWT_SECRET || 'treguru_super_secret_key_2026_2027';
 
 // Registrar usuario
 exports.register = async (req, res) => {

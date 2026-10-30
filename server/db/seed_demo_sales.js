@@ -5,14 +5,14 @@ async function seedDemoSalesAndStreaming() {
     console.log('=== CREANDO PRODUCTOS DEMO DE STREAMING Y VENTAS FICTICIAS ===');
 
     // 1. Obtener o crear usuario cliente
-    let clientUser = await db.querySingle("SELECT id FROM users WHERE email = 'cliente@sortistore.com'");
+    let clientUser = await db.querySingle("SELECT id FROM users WHERE email = 'cliente@treguru.com' OR email = 'cliente@sortistore.com'");
     let clientUserId;
     if (!clientUser) {
         const clientPass = bcrypt.hashSync('cliente123', 10);
         const newClient = await db.querySingle(`
             INSERT INTO users (name, email, password_hash, role, is_vip, vip_coins, vip_last_renovation)
             VALUES (?, ?, ?, 'client', 1, 15, ?) RETURNING id
-        `, ['Cliente Demo Premium', 'cliente@sortistore.com', clientPass, new Date().toISOString()]);
+        `, ['Cliente Demo Premium', 'cliente@treguru.com', clientPass, new Date().toISOString()]);
         clientUserId = newClient.id;
     } else {
         clientUserId = clientUser.id;

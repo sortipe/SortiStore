@@ -1,12 +1,12 @@
 /* ==========================================================================
-   CONEXIÓN CON LA API DE BACKEND (SORTISTORE)
+   CONEXIÓN CON LA API DE BACKEND (TREGURU)
    ========================================================================== */
 
 const API_BASE_URL = '/api';
 
 // Función base para realizar peticiones HTTP autenticadas
 async function apiCall(endpoint, options = {}) {
-    const token = localStorage.getItem('sortistore_jwt');
+    const token = localStorage.getItem('treguru_jwt') || localStorage.getItem('sortistore_jwt');
     
     // Configurar cabeceras por defecto
     const headers = {
@@ -46,7 +46,8 @@ const AuthService = {
             body: JSON.stringify({ name, email, password })
         });
         if (res.token) {
-            localStorage.setItem('sortistore_jwt', res.token);
+            localStorage.setItem('treguru_jwt', res.token);
+            localStorage.removeItem('sortistore_jwt');
         }
         return res;
     },
@@ -57,17 +58,19 @@ const AuthService = {
             body: JSON.stringify({ email, password })
         });
         if (res.token) {
-            localStorage.setItem('sortistore_jwt', res.token);
+            localStorage.setItem('treguru_jwt', res.token);
+            localStorage.removeItem('sortistore_jwt');
         }
         return res;
     },
 
     logout() {
+        localStorage.removeItem('treguru_jwt');
         localStorage.removeItem('sortistore_jwt');
     },
 
     async getMe() {
-        if (!localStorage.getItem('sortistore_jwt')) return null;
+        if (!localStorage.getItem('treguru_jwt') && !localStorage.getItem('sortistore_jwt')) return null;
         return await apiCall('/auth/me');
     }
 };

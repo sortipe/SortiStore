@@ -13,7 +13,7 @@ function translateSchemaToPostgres(sql) {
 }
 
 async function runSeed() {
-    console.log('--- INICIANDO SIEMBRA DE BASE DE DATOS (SORTISTORE COMPLETO) ---');
+    console.log('--- INICIANDO SIEMBRA DE BASE DE DATOS (TREGURU COMPLETO) ---');
 
     // 1. Crear tablas si no existen
     const schemaPath = path.join(__dirname, 'schema.sql');
@@ -46,12 +46,12 @@ async function runSeed() {
     await db.querySingle(`
         INSERT INTO users (name, email, password_hash, role)
         VALUES (?, ?, ?, 'employee') RETURNING id
-    `, ['Empleado Juan', 'empleado@sortistore.com', employeePass]);
+    `, ['Empleado Juan', 'empleado@treguru.com', employeePass]);
 
     const userClient = await db.querySingle(`
         INSERT INTO users (name, email, password_hash, role, is_vip, vip_coins, vip_last_renovation)
         VALUES (?, ?, ?, 'client', 1, 5, ?) RETURNING id
-    `, ['Cliente Premium', 'cliente@sortistore.com', clientPass, new Date().toISOString()]);
+    `, ['Cliente Premium', 'cliente@treguru.com', clientPass, new Date().toISOString()]);
 
     const clientUserId = userClient.id;
 
@@ -73,7 +73,7 @@ async function runSeed() {
         {
             image_url: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1600',
             badge: 'EDICIÓN ESPECIAL 2026',
-            title: 'Tecnología, Streaming y Software en SortiStore',
+            title: 'Tecnología, Streaming y Software en Treguru',
             description: 'Explora nuestros productos físicos de alta gama, licencias de software original, cuentas streaming y proyectos digitales con entrega instantánea.',
             link: '#/category/tecnologia',
             bg_y: 50
@@ -82,15 +82,15 @@ async function runSeed() {
     await db.execute("INSERT INTO system_settings (key, value) VALUES ('home_banners', ?)", [JSON.stringify(defaultBanners)]);
 
     const defaultBranding = {
-        site_name: 'SortiStore',
+        site_name: 'Treguru',
         primary_color: '#6366f1',
         accent_color: '#f59e0b'
     };
     await db.execute("INSERT INTO system_settings (key, value) VALUES ('site_branding', ?)", [JSON.stringify(defaultBranding)]);
 
     const bankAccounts = [
-        { bank: 'BCP', account: '191-98765432-0-99', CCI: '002-19198765432099-54', owner: 'SortiStore Perú S.A.C.' },
-        { bank: 'BBVA', account: '0011-0123-0200456789', CCI: '001-101230200456789-21', owner: 'SortiStore Perú S.A.C.' }
+        { bank: 'BCP', account: '191-98765432-0-99', CCI: '002-19198765432099-54', owner: 'Treguru Perú S.A.C.' },
+        { bank: 'BBVA', account: '0011-0123-0200456789', CCI: '001-101230200456789-21', owner: 'Treguru Perú S.A.C.' }
     ];
     await db.execute("INSERT INTO system_settings (key, value) VALUES ('bank_accounts', ?)", [JSON.stringify(bankAccounts)]);
     await db.execute("INSERT INTO system_settings (key, value) VALUES ('yape_qr', 'https://images.unsplash.com/photo-1595079676339-1534801ad6cf?w=400')");

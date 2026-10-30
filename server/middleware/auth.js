@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'sortistore_super_secret_key_2026_2027';
+const JWT_SECRET = process.env.JWT_SECRET || 'treguru_super_secret_key_2026_2027';
+const LEGACY_JWT_SECRET = 'sortistore_super_secret_key_2026_2027';
 
 // Middleware para verificar la existencia y validez de un token JWT
 exports.authenticate = (req, res, next) => {
@@ -14,7 +15,14 @@ exports.authenticate = (req, res, next) => {
 
     jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) {
-            return res.status(403).json({ error: 'Token inválido o expirado.' });
+            jwt.verify(token, LEGACY_JWT_SECRET, (legacyErr, legacyDecoded) => {
+                if (legacyErr) {
+                    return res.status(403).json({ error: 'Token inválido o expirado.' });
+                }
+                req.user = legacyDecoded;
+                return next();
+            });
+            return;
         }
         req.user = decoded;
         next();

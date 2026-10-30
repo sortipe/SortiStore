@@ -1,5 +1,5 @@
 /* ==========================================================================
-   LÓGICA DEL PANEL DE ADMINISTRACIÓN (SORTISTORE BACK-OFFICE)
+   LÓGICA DEL PANEL DE ADMINISTRACIÓN (TREGURU BACK-OFFICE)
    ========================================================================== */
 
 let AdminState = {
@@ -745,7 +745,7 @@ window.openProductFormModal = async (productId = null) => {
                     <input type="number" step="0.01" id="prod-price-offer" class="form-control" value="${product.price_offer || ''}">
                 </div>
                 <div class="form-group">
-                    <label>Precio Exclusivo Sorti Coins (Opcional)</label>
+                    <label>Precio Exclusivo Monedas Treguru (Opcional)</label>
                     <input type="number" id="prod-price-sorti" class="form-control" value="${product.price_sorti || ''}">
                 </div>
                 <div class="form-group">
@@ -1202,7 +1202,7 @@ window.openOrderDetailsModal = (orderId) => {
                         </select>
                     </div>
                     <p><strong>Método Pago:</strong> ${order.payment_method.toUpperCase()}</p>
-                    <p><strong>Monedas Sorti Canjeadas:</strong> ${order.sorti_coins_used} monedas</p>
+                    <p><strong>Monedas Treguru Canjeadas:</strong> ${order.sorti_coins_used} monedas</p>
                 </div>
             </div>
 
@@ -1397,12 +1397,12 @@ function renderWalletTab(container) {
         <div class="checkout-layout animate-fade-in" style="max-width: 600px; margin: 0 auto;">
             <div class="checkout-section">
                 <h3><i class="fas fa-coins" style="color: var(--color-accent);"></i> Ajuste de Monedas Virtuales</h3>
-                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px;">Otorgue o retire monedas Sorti del balance de la billetera virtual de cualquier cliente registrado.</p>
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 24px;">Otorgue o retire monedas Treguru del balance de la billetera virtual de cualquier cliente registrado.</p>
                 
                 <form id="wallet-adjust-form">
                     <div class="form-group">
                         <label>Correo Electrónico del Cliente</label>
-                        <input type="email" id="adj-email" class="form-control" placeholder="cliente@sortistore.com" required>
+                        <input type="email" id="adj-email" class="form-control" placeholder="cliente@treguru.com" required>
                     </div>
                     <div class="form-group">
                         <label>Monedas a Sumar o Restar</label>
@@ -1583,7 +1583,7 @@ async function renderSettingsTab(container, reloadFromApi = true) {
 
     // Cargar site_branding por defecto
     const branding = currentSettings.site_branding ? (typeof currentSettings.site_branding === 'string' ? JSON.parse(currentSettings.site_branding) : currentSettings.site_branding) : {
-        site_name: 'SortiStore',
+        site_name: 'Treguru',
         primary_color: '#6366f1',
         accent_color: '#f59e0b'
     };
@@ -1617,7 +1617,7 @@ async function renderSettingsTab(container, reloadFromApi = true) {
                 <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; align-items: end;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Nombre de la Tienda (Document Title & Logo)</label>
-                        <input type="text" id="set-site-name" class="form-control" value="${branding.site_name || ''}" placeholder="SortiStore" required>
+                        <input type="text" id="set-site-name" class="form-control" value="${branding.site_name || ''}" placeholder="Treguru" required>
                     </div>
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Color Principal</label>
@@ -1729,10 +1729,10 @@ async function renderSettingsTab(container, reloadFromApi = true) {
                 </div>
             </div>
 
-            <!-- Moneda Sorti -->
+            <!-- Moneda Treguru -->
             <div class="checkout-section" style="width: 100%;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
-                    <h3 style="margin: 0;"><i class="fas fa-coins" style="color: var(--color-accent);"></i> Configuración de Moneda Sorti</h3>
+                    <h3 style="margin: 0;"><i class="fas fa-coins" style="color: var(--color-accent);"></i> Configuración de Moneda Treguru</h3>
                     <span style="background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25); font-weight: 700; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
                         <i class="fas fa-gem"></i> Fidelización y Recompensas
                     </span>
@@ -1766,7 +1766,7 @@ async function renderSettingsTab(container, reloadFromApi = true) {
                             <span style="font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap;">descuento / 1 moneda</span>
                         </div>
                         <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
-                            <strong>Ejemplo:</strong> Si colocas <code>0.50</code>, cada 1 moneda Sorti vale S/. 0.50 céntimos de descuento (canjear 20 monedas descontará S/. 10.00 en el checkout).
+                            <strong>Ejemplo:</strong> Si colocas <code>0.50</code>, cada 1 moneda Treguru vale S/. 0.50 céntimos de descuento (canjear 20 monedas descontará S/. 10.00 en el checkout).
                         </p>
                     </div>
                 </div>

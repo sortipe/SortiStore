@@ -45,7 +45,7 @@ app.get('*', (req, res) => {
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`=============================================================`);
-        console.log(` Servidor Sortistore ejecutándose en: http://localhost:${PORT}`);
+        console.log(` Servidor Treguru ejecutándose en: http://localhost:${PORT}`);
         console.log(` - Panel de la Tienda Cliente: http://localhost:${PORT}/`);
         console.log(` - Panel de Administración:    http://localhost:${PORT}/admin`);
         console.log(`=============================================================`);
