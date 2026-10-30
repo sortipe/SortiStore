@@ -3183,16 +3183,22 @@ async function renderStreamingTab(container) {
     let platforms = [];
     let products = [];
     try {
-        [accounts, platforms, products] = await Promise.all([
+        [accounts, platforms] = await Promise.all([
             AdminService.getStreamingAccounts(),
-            AdminService.getStreamingPlatforms(),
-            AdminService.getProducts().catch(() => [])
+            AdminService.getStreamingPlatforms()
         ]);
+    } catch (err) {
+        console.error('Error al cargar cuentas y plataformas:', err);
+        showToast('Error al cargar datos de streaming.', 'error');
+    }
+
+    try {
+        products = await ShopService.getProducts();
         if (products && products.length > 0) {
             globalProductList = products;
         }
-    } catch (err) {
-        showToast('Error al cargar datos de streaming.', 'error');
+    } catch (e) {
+        console.warn('No se pudieron precargar los productos en streaming:', e);
     }
 
     window._cachedStreamingAccounts = accounts;

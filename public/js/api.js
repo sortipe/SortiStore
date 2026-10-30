@@ -158,6 +158,10 @@ const CustomerService = {
 
 // Servicios de Administración
 const AdminService = {
+    async getProducts(filters = {}) {
+        return await ShopService.getProducts(filters);
+    },
+
     async getDashboardStats() {
         return await apiCall('/admin/dashboard');
     },
