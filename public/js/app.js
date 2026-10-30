@@ -638,7 +638,7 @@ async function renderShopPage() {
         container.innerHTML = `
             <div class="main-storefront animate-fade-in" style="margin-top: 40px;">
                 <div class="section-header">
-                    <h2><i class="fas fa-store" style="color: var(--color-primary);"></i> Tienda de Productos Físicos</h2>
+                    <h2><i class="fas fa-boxes" style="color: var(--color-primary);"></i> Catálogo General de Productos</h2>
                     <span id="shop-results-count" style="color: var(--text-muted); font-weight: 600;">Cargando...</span>
                 </div>
                 
@@ -658,6 +658,16 @@ async function renderShopPage() {
                             ${categories.map(c => `<option value="${c.slug}">${c.name}</option>`).join('')}
                         </select>
                     </div>
+
+                    <div class="filter-group" style="min-width: 140px;">
+                        <label style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block;">Tipo</label>
+                        <select id="shop-type" class="form-control" onchange="applyShopFilters()">
+                            <option value="">Todos los tipos</option>
+                            <option value="physical">📦 Físicos</option>
+                            <option value="digital">⚡ Digitales</option>
+                            <option value="software">💻 Software</option>
+                        </select>
+                    </div>
                     
                     <div class="filter-group price-range-group" style="display: flex; gap: 8px; min-width: 180px;">
                         <div>
@@ -670,10 +680,10 @@ async function renderShopPage() {
                         </div>
                     </div>
                     
-                    <div class="filter-group" style="min-width: 150px;">
+                    <div class="filter-group" style="min-width: 170px;">
                         <label style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block;">Ordenar por</label>
                         <select id="shop-sort" class="form-control" onchange="applyShopFilters()">
-                            <option value="newest">Más recientes</option>
+                            <option value="newest">⚡ Recientemente subidos</option>
                             <option value="price_asc">Precio: Menor a Mayor</option>
                             <option value="price_desc">Precio: Mayor a Menor</option>
                             <option value="name_asc">Nombre: A - Z</option>
@@ -695,7 +705,7 @@ async function renderShopPage() {
         applyShopFilters();
         
     } catch (error) {
-        showToast('Error al cargar la tienda física', 'error');
+        showToast('Error al cargar el catálogo de productos', 'error');
     }
 }
 
@@ -714,13 +724,15 @@ window.applyShopFilters = async () => {
     
     container.innerHTML = `<div class="product-grid">${Skeletons.getProductGrid(4)}</div>`;
     
-    const q = document.getElementById('shop-search').value;
-    const category = document.getElementById('shop-category').value;
-    const min_price = document.getElementById('shop-min-price').value;
-    const max_price = document.getElementById('shop-max-price').value;
-    const sort = document.getElementById('shop-sort').value;
+    const q = document.getElementById('shop-search')?.value;
+    const category = document.getElementById('shop-category')?.value;
+    const type = document.getElementById('shop-type')?.value;
+    const min_price = document.getElementById('shop-min-price')?.value;
+    const max_price = document.getElementById('shop-max-price')?.value;
+    const sort = document.getElementById('shop-sort')?.value;
     
-    const filters = { type: 'physical' };
+    const filters = {};
+    if (type) filters.type = type;
     if (q) filters.q = q;
     if (category) filters.category = category;
     if (min_price) filters.min_price = min_price;
@@ -730,14 +742,14 @@ window.applyShopFilters = async () => {
     try {
         const products = await ShopService.getProducts(filters);
         
-        countEl.textContent = `${products.length} productos físicos encontrados`;
+        countEl.textContent = `${products.length} productos encontrados`;
         
         if (products.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 80px 24px; background-color: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
                     <i class="fas fa-box-open" style="font-size: 48px; color: var(--text-muted); margin-bottom: 16px;"></i>
                     <h3>No se encontraron productos que coincidan con los filtros.</h3>
-                    <button class="btn-primary" style="margin-top: 20px;" onclick="document.getElementById('shop-search').value=''; document.getElementById('shop-category').value=''; document.getElementById('shop-min-price').value=''; document.getElementById('shop-max-price').value=''; applyShopFilters();">Limpiar Filtros</button>
+                    <button class="btn-primary" style="margin-top: 20px;" onclick="if(document.getElementById('shop-search')) document.getElementById('shop-search').value=''; if(document.getElementById('shop-category')) document.getElementById('shop-category').value=''; if(document.getElementById('shop-type')) document.getElementById('shop-type').value=''; if(document.getElementById('shop-min-price')) document.getElementById('shop-min-price').value=''; if(document.getElementById('shop-max-price')) document.getElementById('shop-max-price').value=''; applyShopFilters();">Limpiar Filtros</button>
                 </div>
             `;
         } else {

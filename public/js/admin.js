@@ -286,55 +286,360 @@ async function renderDashboardTab(container) {
 // 2. PESTAÑA: CATÁLOGO DE PRODUCTOS (CRUD)
 // ==========================================
 let globalProductList = [];
+window._cachedAdminCategories = [];
+window._adminProductFilterOffers = false;
+
+function formatProductUploadDate(dateStr) {
+    if (!dateStr) return '<span style="color:var(--text-muted); font-size:11px;">N/A</span>';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    let badge = '';
+    if (diffHours < 24 && diffHours >= 0) {
+        badge = '<span class="badge" style="background:#10b981; color:white; font-size:9.5px; margin-left:6px;"><i class="fas fa-bolt"></i> Hoy</span>';
+    } else if (diffDays <= 7 && diffDays >= 0) {
+        badge = '<span class="badge badge-featured" style="font-size:9.5px; margin-left:6px;">Reciente</span>';
+    }
+
+    const dateFormatted = date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeFormatted = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    
+    return `
+        <div>
+            <span style="font-size: 12.5px; font-weight: 600;">${dateFormatted}</span>${badge}
+            <span style="display: block; font-size: 11px; color: var(--text-muted);">${timeFormatted}</span>
+        </div>
+    `;
+}
 
 async function renderProductsTab(container) {
-    globalProductList = await ShopService.getProducts();
+    let categories = [];
+    try {
+        [globalProductList, categories] = await Promise.all([
+            ShopService.getProducts(),
+            ShopService.getCategories().catch(() => [])
+        ]);
+        window._cachedAdminCategories = categories || [];
+    } catch (err) {
+        console.error('Error al cargar productos o categorías:', err);
+        showToast('Error al cargar catálogo de productos.', 'error');
+        globalProductList = [];
+    }
 
     container.innerHTML = `
         <div class="admin-table-container animate-fade-in">
-            <div class="admin-table-header">
-                <h3>Lista de Productos</h3>
-                <button class="btn-primary" onclick="openProductFormModal()"><i class="fas fa-plus"></i> Crear Producto</button>
+            <div class="admin-table-header" style="margin-bottom: 20px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-boxes" style="color: var(--color-primary);"></i> Lista de Productos
+                    </h3>
+                    <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0 0;">
+                        Filtra tu catálogo por categoría, productos recientemente subidos, tipo o búsqueda directa.
+                    </p>
+                </div>
+                <button class="btn-primary" onclick="openProductFormModal()" style="display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-plus"></i> Crear Producto
+                </button>
+            </div>
+
+            <!-- Barra de Filtros Principales -->
+            <div class="glass-panel" style="padding: 16px 20px; margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+                <!-- Buscador -->
+                <div style="flex: 1; min-width: 220px; position: relative;">
+                    <i class="fas fa-search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 13px;"></i>
+                    <input type="text" id="admin-product-search" class="form-control" placeholder="Buscar por producto, SKU o marca..." style="padding-left: 38px; font-size: 13px;" oninput="filterAdminProductsTable()">
+                </div>
+
+                <!-- Filtro por Categoría -->
+                <div style="min-width: 200px;">
+                    <select id="admin-product-category-filter" class="form-control" style="font-size: 13px;" onchange="filterAdminProductsTable()">
+                        <option value="">📁 Todas las Categorías</option>
+                        ${categories.map(cat => `
+                            <option value="${cat.id}">${cat.name}</option>
+                            ${cat.subcategories ? cat.subcategories.map(sub => `<option value="${sub.id}">&nbsp;&nbsp;&nbsp;↳ ${sub.name}</option>`).join('') : ''}
+                        `).join('')}
+                    </select>
+                </div>
+
+                <!-- Filtro: Productos Recientemente Subidos / Orden -->
+                <div style="min-width: 230px;">
+                    <select id="admin-product-sort-filter" class="form-control" style="font-size: 13px; font-weight: 600;" onchange="filterAdminProductsTable()">
+                        <option value="recent">⚡ Recientemente subidos (Más nuevos)</option>
+                        <option value="recent_today">🔥 Subidos Hoy</option>
+                        <option value="recent_7d">🕒 Subidos últimos 7 días</option>
+                        <option value="recent_30d">📅 Subidos este mes (30 días)</option>
+                        <option value="oldest">⏳ Más antiguos primero</option>
+                        <option value="price_desc">💰 Mayor precio</option>
+                        <option value="price_asc">🏷️ Menor precio</option>
+                        <option value="name_asc">🔤 Nombre: A - Z</option>
+                    </select>
+                </div>
+
+                <!-- Filtro por Tipo -->
+                <div style="min-width: 140px;">
+                    <select id="admin-product-type-filter" class="form-control" style="font-size: 13px;" onchange="filterAdminProductsTable()">
+                        <option value="">Todos los tipos</option>
+                        <option value="physical">📦 Físicos</option>
+                        <option value="digital">⚡ Digitales</option>
+                        <option value="software">💻 Software</option>
+                    </select>
+                </div>
+
+                <!-- Botón Reset -->
+                <button class="btn-outline" style="padding: 9px 14px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px;" onclick="resetAdminProductFilters()" title="Restablecer filtros">
+                    <i class="fas fa-undo"></i> Limpiar
+                </button>
+            </div>
+
+            <!-- Accesos Rápidos de Filtrado -->
+            <div style="display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; align-items: center;">
+                <span style="font-size: 12px; color: var(--text-muted); font-weight: 600; margin-right: 4px;">Filtros rápidos:</span>
+                <button type="button" class="btn-outline admin-prod-pill active" data-filter="all" onclick="setAdminProductQuickFilter('all', this)" style="padding: 4px 12px; font-size: 11.5px; border-radius: 20px;">Todos (${globalProductList.length})</button>
+                <button type="button" class="btn-outline admin-prod-pill" data-filter="recent_7d" onclick="setAdminProductQuickFilter('recent_7d', this)" style="padding: 4px 12px; font-size: 11.5px; border-radius: 20px;"><i class="fas fa-bolt" style="color: #10b981;"></i> Recientemente subidos (7 días)</button>
+                <button type="button" class="btn-outline admin-prod-pill" data-filter="offers" onclick="setAdminProductQuickFilter('offers', this)" style="padding: 4px 12px; font-size: 11.5px; border-radius: 20px;"><i class="fas fa-fire" style="color: var(--color-secondary);"></i> En Oferta</button>
+                <button type="button" class="btn-outline admin-prod-pill" data-filter="streaming" onclick="setAdminProductQuickFilter('streaming', this)" style="padding: 4px 12px; font-size: 11.5px; border-radius: 20px;"><i class="fas fa-tv" style="color: var(--color-primary);"></i> Streaming</button>
+                <button type="button" class="btn-outline admin-prod-pill" data-filter="physical" onclick="setAdminProductQuickFilter('physical', this)" style="padding: 4px 12px; font-size: 11.5px; border-radius: 20px;"><i class="fas fa-box"></i> Físicos</button>
+                <div style="margin-left: auto;">
+                    <span id="admin-products-count" style="font-size: 12.5px; color: var(--text-muted); font-weight: 600;"></span>
+                </div>
             </div>
             
             <table class="admin-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th style="width: 50px;">ID</th>
                         <th>Producto</th>
+                        <th>Categoría</th>
                         <th>Tipo</th>
                         <th>Precio (Normal / Oferta)</th>
                         <th>Stock</th>
-                        <th>Acciones</th>
+                        <th>Fecha de Subida</th>
+                        <th style="text-align: right; min-width: 140px;">Acciones</th>
                     </tr>
                 </thead>
-                <tbody>
-                    ${globalProductList.map(p => `
-                        <tr>
-                            <td>#${p.id}</td>
-                            <td>
-                                <strong>${p.name}</strong><br>
-                                <span style="font-size: 11px; color: var(--text-muted);">SKU: ${p.sku || 'N/A'}</span>
-                            </td>
-                            <td><span class="badge ${p.type === 'physical' ? 'badge-featured' : 'badge-new'}">${p.type.toUpperCase()}</span></td>
-                            <td>
-                                S/. ${p.price_normal.toFixed(2)} 
-                                ${p.price_offer ? `<br><span style="color: var(--color-secondary); font-size: 12px; font-weight:700;">Oferta: S/. ${p.price_offer.toFixed(2)}</span>` : ''}
-                            </td>
-                            <td>${p.type === 'physical' ? p.stock : 'Ilimitado'}</td>
-                            <td>
-                                <div style="display: flex; gap: 8px;">
-                                    <button class="btn-outline" style="padding: 6px 12px; font-size: 12px;" onclick="openProductFormModal(${p.id})"><i class="fas fa-edit"></i> Editar</button>
-                                    <button class="btn-outline" style="padding: 6px 12px; font-size: 12px; border-color: var(--danger); color: var(--danger);" onclick="deleteProductCall(${p.id})"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </td>
-                        </tr>
-                    `).join('')}
+                <tbody id="admin-products-table-body">
                 </tbody>
             </table>
         </div>
     `;
+
+    renderAdminProductRows(globalProductList);
 }
+
+function renderAdminProductRows(products) {
+    const tbody = document.getElementById('admin-products-table-body');
+    const countEl = document.getElementById('admin-products-count');
+    if (!tbody) return;
+
+    if (countEl) {
+        countEl.textContent = `${products.length} de ${globalProductList.length} productos`;
+    }
+
+    if (!products || products.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 48px 24px; color: var(--text-muted);">
+                    <i class="fas fa-boxes" style="font-size: 36px; margin-bottom: 12px; display: block; opacity: 0.5;"></i>
+                    <p style="font-size: 15px; font-weight: 600; margin: 0 0 8px 0; color: var(--text-primary);">No se encontraron productos</p>
+                    <p style="font-size: 12.5px; margin: 0 0 16px 0;">Prueba cambiando la categoría seleccionada o los filtros de búsqueda.</p>
+                    <button class="btn-outline" style="padding: 6px 14px; font-size: 12px;" onclick="resetAdminProductFilters()">
+                        <i class="fas fa-undo"></i> Limpiar Filtros
+                    </button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = products.map(p => {
+        const typeBadge = p.type === 'physical' 
+            ? '<span class="badge badge-featured"><i class="fas fa-box"></i> FÍSICO</span>'
+            : (p.type === 'software'
+                ? '<span class="badge badge-upcoming"><i class="fas fa-laptop-code"></i> SOFTWARE</span>'
+                : `<span class="badge badge-new" style="background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3);"><i class="fas fa-bolt"></i> DIGITAL${p.streaming_platform ? ' (' + p.streaming_platform + ')' : ''}</span>`);
+
+        const catBadge = p.category_name 
+            ? `<span class="badge" style="background: rgba(99,102,241,0.1); color: var(--color-primary); font-size: 11px; font-weight: 600; border: 1px solid rgba(99,102,241,0.2);"><i class="fas fa-folder"></i> ${p.category_name}</span>`
+            : '<span style="color: var(--text-muted); font-size: 11px;">Sin categoría</span>';
+
+        return `
+            <tr>
+                <td style="font-weight: 700; color: var(--text-muted);">#${p.id}</td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        ${p.media && p.media.length > 0 ? `<img src="${p.media[0].media_url}" alt="${p.name}" style="width: 38px; height: 38px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); flex-shrink: 0;">` : ''}
+                        <div>
+                            <strong style="color: var(--text-primary); font-size: 13.5px;">${p.name}</strong>
+                            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                <span>SKU: ${p.sku || 'N/A'}</span>
+                                ${p.brand ? ` • <span style="color: var(--text-secondary);">${p.brand}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td>${catBadge}</td>
+                <td>${typeBadge}</td>
+                <td>
+                    <strong style="font-size: 13px;">S/. ${Number(p.price_normal).toFixed(2)}</strong>
+                    ${p.price_offer ? `<br><span style="color: var(--color-secondary); font-size: 11.5px; font-weight: 700;"><i class="fas fa-tag"></i> Oferta: S/. ${Number(p.price_offer).toFixed(2)}</span>` : ''}
+                </td>
+                <td>
+                    ${p.type === 'physical' 
+                        ? (Number(p.stock) > 0 
+                            ? `<span style="font-weight: 600; color: ${Number(p.stock) < 5 ? '#f59e0b' : 'var(--text-primary)'};">${p.stock} uds.</span>` 
+                            : '<span class="badge badge-soldout">Agotado</span>')
+                        : '<span style="color: #10b981; font-weight: 600; font-size: 12px;"><i class="fas fa-infinity"></i> Ilimitado</span>'}
+                </td>
+                <td>
+                    ${formatProductUploadDate(p.created_at)}
+                </td>
+                <td style="text-align: right;">
+                    <div style="display: inline-flex; gap: 6px; justify-content: flex-end;">
+                        <button class="btn-outline" style="padding: 6px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" onclick="openProductFormModal(${p.id})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn-outline" style="padding: 6px 10px; font-size: 12px; border-color: rgba(239,68,68,0.4); color: var(--danger);" onclick="deleteProductCall(${p.id}, '${(p.name || '').replace(/'/g, "\\'")}')" title="Eliminar Producto">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+window.filterAdminProductsTable = () => {
+    if (!globalProductList) return;
+
+    const searchVal = document.getElementById('admin-product-search')?.value.trim().toLowerCase() || '';
+    const catVal = document.getElementById('admin-product-category-filter')?.value || '';
+    const sortVal = document.getElementById('admin-product-sort-filter')?.value || 'recent';
+    const typeVal = document.getElementById('admin-product-type-filter')?.value || '';
+
+    let filtered = [...globalProductList];
+
+    // 1. Buscador
+    if (searchVal) {
+        filtered = filtered.filter(p => {
+            const name = (p.name || '').toLowerCase();
+            const sku = (p.sku || '').toLowerCase();
+            const brand = (p.brand || '').toLowerCase();
+            const catName = (p.category_name || '').toLowerCase();
+            const platform = (p.streaming_platform || '').toLowerCase();
+            return name.includes(searchVal) || sku.includes(searchVal) || brand.includes(searchVal) || catName.includes(searchVal) || platform.includes(searchVal);
+        });
+    }
+
+    // 2. Filtro por Categoría
+    if (catVal) {
+        const catIdNum = Number(catVal);
+        filtered = filtered.filter(p => {
+            if (p.category_id === catIdNum) return true;
+            if (window._cachedAdminCategories) {
+                const parentCat = window._cachedAdminCategories.find(c => c.id === catIdNum);
+                if (parentCat && parentCat.subcategories) {
+                    return parentCat.subcategories.some(s => s.id === p.category_id);
+                }
+            }
+            return false;
+        });
+    }
+
+    // 3. Filtro por Tipo
+    if (typeVal) {
+        filtered = filtered.filter(p => p.type === typeVal);
+    }
+
+    // 4. Filtro solo ofertas si está activo
+    if (window._adminProductFilterOffers) {
+        filtered = filtered.filter(p => p.price_offer !== null && Number(p.price_offer) > 0);
+    }
+
+    // 5. Filtro y orden por productos recientemente subidos
+    const now = new Date();
+    if (sortVal === 'recent_today') {
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        filtered = filtered.filter(p => p.created_at && new Date(p.created_at) >= startOfToday);
+        filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    } else if (sortVal === 'recent_7d') {
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(p => p.created_at && new Date(p.created_at) >= sevenDaysAgo);
+        filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    } else if (sortVal === 'recent_30d') {
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(p => p.created_at && new Date(p.created_at) >= thirtyDaysAgo);
+        filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    } else if (sortVal === 'recent') {
+        filtered.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    } else if (sortVal === 'oldest') {
+        filtered.sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    } else if (sortVal === 'price_desc') {
+        filtered.sort((a, b) => (Number(b.price_offer || b.price_normal)) - (Number(a.price_offer || a.price_normal)));
+    } else if (sortVal === 'price_asc') {
+        filtered.sort((a, b) => (Number(a.price_offer || a.price_normal)) - (Number(b.price_offer || b.price_normal)));
+    } else if (sortVal === 'name_asc') {
+        filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+
+    renderAdminProductRows(filtered);
+};
+
+window.resetAdminProductFilters = () => {
+    const s = document.getElementById('admin-product-search');
+    const c = document.getElementById('admin-product-category-filter');
+    const o = document.getElementById('admin-product-sort-filter');
+    const t = document.getElementById('admin-product-type-filter');
+    if (s) s.value = '';
+    if (c) c.value = '';
+    if (o) o.value = 'recent';
+    if (t) t.value = '';
+    window._adminProductFilterOffers = false;
+    document.querySelectorAll('.admin-prod-pill').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-filter') === 'all');
+    });
+    filterAdminProductsTable();
+};
+
+window.setAdminProductQuickFilter = (filterKey, buttonEl) => {
+    document.querySelectorAll('.admin-prod-pill').forEach(b => b.classList.remove('active'));
+    if (buttonEl) buttonEl.classList.add('active');
+
+    const searchInput = document.getElementById('admin-product-search');
+    const catSelect = document.getElementById('admin-product-category-filter');
+    const sortSelect = document.getElementById('admin-product-sort-filter');
+    const typeSelect = document.getElementById('admin-product-type-filter');
+
+    if (filterKey === 'all') {
+        if (searchInput) searchInput.value = '';
+        if (catSelect) catSelect.value = '';
+        if (sortSelect) sortSelect.value = 'recent';
+        if (typeSelect) typeSelect.value = '';
+        window._adminProductFilterOffers = false;
+    } else if (filterKey === 'recent_7d') {
+        if (sortSelect) sortSelect.value = 'recent_7d';
+        if (typeSelect) typeSelect.value = '';
+        if (catSelect) catSelect.value = '';
+        window._adminProductFilterOffers = false;
+    } else if (filterKey === 'offers') {
+        window._adminProductFilterOffers = true;
+    } else if (filterKey === 'streaming') {
+        window._adminProductFilterOffers = false;
+        if (typeSelect) typeSelect.value = 'digital';
+        if (catSelect && window._cachedAdminCategories) {
+            const strCat = window._cachedAdminCategories.find(c => c.slug === 'streaming' || c.name.toLowerCase().includes('streaming'));
+            if (strCat) catSelect.value = String(strCat.id);
+        }
+    } else if (filterKey === 'physical') {
+        window._adminProductFilterOffers = false;
+        if (typeSelect) typeSelect.value = 'physical';
+        if (catSelect) catSelect.value = '';
+    }
+
+    filterAdminProductsTable();
+};
 
 // Crear/Editar Producto - Abrir modal
 // Crear/Editar Producto - Abrir modal
