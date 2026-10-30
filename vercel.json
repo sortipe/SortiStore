@@ -32,6 +32,14 @@
       "dest": "public/privacy.html"
     },
     {
+      "src": "/robots.txt",
+      "dest": "public/robots.txt"
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "public/sitemap.xml"
+    },
+    {
       "src": "/(.*)",
       "dest": "public/$1"
     }
