@@ -166,6 +166,10 @@ if (isPostgres) {
             await pgPool.query("ALTER TABLE sorti_transactions ALTER COLUMN amount TYPE NUMERIC(12,2) USING amount::numeric;").catch(() => {});
             await pgPool.query("ALTER TABLE orders ALTER COLUMN sorti_coins_used TYPE NUMERIC(12,2) USING sorti_coins_used::numeric;").catch(() => {});
 
+            // Migración para pedidos: permitir delivery_type = 'digital'
+            await pgPool.query("ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_delivery_type_check;").catch(() => {});
+            await pgPool.query("ALTER TABLE orders ADD CONSTRAINT orders_delivery_type_check CHECK (delivery_type IN ('delivery', 'pickup', 'digital'));").catch(() => {});
+
             // Sembrar configuraciones de moneda Sorti por defecto si no existen
             await pgPool.query("INSERT INTO system_settings (key, value) VALUES ('sorti_coins_per_sol', '0.20') ON CONFLICT (key) DO NOTHING;").catch(() => {});
             await pgPool.query("INSERT INTO system_settings (key, value) VALUES ('sorti_coin_value', '0.50') ON CONFLICT (key) DO NOTHING;").catch(() => {});

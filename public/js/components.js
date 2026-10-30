@@ -138,7 +138,8 @@ const Cart = {
                 product_id: product.id,
                 name: product.name,
                 slug: product.slug,
-                type: product.type,
+                type: product.type || 'physical',
+                streaming_platform: product.streaming_platform || null,
                 price: finalPrice,
                 price_sorti: product.price_sorti,
                 image_url: product.media && product.media.length > 0 ? product.media[0].media_url : 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=300',
@@ -194,6 +195,28 @@ const Cart = {
     getItemCount() {
         const cart = this.getItems();
         return cart.reduce((sum, item) => sum + item.quantity, 0);
+    },
+
+    isPhysicalItem(item, products = []) {
+        if (!item) return false;
+        if (item.type === 'physical') return true;
+        if (item.type === 'digital' || item.type === 'software') return false;
+        if (item.streaming_platform) return false;
+        if (products && products.length > 0) {
+            const p = products.find(x => x.id === item.product_id);
+            if (p) return p.type === 'physical';
+        }
+        return true;
+    },
+
+    hasPhysical(products = []) {
+        const cart = this.getItems();
+        return cart.some(item => this.isPhysicalItem(item, products));
+    },
+
+    isAllDigital(products = []) {
+        const cart = this.getItems();
+        return cart.length > 0 && !this.hasPhysical(products);
     }
 };
 

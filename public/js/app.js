@@ -841,13 +841,37 @@ async function renderCheckout() {
         return;
     }
 
+    // Cargar productos para determinar con certeza el tipo de cada item
+    let allProducts = [];
+    try {
+        allProducts = await ShopService.getProducts();
+    } catch (e) {
+        console.warn('No se pudo precargar catálogo para verificación de tipo en checkout:', e);
+    }
+
+    const isPhysicalItem = (item) => {
+        if (!item) return false;
+        if (item.type === 'physical') return true;
+        if (item.type === 'digital' || item.type === 'software') return false;
+        if (item.streaming_platform) return false;
+        if (allProducts && allProducts.length > 0) {
+            const p = allProducts.find(x => x.id === item.product_id);
+            if (p) return p.type === 'physical';
+        }
+        return true;
+    };
+
+    const hasPhysical = items.some(item => isPhysicalItem(item));
+    const hasDigital = items.some(item => !isPhysicalItem(item));
+    const isAllDigital = !hasPhysical;
+
     // Inicializar variables de checkout
     let discountCoupon = 0;
     let couponCodeApplied = '';
     let discountSorti = 0;
     let sortiCoinsApplied = 0;
-    let selectedDeliveryType = 'delivery'; // o 'pickup'
-    let currentDeliveryCost = 7.00; // Costo por defecto
+    let selectedDeliveryType = isAllDigital ? 'digital' : 'delivery'; // 'delivery', 'pickup' o 'digital'
+    let currentDeliveryCost = isAllDigital ? 0.00 : 7.00; // Costo por defecto
 
     const cartSubtotal = Cart.getSubtotal();
 
@@ -871,7 +895,12 @@ async function renderCheckout() {
         const settings = await ShopService.getSettings();
         if (settings.bank_accounts) bankAccounts = settings.bank_accounts;
         if (settings.yape_qr) yapeQrImage = settings.yape_qr;
-        if (settings.delivery_districts) districts = settings.delivery_districts;
+        if (settings.delivery_districts && settings.delivery_districts.length > 0) {
+            districts = settings.delivery_districts;
+            if (hasPhysical && !isAllDigital) {
+                currentDeliveryCost = Number(districts[0].cost) || 7.00;
+            }
+        }
         if (settings.sorti_coins_per_sol !== undefined) sortiCoinsPerSol = Number(settings.sorti_coins_per_sol);
         if (settings.sorti_coin_value !== undefined) sortiCoinValue = Number(settings.sorti_coin_value);
         else if (settings.sorti_rate) sortiCoinValue = Number((1 / Number(settings.sorti_rate)).toFixed(4));
@@ -888,70 +917,136 @@ async function renderCheckout() {
                 
                 <!-- COLUMNA 1: Datos de Envío y Delivery -->
                 <div class="checkout-section animate-fade-in">
-                    <h3><i class="fas fa-map-marker-alt" style="color: var(--color-primary);"></i> 1. Opciones de Entrega</h3>
-                    
-                    <!-- Selector de Entrega -->
-                    <div class="delivery-options-grid">
-                        <div class="delivery-card selected" id="opt-delivery-btn">
-                            <i class="fas fa-truck" style="font-size: 24px; color: var(--color-primary); margin-bottom: 8px;"></i>
-                            <h4 style="margin-bottom: 4px;">Delivery a Domicilio</h4>
-                            <p style="font-size: 11px; color: var(--text-muted);">Recibe seguro en casa</p>
-                        </div>
-                        <div class="delivery-card" id="opt-pickup-btn">
-                            <i class="fas fa-store" style="font-size: 24px; color: var(--color-primary); margin-bottom: 8px;"></i>
-                            <h4 style="margin-bottom: 4px;">Recojo en Local</h4>
-                            <p style="font-size: 11px; color: var(--text-muted);">Gratuito. Listo en 4 horas</p>
-                        </div>
-                    </div>
-
-                    <!-- Formulario de datos -->
-                    <div id="checkout-user-fields">
-                        ${!AppState.user ? `
-                            <div class="glass-panel" style="padding: 16px; margin-bottom: 20px; border-left: 4px solid var(--color-primary);">
-                                <p style="font-size: 13px;"><i class="fas fa-info-circle"></i> ¿Ya tienes cuenta? <a href="#/auth" style="color: var(--color-primary); font-weight: 700;">Inicia Sesión aquí</a> para acumular monedas Sorti en tu compra.</p>
-                            </div>
-                            <div class="form-group">
-                                <label>Nombre Completo</label>
-                                <input type="text" id="chk-guest-name" class="form-control" placeholder="Escribe tu nombre completo">
-                            </div>
-                            <div class="form-group">
-                                <label>Correo Electrónico</label>
-                                <input type="email" id="chk-guest-email" class="form-control" placeholder="Escribe tu email de contacto">
-                            </div>
-                        ` : `
-                            <div class="form-group">
-                                <label>Cliente</label>
-                                <input type="text" class="form-control" value="${AppState.user.name} (${AppState.user.email})" disabled>
-                            </div>
-                        `}
-
-                        <!-- Campos para Delivery -->
-                        <div id="delivery-details-inputs">
-                            <div class="form-group">
-                                <label>Distrito de Envío</label>
-                                <select id="chk-district" class="form-control">
-                                    ${districts.map(d => `<option value="${d.name}" data-cost="${d.cost}">${d.name} (S/. ${d.cost.toFixed(2)} - ${d.time})</option>`).join('')}
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Dirección de Entrega</label>
-                                <input type="text" id="chk-address" class="form-control" placeholder="Avenida, Jirón, Calle, Nro de Dpto...">
-                            </div>
-                            <div class="form-group">
-                                <label>Teléfono de Contacto</label>
-                                <input type="text" id="chk-phone" class="form-control" placeholder="Nro de celular">
+                    ${isAllDigital ? `
+                        <h3><i class="fas fa-bolt" style="color: #10b981;"></i> 1. Datos del Cliente & Entrega Digital</h3>
+                        
+                        <!-- Panel Explicativo de Entrega Digital Inmediata -->
+                        <div class="glass-panel" style="padding: 18px; border-left: 4px solid #10b981; background: rgba(16, 185, 129, 0.06); margin-bottom: 20px; border-radius: var(--radius-md);">
+                            <div style="display: flex; align-items: flex-start; gap: 14px;">
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: #10b981; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0;">
+                                    <i class="fas fa-cloud-download-alt"></i>
+                                </div>
+                                <div>
+                                    <h4 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 700; color: var(--text-primary);">
+                                        Entrega Digital Inmediata (Sin Costo de Envío)
+                                    </h4>
+                                    <p style="margin: 0; font-size: 12.5px; color: var(--text-secondary); line-height: 1.45;">
+                                        Tu compra contiene únicamente <strong>productos digitales / licencias</strong>. No necesitas envío a domicilio ni recojo en tienda. Las credenciales, cuentas o enlaces de acceso se activarán y enviarán de inmediato a tu correo al validar tu comprobante de pago.
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Campos para Recojo -->
-                        <div id="pickup-details-inputs" style="display: none;">
-                            <div class="glass-panel" style="padding: 16px; font-size: 13px;">
-                                <h4 style="margin-bottom: 8px;"><i class="fas fa-store"></i> Dirección de Tienda:</h4>
-                                <p>Av. Larco 456, Oficina 102, Miraflores, Lima.</p>
-                                <p style="margin-top: 4px; color: var(--text-muted);"><i class="fas fa-clock"></i> Horario: Lunes a Sábado de 9:00 AM a 8:00 PM.</p>
+                        <!-- Formulario de datos para compra digital -->
+                        <div id="checkout-user-fields">
+                            ${!AppState.user ? `
+                                <div class="glass-panel" style="padding: 16px; margin-bottom: 20px; border-left: 4px solid var(--color-primary);">
+                                    <p style="font-size: 13px;"><i class="fas fa-info-circle"></i> ¿Ya tienes cuenta? <a href="#/auth" style="color: var(--color-primary); font-weight: 700;">Inicia Sesión aquí</a> para acumular monedas Sorti en tu compra.</p>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nombre Completo</label>
+                                    <input type="text" id="chk-guest-name" class="form-control" placeholder="Escribe tu nombre completo" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Correo Electrónico (Donde recibirás tus accesos o licencias)</label>
+                                    <input type="email" id="chk-guest-email" class="form-control" placeholder="ejemplo@correo.com" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Teléfono o WhatsApp (Opcional - para notificaciones)</label>
+                                    <input type="text" id="chk-guest-phone" class="form-control" placeholder="Nro de celular (opcional)">
+                                </div>
+                            ` : `
+                                <div class="form-group">
+                                    <label>Cliente (Receptor de accesos digitales)</label>
+                                    <input type="text" class="form-control" value="${AppState.user.name} (${AppState.user.email})" disabled>
+                                </div>
+                                <div class="glass-panel" style="padding: 12px 14px; font-size: 12.5px; color: var(--text-secondary); border-radius: var(--radius-sm); margin-top: 8px;">
+                                    <i class="fas fa-check-circle" style="color: #10b981; margin-right: 6px;"></i>
+                                    Los datos de activación y cuentas se asignarán a tu cuenta registrada y se enviará comprobante a <strong>${AppState.user.email}</strong>.
+                                </div>
+                            `}
+                        </div>
+                    ` : `
+                        <h3><i class="fas fa-map-marker-alt" style="color: var(--color-primary);"></i> 1. Opciones de Entrega</h3>
+
+                        ${hasDigital ? `
+                            <!-- Aviso de Pedido Mixto -->
+                            <div class="glass-panel" style="padding: 12px 16px; margin-bottom: 20px; border-left: 4px solid var(--color-accent); background: rgba(245, 158, 11, 0.06); border-radius: var(--radius-md);">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <i class="fas fa-boxes" style="color: var(--color-accent); font-size: 20px;"></i>
+                                    <div>
+                                        <h5 style="margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary);">Pedido Mixto (Físico + Digital)</h5>
+                                        <p style="margin: 2px 0 0 0; font-size: 11.5px; color: var(--text-muted);">
+                                            Al incluir productos físicos, se requiere envío a domicilio o recojo en tienda. Los productos digitales se enviarán a tu correo en simultáneo.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- Selector de Entrega -->
+                        <div class="delivery-options-grid">
+                            <div class="delivery-card selected" id="opt-delivery-btn">
+                                <i class="fas fa-truck" style="font-size: 24px; color: var(--color-primary); margin-bottom: 8px;"></i>
+                                <h4 style="margin-bottom: 4px;">Delivery a Domicilio</h4>
+                                <p style="font-size: 11px; color: var(--text-muted);">Recibe seguro en casa</p>
+                            </div>
+                            <div class="delivery-card" id="opt-pickup-btn">
+                                <i class="fas fa-store" style="font-size: 24px; color: var(--color-primary); margin-bottom: 8px;"></i>
+                                <h4 style="margin-bottom: 4px;">Recojo en Local</h4>
+                                <p style="font-size: 11px; color: var(--text-muted);">Gratuito. Listo en 4 horas</p>
                             </div>
                         </div>
-                    </div>
+
+                        <!-- Formulario de datos -->
+                        <div id="checkout-user-fields">
+                            ${!AppState.user ? `
+                                <div class="glass-panel" style="padding: 16px; margin-bottom: 20px; border-left: 4px solid var(--color-primary);">
+                                    <p style="font-size: 13px;"><i class="fas fa-info-circle"></i> ¿Ya tienes cuenta? <a href="#/auth" style="color: var(--color-primary); font-weight: 700;">Inicia Sesión aquí</a> para acumular monedas Sorti en tu compra.</p>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nombre Completo</label>
+                                    <input type="text" id="chk-guest-name" class="form-control" placeholder="Escribe tu nombre completo">
+                                </div>
+                                <div class="form-group">
+                                    <label>Correo Electrónico</label>
+                                    <input type="email" id="chk-guest-email" class="form-control" placeholder="Escribe tu email de contacto">
+                                </div>
+                            ` : `
+                                <div class="form-group">
+                                    <label>Cliente</label>
+                                    <input type="text" class="form-control" value="${AppState.user.name} (${AppState.user.email})" disabled>
+                                </div>
+                            `}
+
+                            <!-- Campos para Delivery -->
+                            <div id="delivery-details-inputs">
+                                <div class="form-group">
+                                    <label>Distrito de Envío</label>
+                                    <select id="chk-district" class="form-control">
+                                        ${districts.map(d => `<option value="${d.name}" data-cost="${d.cost}">${d.name} (S/. ${d.cost.toFixed(2)} - ${d.time})</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Dirección de Entrega</label>
+                                    <input type="text" id="chk-address" class="form-control" placeholder="Avenida, Jirón, Calle, Nro de Dpto...">
+                                </div>
+                                <div class="form-group">
+                                    <label>Teléfono de Contacto</label>
+                                    <input type="text" id="chk-phone" class="form-control" placeholder="Nro de celular">
+                                </div>
+                            </div>
+
+                            <!-- Campos para Recojo -->
+                            <div id="pickup-details-inputs" style="display: none;">
+                                <div class="glass-panel" style="padding: 16px; font-size: 13px;">
+                                    <h4 style="margin-bottom: 8px;"><i class="fas fa-store"></i> Dirección de Tienda:</h4>
+                                    <p>Av. Larco 456, Oficina 102, Miraflores, Lima.</p>
+                                    <p style="margin-top: 4px; color: var(--text-muted);"><i class="fas fa-clock"></i> Horario: Lunes a Sábado de 9:00 AM a 8:00 PM.</p>
+                                </div>
+                            </div>
+                        </div>
+                    `}
                 </div>
 
                 <!-- COLUMNA 2: Método de Pago (QR YAPE / TRANSFERENCIA BANCARIA) -->
@@ -1013,13 +1108,21 @@ async function renderCheckout() {
                     <h3><i class="fas fa-clipboard-list" style="color: var(--color-accent);"></i> Resumen de Compra</h3>
                     
                     <!-- Lista rápida de productos del carro -->
-                    <div style="max-height: 150px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
-                        ${items.map(item => `
-                            <div style="display: flex; justify-content: space-between; font-size: 13px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
-                                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">${item.name} (${item.quantity}x)</span>
-                                <span>S/. ${(item.price * item.quantity).toFixed(2)}</span>
-                            </div>
-                        `).join('')}
+                    <div style="max-height: 180px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px;">
+                        ${items.map(item => {
+                            const isPhys = isPhysicalItem(item);
+                            return `
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
+                                    <div style="display: flex; align-items: center; gap: 6px; overflow: hidden; max-width: 250px;">
+                                        <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.name} (${item.quantity}x)</span>
+                                        <span class="badge" style="font-size: 9.5px; padding: 1px 6px; border-radius: 4px; flex-shrink: 0; ${isPhys ? 'background: rgba(99,102,241,0.12); color: var(--color-primary); border: 1px solid rgba(99,102,241,0.25);' : 'background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.3);'}">
+                                            ${isPhys ? '<i class="fas fa-box"></i> Físico' : '<i class="fas fa-bolt"></i> Digital'}
+                                        </span>
+                                    </div>
+                                    <span style="font-weight: 600; white-space: nowrap;">S/. ${(item.price * item.quantity).toFixed(2)}</span>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
 
                     <!-- Aplicar Cupón de Descuento -->
@@ -1156,35 +1259,41 @@ async function renderCheckout() {
 
     let base64Voucher = '';
 
-    // Manejar Tipo de Envío
-    deliveryBtn.addEventListener('click', () => {
-        selectedDeliveryType = 'delivery';
-        deliveryBtn.classList.add('selected');
-        pickupBtn.classList.remove('selected');
-        deliveryInputs.style.display = 'block';
-        pickupInputs.style.display = 'none';
-        
-        // Restaurar costo de envío
-        const selectedOpt = districtSelect.options[districtSelect.selectedIndex];
-        currentDeliveryCost = selectedOpt ? Number(selectedOpt.getAttribute('data-cost')) : 7.00;
-        updateTotalsDisplay();
-    });
+    // Manejar Tipo de Envío (solo disponible cuando hay productos físicos)
+    if (deliveryBtn && pickupBtn) {
+        deliveryBtn.addEventListener('click', () => {
+            selectedDeliveryType = 'delivery';
+            deliveryBtn.classList.add('selected');
+            pickupBtn.classList.remove('selected');
+            if (deliveryInputs) deliveryInputs.style.display = 'block';
+            if (pickupInputs) pickupInputs.style.display = 'none';
+            
+            // Restaurar costo de envío
+            if (districtSelect) {
+                const selectedOpt = districtSelect.options[districtSelect.selectedIndex];
+                currentDeliveryCost = selectedOpt ? Number(selectedOpt.getAttribute('data-cost')) : 7.00;
+            } else {
+                currentDeliveryCost = 7.00;
+            }
+            updateTotalsDisplay();
+        });
 
-    pickupBtn.addEventListener('click', () => {
-        selectedDeliveryType = 'pickup';
-        pickupBtn.classList.add('selected');
-        deliveryBtn.classList.remove('selected');
-        deliveryInputs.style.display = 'none';
-        pickupInputs.style.display = 'block';
-        
-        // Sin costo de envío
-        currentDeliveryCost = 0.00;
-        updateTotalsDisplay();
-    });
+        pickupBtn.addEventListener('click', () => {
+            selectedDeliveryType = 'pickup';
+            pickupBtn.classList.add('selected');
+            deliveryBtn.classList.remove('selected');
+            if (deliveryInputs) deliveryInputs.style.display = 'none';
+            if (pickupInputs) pickupInputs.style.display = 'block';
+            
+            // Sin costo de envío para recojo
+            currentDeliveryCost = 0.00;
+            updateTotalsDisplay();
+        });
+    }
 
     if (districtSelect) {
         districtSelect.addEventListener('change', () => {
-            if (selectedDeliveryType === 'delivery') {
+            if (selectedDeliveryType === 'delivery' && hasPhysical) {
                 const selectedOpt = districtSelect.options[districtSelect.selectedIndex];
                 currentDeliveryCost = Number(selectedOpt.getAttribute('data-cost')) || 0;
                 updateTotalsDisplay();
@@ -1288,7 +1397,8 @@ async function renderCheckout() {
     const sortiDiscountText = document.getElementById('sorti-discount-text');
 
     function calculateMaxSortiCoinsAllowed() {
-        const remainingToPay = Math.max(0, cartSubtotal + currentDeliveryCost - discountCoupon);
+        const effectiveDelivery = isAllDigital ? 0 : currentDeliveryCost;
+        const remainingToPay = Math.max(0, cartSubtotal + effectiveDelivery - discountCoupon);
         if (sortiCoinValue <= 0) return 0;
         const coinsNeeded = remainingToPay / sortiCoinValue;
         return Math.min(userSortiBalance, coinsNeeded);
@@ -1354,7 +1464,16 @@ async function renderCheckout() {
 
         // Mostrar / Ocultar costo de envío
         if (rowDelivery) {
-            rowDelivery.querySelector('span:last-child').textContent = `S/. ${currentDeliveryCost.toFixed(2)}`;
+            if (isAllDigital) {
+                rowDelivery.querySelector('span:first-child').textContent = 'Entrega digital:';
+                rowDelivery.querySelector('span:last-child').innerHTML = '<span style="color: #10b981; font-weight: 700;"><i class="fas fa-bolt"></i> GRATIS (Inmediato)</span>';
+            } else if (selectedDeliveryType === 'pickup') {
+                rowDelivery.querySelector('span:first-child').textContent = 'Recojo en local:';
+                rowDelivery.querySelector('span:last-child').innerHTML = '<span style="color: #10b981; font-weight: 700;">S/. 0.00 (Gratis)</span>';
+            } else {
+                rowDelivery.querySelector('span:first-child').textContent = 'Costo de envío:';
+                rowDelivery.querySelector('span:last-child').textContent = `S/. ${currentDeliveryCost.toFixed(2)}`;
+            }
         }
 
         // Mostrar / Ocultar descuento de cupón
@@ -1377,8 +1496,9 @@ async function renderCheckout() {
             }
         }
 
-        // Calcular total final
-        let finalGrandTotal = cartSubtotal + currentDeliveryCost - discountCoupon - discountSorti;
+        // Calcular total final (si es 100% digital, nunca se suma costo de envío)
+        const effectiveDelivery = isAllDigital ? 0 : currentDeliveryCost;
+        let finalGrandTotal = cartSubtotal + effectiveDelivery - discountCoupon - discountSorti;
         if (finalGrandTotal < 0) finalGrandTotal = 0;
         if (grandTotalText) {
             grandTotalText.textContent = `S/. ${finalGrandTotal.toFixed(2)}`;
@@ -1415,20 +1535,32 @@ async function renderCheckout() {
         const selectedOpt = districtSelect ? districtSelect.value : '';
 
         if (!AppState.user) {
-            chkName = document.getElementById('chk-guest-name').value.trim();
-            chkEmail = document.getElementById('chk-guest-email').value.trim();
+            const nameEl = document.getElementById('chk-guest-name');
+            const emailEl = document.getElementById('chk-guest-email');
+            const phoneGuestEl = document.getElementById('chk-guest-phone');
+            chkName = nameEl ? nameEl.value.trim() : '';
+            chkEmail = emailEl ? emailEl.value.trim() : '';
+            if (phoneGuestEl && phoneGuestEl.value.trim()) {
+                chkPhone = phoneGuestEl.value.trim();
+            }
+
             if (!chkName || !chkEmail) {
-                showToast('Por favor ingrese su nombre y correo.', 'warning');
+                showToast('Por favor ingrese su nombre y correo de entrega.', 'warning');
                 return;
             }
         }
 
-        if (selectedDeliveryType === 'delivery') {
-            chkAddress = document.getElementById('chk-address').value.trim();
-            chkPhone = document.getElementById('chk-phone').value.trim();
-            if (!chkAddress || !chkPhone) {
-                showToast('Por favor complete su dirección y celular de entrega.', 'warning');
-                return;
+        // Solo se solicita dirección si hay productos físicos y se seleccionó delivery
+        if (hasPhysical) {
+            if (selectedDeliveryType === 'delivery') {
+                const addrEl = document.getElementById('chk-address');
+                const phoneEl = document.getElementById('chk-phone');
+                chkAddress = addrEl ? addrEl.value.trim() : '';
+                chkPhone = phoneEl ? phoneEl.value.trim() : chkPhone;
+                if (!chkAddress || !chkPhone) {
+                    showToast('Por favor complete su dirección y celular de entrega para el producto físico.', 'warning');
+                    return;
+                }
             }
         }
 
@@ -1444,12 +1576,21 @@ async function renderCheckout() {
             variant_info: i.variants
         }));
 
+        let finalDeliveryAddress = '';
+        if (isAllDigital) {
+            finalDeliveryAddress = 'Entrega digital inmediata vía correo / pantalla' + (chkPhone ? ` (Tlf/WhatsApp: ${chkPhone})` : '');
+        } else if (selectedDeliveryType === 'delivery') {
+            finalDeliveryAddress = `${selectedOpt} - ${chkAddress} (Tlf: ${chkPhone})`;
+        } else {
+            finalDeliveryAddress = 'Recojo en local';
+        }
+
         const payload = {
             guest_name: AppState.user ? null : chkName,
             guest_email: AppState.user ? null : chkEmail,
-            delivery_type: selectedDeliveryType,
-            delivery_address: selectedDeliveryType === 'delivery' ? `${selectedOpt} - ${chkAddress} (Tlf: ${chkPhone})` : 'Recojo en local',
-            delivery_cost: currentDeliveryCost,
+            delivery_type: isAllDigital ? 'digital' : selectedDeliveryType,
+            delivery_address: finalDeliveryAddress,
+            delivery_cost: isAllDigital ? 0 : currentDeliveryCost,
             coupon_code: couponCodeApplied || null,
             sorti_coins_used: sortiCoinsApplied,
             payment_method: selectedPaymentMethod,
@@ -1483,9 +1624,11 @@ async function renderCheckout() {
                 } else {
                     container.innerHTML = `
                         <div class="main-storefront" style="text-align: center; padding: 80px 24px;">
-                            <i class="fas fa-check-circle" style="font-size: 64px; color: var(--color-secondary); margin-bottom: 24px;"></i>
-                            <h2>¡Gracias por tu compra!</h2>
-                            <p style="margin-top: 12px; color: var(--text-secondary);">Tu pedido #${response.orderId} se ha registrado correctamente y el comprobante está bajo verificación manual.</p>
+                            <i class="${isAllDigital ? 'fas fa-bolt' : 'fas fa-check-circle'}" style="font-size: 64px; color: ${isAllDigital ? '#10b981' : 'var(--color-secondary)'}; margin-bottom: 24px;"></i>
+                            <h2>${isAllDigital ? '¡Gracias por tu compra digital!' : '¡Gracias por tu compra!'}</h2>
+                            <p style="margin-top: 12px; color: var(--text-secondary);">
+                                Tu pedido #${response.orderId} se ha registrado correctamente. ${isAllDigital ? `Al verificar tu comprobante, tus accesos se enviarán de inmediato a <strong>${chkEmail}</strong>.` : 'El comprobante está bajo verificación manual.'}
+                            </p>
                             <a href="#/" class="btn-primary" style="margin-top: 24px;">Volver a la Tienda</a>
                         </div>
                     `;

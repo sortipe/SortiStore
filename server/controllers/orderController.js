@@ -46,10 +46,35 @@ exports.createOrder = async (req, res) => {
             });
         }
 
-        // 2. Calcular Descuentos de Cupón
+        // 2. Determinar si el pedido es 100% digital o contiene productos físicos
+        const hasPhysicalItems = orderItemsToInsert.some(item => item.is_physical);
+        let finalDeliveryCost = Number(delivery_cost) || 0;
+        let finalDeliveryType = delivery_type || 'delivery';
+        let finalDeliveryAddress = delivery_address ? String(delivery_address).trim() : '';
+
+        if (!hasPhysicalItems) {
+            // Todos los productos son digitales/software: no hay envío físico ni costo de delivery
+            finalDeliveryCost = 0;
+            finalDeliveryType = 'digital';
+            if (!finalDeliveryAddress) {
+                finalDeliveryAddress = 'Entrega digital vía correo / pantalla';
+            }
+        } else {
+            // Predomina el producto físico: requiere envío a domicilio o recojo en local
+            if (finalDeliveryType === 'pickup') {
+                finalDeliveryCost = 0;
+                finalDeliveryAddress = finalDeliveryAddress || 'Recojo en local';
+            } else {
+                finalDeliveryType = 'delivery';
+                if (!finalDeliveryAddress) {
+                    finalDeliveryAddress = 'Dirección no especificada';
+                }
+            }
+        }
+
+        // 3. Calcular Descuentos de Cupón
         let discountCoupon = 0;
         let couponId = null;
-        let finalDeliveryCost = Number(delivery_cost) || 0;
 
         if (coupon_code) {
             const coupon = await db.querySingle('SELECT * FROM coupons WHERE code = ?', [coupon_code]);
@@ -80,7 +105,7 @@ exports.createOrder = async (req, res) => {
             }
         }
 
-        // 3. Aplicar monedas Sorti (Solo para clientes registrados)
+        // 4. Aplicar monedas Sorti (Solo para clientes registrados)
         let discountSorti = 0;
         let coinsToDeduct = Number(sorti_coins_used) || 0;
 
@@ -113,11 +138,11 @@ exports.createOrder = async (req, res) => {
             coinsToDeduct = 0;
         }
 
-        // 4. Calcular total final
+        // 5. Calcular total final
         let totalAmount = subtotal + finalDeliveryCost - discountCoupon - discountSorti;
         if (totalAmount < 0) totalAmount = 0;
 
-        // 5. Crear el pedido en la BD (RETURNING id es compatible de forma cruzada)
+        // 6. Crear el pedido en la BD (RETURNING id es compatible de forma cruzada)
         const orderRow = await db.querySingle(`
             INSERT INTO orders (
                 user_id, guest_email, guest_name, status, delivery_type,
@@ -129,8 +154,8 @@ exports.createOrder = async (req, res) => {
             userId,
             userId ? null : guest_email,
             userId ? null : guest_name,
-            delivery_type,
-            delivery_address || 'Recojo en local',
+            finalDeliveryType,
+            finalDeliveryAddress,
             finalDeliveryCost,
             couponId,
             coinsToDeduct,

@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS orders (
     guest_email TEXT,
     guest_name TEXT,
     status TEXT CHECK(status IN ('pending_payment', 'paid', 'processing', 'shipped', 'completed', 'cancelled')) DEFAULT 'pending_payment',
-    delivery_type TEXT CHECK(delivery_type IN ('delivery', 'pickup')) NOT NULL,
+    delivery_type TEXT CHECK(delivery_type IN ('delivery', 'pickup', 'digital')) NOT NULL,
     delivery_address TEXT,
     delivery_cost REAL DEFAULT 0.0,
     coupon_id INTEGER,

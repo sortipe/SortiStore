@@ -832,11 +832,17 @@ async function renderOrdersTab(container) {
                             completed: 'badge-new',
                             cancelled: 'badge-soldout'
                         };
+                        const deliveryBadge = o.delivery_type === 'digital' 
+                            ? '<span class="badge badge-new" style="background:#10b981; color:white;"><i class="fas fa-bolt"></i> DIGITAL</span>' 
+                            : (o.delivery_type === 'pickup' 
+                                ? '<span class="badge badge-upcoming"><i class="fas fa-store"></i> RECOJO</span>' 
+                                : '<span class="badge badge-featured"><i class="fas fa-truck"></i> DELIVERY</span>');
+
                         return `
                             <tr>
                                 <td>#${o.id}</td>
                                 <td><strong>${o.user_name || o.guest_name || 'Invitado'}</strong><br><span style="font-size:11px; color:var(--text-muted);">${o.user_email || o.guest_email}</span></td>
-                                <td><span class="badge badge-featured">${o.delivery_type.toUpperCase()}</span><br><span style="font-size:11px; color:var(--text-muted);">${o.delivery_address}</span></td>
+                                <td>${deliveryBadge}<br><span style="font-size:11px; color:var(--text-muted);">${o.delivery_address}</span></td>
                                 <td>S/. ${o.total_amount.toFixed(2)}</td>
                                 <td><span class="badge badge-featured">${o.payment_method.toUpperCase()}</span></td>
                                 <td><span class="badge ${statusColors[o.status] || 'badge-upcoming'}">${o.status.toUpperCase()}</span></td>
@@ -873,7 +879,7 @@ window.openOrderDetailsModal = (orderId) => {
                     <h4>Información General</h4>
                     <p style="margin-top: 8px;"><strong>Cliente:</strong> ${order.user_name || order.guest_name || 'Invitado'}</p>
                     <p><strong>Email:</strong> ${order.user_email || order.guest_email}</p>
-                    <p><strong>Entrega:</strong> ${order.delivery_type === 'delivery' ? 'Delivery a Domicilio' : 'Recojo en local'}</p>
+                    <p><strong>Entrega:</strong> ${order.delivery_type === 'digital' ? '<span style="color:#10b981; font-weight:700;"><i class="fas fa-bolt"></i> Entrega Digital Inmediata</span>' : (order.delivery_type === 'pickup' ? 'Recojo en local' : 'Delivery a Domicilio')}</p>
                     <p><strong>Dirección:</strong> ${order.delivery_address}</p>
                     <p><strong>Fecha Pedido:</strong> ${new Date(order.created_at).toLocaleString()}</p>
                 </div>
